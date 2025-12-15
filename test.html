@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindMint AI - Demo Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .test-result { background: #f0f0f0; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8">🧪 MindMint AI Demo Test</h1>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">Application Status</h2>
+            <div id="status" class="test-result">🔄 Testing application...</div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">Core Features Test</h2>
+            <div class="space-y-4">
+                <button onclick="testMindmap()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    🧠 Test Mindmap Generation
+                </button>
+                <button onclick="testFlashcards()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    📚 Test Flashcard Generation
+                </button>
+                <button onclick="testQuiz()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                    ❓ Test Quiz Generation
+                </button>
+                <button onclick="testInfographic()" class="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">
+                    📊 Test Infographic Generation
+                </button>
+                <button onclick="testSummary()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    📝 Test Summary Generation
+                </button>
+            </div>
+            <div id="results" class="mt-6"></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">Application Links</h2>
+            <div class="space-x-4">
+                <a href="http://localhost:3000" target="_blank" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">
+                    🚀 Open MindMint AI App
+                </a>
+                <a href="http://localhost:3000" target="_blank" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    🔄 Refresh App
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test if the app is accessible
+        async function checkAppStatus() {
+            try {
+                const response = await fetch('http://localhost:3000');
+                const status = document.getElementById('status');
+                
+                if (response.ok) {
+                    status.innerHTML = '✅ MindMint AI is running successfully on http://localhost:3000';
+                    status.className = 'test-result success';
+                } else {
+                    status.innerHTML = '⚠️ App is running but returned status: ' + response.status;
+                    status.className = 'test-result';
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = '❌ Cannot connect to MindMint AI. Is the server running?';
+                document.getElementById('status').className = 'test-result error';
+            }
+        }
+
+        // Mock test functions for UI interaction
+        function testMindmap() {
+            document.getElementById('results').innerHTML = `
+                <div class="test-result">
+                    <h3 class="font-semibold">🧠 Mindmap Test</h3>
+                    <p>✅ Mock mindmap generation is working!</p>
+                    <p>Layout: Classic tree structure with multiple branches</p>
+                    <p><em>To test real functionality, open the app and use the mindmap generator.</em></p>
+                </div>
+            `;
+        }
+
+        function testFlashcards() {
+            document.getElementById('results').innerHTML = `
+                <div class="test-result">
+                    <h3 class="font-semibold">📚 Flashcard Test</h3>
+                    <p>✅ Mock flashcard generation is working!</p>
+                    <p>Generated 10 flashcards from sample text</p>
+                    <p><em>To test real functionality, open the app and use the flashcard generator.</em></p>
+                </div>
+            `;
+        }
+
+        function testQuiz() {
+            document.getElementById('results').innerHTML = `
+                <div class="test-result">
+                    <h3 class="font-semibold">❓ Quiz Test</h3>
+                    <p>✅ Mock quiz generation is working!</p>
+                    <p>Generated 8 quiz questions with multiple formats</p>
+                    <p><em>To test real functionality, open the app and use the quiz generator.</em></p>
+                </div>
+            `;
+        }
+
+        function testInfographic() {
+            document.getElementById('results').innerHTML = `
+                <div class="test-result">
+                    <h3 class="font-semibold">📊 Infographic Test</h3>
+                    <p>✅ Mock infographic generation is working!</p>
+                    <p>Generated structured infographic data with 5 steps</p>
+                    <p><em>To test real functionality, open the app and use the infographic generator.</em></p>
+                </div>
+            `;
+        }
+
+        function testSummary() {
+            document.getElementById('results').innerHTML = `
+                <div class="test-result">
+                    <h3 class="font-semibold">📝 Summary Test</h3>
+                    <p>✅ Mock summary generation is working!</p>
+                    <p>Generated bullet-point summary from input text</p>
+                    <p><em>To test real functionality, open the app and use the summary generator.</em></p>
+                </div>
+            `;
+        }
+
+        // Check app status when page loads
+        window.onload = checkAppStatus;
+    </script>
+</body>
+</html>

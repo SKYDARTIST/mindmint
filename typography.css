@@ -1,0 +1,82 @@
+/* Satoshi Font from Fontshare CDN */
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap');
+/* Inter (Fallback) and JetBrains Mono */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Premium Sans Stack */
+  --font-sans: 'Satoshi', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 15px; /* Premium body size */
+  line-height: 1.6; /* 24px rhythm */
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #1a1a1e;
+}
+
+/* --- Headings & Titles --- */
+h1, h2, h3, h4, 
+.panel-title, 
+.input-label, 
+.canvas-title {
+  font-weight: 600;
+  letter-spacing: -0.02em; /* ~ -0.3px at 16px */
+  color: #111827;
+}
+
+/* --- Sidebar & Navigation --- */
+.section-label {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9CA3AF; /* Muted label color */
+}
+
+.nav-item {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+/* --- Content Areas --- */
+.input-textarea {
+  font-family: var(--font-sans);
+  font-size: 16px; /* Larger for better writing experience */
+  line-height: 1.625; /* 26px line height */
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.input-textarea::placeholder {
+  font-weight: 400;
+  color: #A1A1AA;
+}
+
+/* --- Buttons & Controls --- */
+.btn {
+  font-family: var(--font-sans);
+  font-weight: 500; /* Medium weight for UI elements */
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
+}
+
+/* --- Data & Code --- */
+.raw-code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* --- Canvas Visuals --- */
+.mermaid text {
+  font-family: var(--font-sans) !important;
+  font-weight: 500;
+}
