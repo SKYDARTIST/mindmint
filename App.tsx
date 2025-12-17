@@ -83,7 +83,7 @@ const STARTER_TEMPLATES = [
 const MINDMAP_LAYOUTS: { id: MindmapLayout; label: string }[] = [
   { id: 'classic', label: 'Classic' },
   { id: 'flow', label: 'Flow' },
-  { id: 'radial', label: 'Radial' },
+  { id: 'layered', label: 'Layered' },
   { id: 'chain', label: 'Chain' },
   { id: 'cluster', label: 'Vertical' }, 
 ];
