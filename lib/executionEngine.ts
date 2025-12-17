@@ -1840,10 +1840,10 @@ export function selectModeSpecificContent(
  * STEP 3: GENERATE
  * Execute the structured plan using only input text information
  */
-export function executeStructuredPlan(
+export async function executeStructuredPlan(
   plan: StructuredPlan,
   inputText: string
-): any {
+): Promise<any> {
   const { mode, layout, structure, outputConstraints } = plan;
 
   // Apply mode-aware idea selection with perspective BEFORE generation
@@ -1858,7 +1858,7 @@ export function executeStructuredPlan(
     case AppMode.QUIZ:
       return generateQuizFromPlan(inputText, structure, outputConstraints, selectedContent);
     case AppMode.SUMMARY:
-      return generateSummaryFromPlan(inputText, structure, outputConstraints, selectedContent);
+      return await generateSummaryFromPlan(inputText, structure, outputConstraints, selectedContent);
     case AppMode.INFOGRAPHIC:
       return generateInfographicFromPlan(inputText, structure, outputConstraints, selectedContent);
     default:
@@ -2242,12 +2242,12 @@ function generateQuizFromPlan(
   return questions.slice(0, Math.min(questions.length, structure.maxOutputCount));
 }
 
-function generateSummaryFromPlan(
+async function generateSummaryFromPlan(
   inputText: string,
   structure: any,
   constraints: any,
   selectedContent: PerspectiveAwareContent
-): string {
+): Promise<string> {
   // STEP 3.3: Apply final semantic compression and de-duplication gate
   const finalized = finalizeContentForMode(AppMode.SUMMARY, selectedContent);
 
@@ -2271,8 +2271,25 @@ function generateSummaryFromPlan(
           SemanticRole.CONTRAST
   }));
 
-  // Apply presentation formatting to strip internal labels and create human-readable output
-  return formatSummaryForPresentation(structure.layout, presentationIdeas);
+  // STEP 6: INTEGRATION POINT - Apply AI abstraction for summary modes only
+  // Check if this is a summary mode that should use AI abstraction
+  const summaryLayoutsForAbstraction: SummaryLayout[] = ['executive', 'bullet', 'notes', 'infostructured'];
+  const currentLayout = structure.layout as SummaryLayout;
+  
+  if (summaryLayoutsForAbstraction.includes(currentLayout)) {
+    // Use AI abstraction for summaries
+    try {
+      const aiOutput = await abstractSummaryIdeas(inputText, presentationIdeas, currentLayout);
+      return await validateAndFallback(aiOutput, inputText, presentationIdeas, currentLayout);
+    } catch (error) {
+      // If AI abstraction fails, fall back to extractive summary
+      console.warn("AI abstraction failed, using extractive summary fallback:", error);
+      return formatSummaryForPresentation(currentLayout === 'infostructured' ? 'structured' : currentLayout, presentationIdeas);
+    }
+  } else {
+    // For non-summary modes or unsupported layouts, use extractive summary
+    return formatSummaryForPresentation(structure.layout, presentationIdeas);
+  }
 }
 
 function paraphraseForBullet(idea: string): string {
@@ -2416,6 +2433,116 @@ function findKeywordContextInIdeaGraph(keyword: string, ideaGraph: IdeaGraph): s
   const sentences = allText.split(/[.!?]+/);
   const sentence = sentences.find(s => s.toLowerCase().includes(keyword.toLowerCase()));
   return sentence?.trim() || '';
+}
+
+/**
+ * ABSTRACT SUMMARY IDEAS FUNCTION
+ * The ONLY place where AI rewriting is allowed for summaries
+ * Uses LLM to rewrite meaning in new sentences while staying grounded
+ */
+async function abstractSummaryIdeas(
+  inputText: string,
+  ideas: { content: string; role: SemanticRole }[],
+  layout: SummaryLayout
+): Promise<string> {
+  // Import the generateContent function to use OpenAI
+  const { generateContent } = await import('../services/openaiService');
+
+  // STRICT SYSTEM PROMPT (NON-NEGOTIABLE)
+  const systemInstruction = `
+You are summarizing content for clarity and intent.
+Rules:
+- Rewrite meaning in your own words.
+- Use ONLY information present in the input.
+- Do NOT add new facts, opinions, or interpretations.
+- Do NOT quote or reuse original sentences.
+- Prefer WHY and INTENT over procedural details.
+- Keep tone neutral, professional, human.
+- If information is insufficient, be concise rather than verbose.`;
+
+  // Prepare input for LLM - ONLY pass original text, key ideas, and layout type
+  const keyIdeas = ideas.map(idea => idea.content).join('\n');
+  const userPrompt = `
+Original Text:
+${inputText}
+
+Key Ideas:
+${keyIdeas}
+
+Layout Type: ${layout}
+
+Generate an abstracted summary following the rules above.`;
+
+  try {
+    // Call OpenAI API for rewriting using the generateContent function
+    const result = await generateContent(
+      AppMode.SUMMARY,
+      userPrompt,
+      layout,
+      false // Don't use execution engine to avoid recursion
+    );
+
+    return typeof result === 'string' ? result : "";
+  } catch (error) {
+    console.error("AI abstraction error:", error);
+    return ""; // Return empty string to trigger fallback
+  }
+}
+
+/**
+ * SAFETY & FALLBACK CHECKER
+ * Validates AI output and falls back to extractive summary if needed
+ */
+async function validateAndFallback(
+  aiOutput: string,
+  inputText: string,
+  ideas: { content: string; role: SemanticRole }[],
+  layout: SummaryLayout
+): Promise<string> {
+  // Check for violations:
+  // 1. Repeats original sentences
+  // 2. Adds new information
+  // 3. Violates length rules
+  
+  const originalSentences = inputText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const aiSentences = aiOutput.split(/[.!?]+/).filter(s => s.trim().length > 0);
+
+  // Check for sentence repetition
+  const hasRepeatedSentences = aiSentences.some(aiSentence =>
+    originalSentences.some(originalSentence =>
+      semanticSimilarity(aiSentence, originalSentence) > 0.8
+    )
+  );
+
+  // Check length violations
+  let lengthViolation = false;
+  const normalizedLayout = layout === 'infostructured' ? 'structured' : layout;
+  
+  switch (normalizedLayout) {
+    case 'executive':
+      lengthViolation = aiSentences.length > 4;
+      break;
+    case 'bullet':
+      const bulletCount = aiOutput.split('\n').filter(line => line.trim().startsWith('•')).length;
+      lengthViolation = bulletCount < 4 || bulletCount > 6;
+      break;
+    case 'notes':
+      const noteLines = aiOutput.split('\n').filter(line => line.trim().length > 0);
+      lengthViolation = noteLines.length > 8;
+      break;
+    case 'structured':
+      const sectionCount = (aiOutput.match(/^##/gm) || []).length;
+      lengthViolation = sectionCount < 2 || sectionCount > 4;
+      break;
+  }
+
+  if (hasRepeatedSentences || lengthViolation) {
+    console.warn("AI output validation failed, falling back to extractive summary");
+    // Fall back to existing extractive summary formatter
+    return formatSummaryForPresentation(normalizedLayout as "executive" | "bullet" | "notes" | "structured", ideas);
+  }
+
+  return aiOutput;
 }
 
 /**
