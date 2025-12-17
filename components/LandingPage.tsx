@@ -45,17 +45,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, toggleThe
 
         {/* Subhead */}
         <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mb-10 leading-relaxed animate-in opacity-0 translate-y-4" style={{ animationDelay: '200ms' }}>
-          MindMint transforms your messy notes into clear mindmaps, flashcards, and quizzes in seconds. Minimal, fast, distraction-free. <br className="hidden md:block"/>
-          <span className="text-gray-400 dark:text-gray-600 text-sm mt-2 block">Built by a solo founder.</span>
+          Paste notes, articles, or textbook content and instantly get mind maps, flashcards, and quizzes. <br className="hidden md:block"/>
+          <span className="text-gray-400 dark:text-gray-600 text-sm mt-2 block">Built by Cryptobulla.</span>
         </p>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-20 animate-in opacity-0 translate-y-4" style={{ animationDelay: '300ms' }}>
+        <div className="flex flex-col sm:flex-row gap-4 mb-6 animate-in opacity-0 translate-y-4" style={{ animationDelay: '300ms' }}>
           <button 
             onClick={onStart}
             className="px-8 py-3.5 bg-[#6E56CF] hover:bg-[#5E4AB5] dark:bg-[#7C66DC] dark:hover:bg-[#6c55cc] text-white text-base font-semibold rounded-full shadow-lg shadow-indigo-200 dark:shadow-none transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2"
           >
-            Start Free
+            Start Free (no signup)
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
           </button>
           <button 
@@ -66,6 +66,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, toggleThe
             <span className="text-xs bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded text-gray-500 dark:text-gray-300">PRO</span>
           </button>
         </div>
+
+        {/* Helper line */}
+        <p className="text-sm text-gray-400 dark:text-gray-500 mb-20 animate-in opacity-0 translate-y-4" style={{ animationDelay: '400ms' }}>
+          Try it with class notes, blog posts, or any study material.
+        </p>
 
         {/* Product Mockup */}
         <div className="w-full max-w-4xl relative animate-in opacity-0 translate-y-8" style={{ animationDelay: '500ms' }}>
