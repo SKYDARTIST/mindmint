@@ -52,7 +52,7 @@ const sanitizeMermaid = (raw: string): string => {
   return inner.trim();
 };
 
-const generateMermaidFallback = (text: string): string => {
+const generateMermaidFallback = (text: string, layout: string = 'classic'): string => {
   if (!text) return "";
   const parts = text
     .split(/\n+/)
@@ -64,10 +64,33 @@ const generateMermaidFallback = (text: string): string => {
     .slice(0, 8); 
 
   if (!parts.length) return "";
-  const ids = parts.map((_, i) => `N${i}`);
-  const nodes = ids.map((id, i) => `${id}["${parts[i].slice(0, 50)}"]`).join("\n");
-  const links = ids.slice(0, -1).map((id, i) => `${id} --> ${ids[i + 1]}`).join("\n");
-  return `graph TD\n${nodes}\n${links}`;
+  
+  // Generate different structures based on layout
+  switch (layout) {
+    case 'chain':
+      // Linear chain structure
+      const chainIds = parts.map((_, i) => `C${i}`);
+      const chainNodes = chainIds.map((id, i) => `${id}["${parts[i].slice(0, 40)}"]`).join("\n");
+      const chainLinks = chainIds.slice(0, -1).map((id, i) => `${id} --> ${chainIds[i + 1]}`).join("\n");
+      return `graph TD\n${chainNodes}\n${chainLinks}`;
+      
+    case 'cluster':
+      // Hierarchical top-to-bottom structure
+      const vertIds = parts.map((_, i) => `V${i}`);
+      const vertNodes = vertIds.map((id, i) => `${id}["${parts[i].slice(0, 40)}"]`).join("\n");
+      const vertLinks = vertIds.slice(0, -1).map((id, i) => `${id} --> ${vertIds[i + 1]}`).join("\n");
+      return `graph TD\n${vertNodes}\n${vertLinks}`;
+      
+    default: // classic, flow, radial
+      // Hub-and-spoke structure
+      const classicIds = parts.map((_, i) => `N${i}`);
+      const centerId = classicIds[0] || "N0";
+      const branchIds = classicIds.slice(1);
+      const centerNode = `${centerId}["${parts[0]?.slice(0, 40) || 'Main Topic'}"]`;
+      const branchNodes = branchIds.map((id, i) => `${id}["${parts[i + 1]?.slice(0, 30) || `Branch ${i + 1}`}"]`).join("\n");
+      const branchLinks = branchIds.map(id => `${centerId} --> ${id}`).join("\n");
+      return `graph TD\n${centerNode}\n${branchNodes}\n${branchLinks}`;
+  }
 };
 
 // Mock data generators for demo mode
@@ -75,39 +98,77 @@ const generateMockMindmap = (text: string, layout: string): string => {
   const topics = text.split(/\n+/).filter(line => line.trim()).slice(0, 6);
   const center = topics[0] ? topics[0].slice(0, 30) : "Main Topic";
   
-  if (layout === 'radial') {
-    return `graph TD
+  switch (layout) {
+    case 'chain':
+      // Linear, step-by-step flow - each node connects to exactly one next node
+      return `graph TD
     A[${center}]
-    B[${topics[1]?.slice(0, 20) || 'Sub Topic 1'}]
-    C[${topics[2]?.slice(0, 20) || 'Sub Topic 2'}]
-    D[${topics[3]?.slice(0, 20) || 'Sub Topic 3'}]
-    E[${topics[4]?.slice(0, 20) || 'Sub Topic 4'}]
-    F[${topics[5]?.slice(0, 20) || 'Sub Topic 5'}]
+    B[${topics[1]?.slice(0, 30) || 'Step 1'}]
+    C[${topics[2]?.slice(0, 30) || 'Step 2'}]
+    D[${topics[3]?.slice(0, 30) || 'Step 3'}]
+    E[${topics[4]?.slice(0, 30) || 'Step 4'}]
+    F[${topics[5]?.slice(0, 30) || 'Step 5'}]
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F`;
+    
+    case 'cluster':
+      // Explicit top-to-bottom hierarchy with clear levels
+      return `graph TD
+    A[${center}]
+    B[${topics[1]?.slice(0, 25) || 'Level 1'}]
+    C[${topics[2]?.slice(0, 25) || 'Level 1'}]
+    D[${topics[3]?.slice(0, 25) || 'Level 2'}]
+    E[${topics[4]?.slice(0, 25) || 'Level 2'}]
+    F[${topics[5]?.slice(0, 25) || 'Level 2'}]
+    A --> B
+    A --> C
+    B --> D
+    B --> E
+    C --> F`;
+    
+    case 'flow':
+      // Left-to-right flow layout
+      return `graph LR
+    A[${center}]
+    B[${topics[1]?.slice(0, 25) || 'Topic 1'}]
+    C[${topics[2]?.slice(0, 25) || 'Topic 2'}]
+    D[${topics[3]?.slice(0, 25) || 'Topic 3'}]
+    E[${topics[4]?.slice(0, 25) || 'Topic 4'}]
+    A --> B --> C --> D --> E`;
+      
+    case 'radial':
+      // Radial layout with central hub
+      return `graph TD
+    A[${center}]
+    B[${topics[1]?.slice(0, 25) || 'Branch 1'}]
+    C[${topics[2]?.slice(0, 25) || 'Branch 2'}]
+    D[${topics[3]?.slice(0, 25) || 'Branch 3'}]
+    E[${topics[4]?.slice(0, 25) || 'Branch 4'}]
+    F[${topics[5]?.slice(0, 25) || 'Branch 5'}]
     A --> B
     A --> C
     A --> D
     A --> E
     A --> F`;
-  } else if (layout === 'flow') {
-    return `graph LR
+    
+    case 'classic':
+    default:
+      // Hub-and-spoke pattern with central root and multiple branches
+      return `graph TD
     A[${center}]
-    B[${topics[1]?.slice(0, 20) || 'Topic 1'}]
-    C[${topics[2]?.slice(0, 20) || 'Topic 2'}]
-    D[${topics[3]?.slice(0, 20) || 'Topic 3'}]
-    A --> B --> C --> D`;
-  } else {
-    return `graph TD
-    A[${center}]
-    B[${topics[1]?.slice(0, 20) || 'Key Point 1'}]
-    C[${topics[2]?.slice(0, 20) || 'Key Point 2'}]
-    D[${topics[3]?.slice(0, 20) || 'Key Point 3'}]
-    E[${topics[4]?.slice(0, 20) || 'Detail 1'}]
-    F[${topics[5]?.slice(0, 20) || 'Detail 2'}]
+    B[${topics[1]?.slice(0, 25) || 'Branch 1'}]
+    C[${topics[2]?.slice(0, 25) || 'Branch 2'}]
+    D[${topics[3]?.slice(0, 25) || 'Branch 3'}]
+    E[${topics[4]?.slice(0, 25) || 'Branch 4'}]
+    F[${topics[5]?.slice(0, 25) || 'Branch 5'}]
     A --> B
     A --> C
     A --> D
-    B --> E
-    C --> F`;
+    A --> E
+    A --> F`;
   }
 };
 
@@ -187,24 +248,67 @@ export const generateContent = async (
   try {
     switch (mode) {
       case AppMode.MINDMAP:
-        systemInstruction = "You are an expert at creating Mermaid.js diagrams.";
+        systemInstruction = "You are an expert at creating Mermaid.js diagrams with specific structural layouts.";
         let mindmapInstructions = "";
         
-        if (layout === 'flow') mindmapInstructions = "LAYOUT: FLOW (graph LR). Structure: Idea1 --> Idea2.";
-        else if (layout === 'radial') mindmapInstructions = "LAYOUT: RADIAL (graph TD). Structure: Main((Center)) --> Sub.";
-        else if (layout === 'chain') mindmapInstructions = "LAYOUT: CHAIN (graph TD). Structure: Step1 --> Step2.";
-        else if (layout === 'cluster') mindmapInstructions = "LAYOUT: VERTICAL FLOW (graph LR). Root --> Child.";
-        else mindmapInstructions = "LAYOUT: CLASSIC (graph TD). Root --> Branch.";
+        if (layout === 'classic') {
+          mindmapInstructions = `LAYOUT: CLASSIC (graph TD)
+STRUCTURE REQUIREMENTS:
+- One central root node at the top
+- 4-6 branches radiating outward from the root
+- Hub-and-spoke pattern: Root --> Branch1, Root --> Branch2, etc.
+- NO linear chains, NO vertical stacks
+- Balanced, radial structure around the center
+- Example structure: A[Root] --> B[Branch1], A --> C[Branch2], A --> D[Branch3]`;
+        } else if (layout === 'chain') {
+          mindmapInstructions = `LAYOUT: CHAIN (graph TD)
+STRUCTURE REQUIREMENTS:
+- Linear, step-by-step flow
+- Each node connects to exactly ONE next node
+- NO branching, NO hub patterns
+- Single directional chain: Step1 --> Step2 --> Step3 --> Step4
+- Pure linear progression, no connections between non-consecutive nodes
+- Example structure: A[Start] --> B[Step1] --> C[Step2] --> D[Step3]`;
+        } else if (layout === 'cluster') {
+          mindmapInstructions = `LAYOUT: CLUSTER (graph TD)
+STRUCTURE REQUIREMENTS:
+- Explicit top-to-bottom hierarchy
+- Clear parent-child relationships in vertical stacks
+- Parent node above, child nodes below
+- Multi-level hierarchy: Level1 --> Level2 --> Level3
+- Structured like an organizational chart
+- Example structure: A[Top] --> B[Level1], A --> C[Level1], B --> D[Level2], B --> E[Level2]`;
+        } else if (layout === 'flow') {
+          mindmapInstructions = `LAYOUT: FLOW (graph LR)
+STRUCTURE REQUIREMENTS:
+- Left-to-right horizontal flow
+- Sequential progression from left to right
+- Linear or slightly branched flow
+- Use graph LR (left-to-right direction)
+- Example structure: A[Start] --> B[Step1] --> C[Step2] --> D[End]`;
+        } else if (layout === 'radial') {
+          mindmapInstructions = `LAYOUT: RADIAL (graph TD)
+STRUCTURE REQUIREMENTS:
+- Central hub with radiating branches
+- Similar to classic but with emphasis on radial spread
+- Root node in center with branches extending outward
+- Hub-and-spoke pattern with radial emphasis
+- Example structure: A[Center] --> B[Branch1], A --> C[Branch2], A --> D[Branch3]`;
+        } else {
+          mindmapInstructions = "LAYOUT: CLASSIC (graph TD). Hub-and-spoke structure with central root and branching nodes.";
+        }
 
         userPrompt = `Generate a clean, valid Mermaid.js graph code.
-        ${mindmapInstructions}
-        RULES:
-        1. Start with 'graph TD' or 'graph LR'.
-        2. Use quotes for labels: id["Label"].
-        3. No triple brackets. No 'mindmap' keyword.
-        4. Output ONLY the mermaid code block.
-        
-        Text:\n${inputText}`;
+${mindmapInstructions}
+RULES:
+1. Start with 'graph TD' or 'graph LR' as specified
+2. Use quotes for labels: id["Label"]
+3. NO triple brackets, NO 'mindmap' keyword
+4. Follow the EXACT structure requirements above
+5. Output ONLY the mermaid code block - no explanations
+6. Ensure the structure matches the layout type exactly
+
+Text:\n${inputText}`;
         break;
 
       case AppMode.FLASHCARDS:
@@ -308,7 +412,7 @@ export const generateContent = async (
       let chart = sanitizeMermaid(content);
       if (!/^graph\s+(TD|LR|TB|RL)/i.test(chart) && !/^flowchart/i.test(chart)) {
          console.warn("Invalid mermaid, using fallback.");
-         chart = generateMermaidFallback(inputText);
+         chart = generateMermaidFallback(inputText, layout as string);
       }
       return chart;
     }
@@ -344,7 +448,7 @@ const getMockContent = (mode: AppMode, inputText: string, layout: string) => {
 const getFallbackContent = (mode: AppMode, layout: string) => {
   switch (mode) {
     case AppMode.MINDMAP:
-      return "graph TD\\nA[Fallback Content]\\nB[Error Handling]\\nA --> B";
+      return generateMermaidFallback("Fallback content for mindmap generation", layout);
     case AppMode.FLASHCARDS:
       return [
         { question: "What happened?", answer: "An error occurred during generation.", tag: "error" }
@@ -370,7 +474,7 @@ const getFallbackContent = (mode: AppMode, layout: string) => {
         ]
       };
     case AppMode.SUMMARY:
-      return "## Error\\n\\nAn error occurred during content generation. Please try again.";
+      return "## Error\n\nAn error occurred during content generation. Please try again.";
     default:
       return "Content generation failed. Please try again.";
   }
