@@ -249,59 +249,64 @@ const generateMockInfographic = (text: string, layout: string) => {
 const generateMockSummary = (text: string, layout: string) => {
   const sentences = text.split(/[.!?]+/).filter(s => s.trim()).slice(0, 8);
   const keyPoints = sentences.slice(0, 6).map(s => s.trim());
+  const mainTopic = keyPoints[0] || 'Main concept';
   
   switch (layout) {
     case 'bullet':
-      // Bullet points only - 5-7 bullets, one idea each
-      const bulletPoints = [
-        "Core concept identifies primary themes and methodologies",
-        "Key findings reveal significant patterns in the data",
-        "Main implications suggest strategic opportunities ahead",
-        "Critical factors determine success in implementation",
-        "Essential components require focused attention",
-        "Important considerations shape final outcomes",
-        "Significant benefits emerge from systematic approach"
-      ];
-      return bulletPoints.slice(0, 6).map(point => `• ${point}`).join('\n');
+      // Extract key concepts from input and create bullets
+      const inputWords = text.toLowerCase().split(/\W+/).filter(w => w.length > 4);
+      const uniqueWords = [...new Set(inputWords)].slice(0, 6);
+      const bulletPoints = uniqueWords.map(word => {
+        // Create bullets that reference actual input content
+        const relatedSentence = sentences.find(s => s.toLowerCase().includes(word)) ||
+                              `Key aspect relates to ${word} implementation`;
+        return `• ${relatedSentence.split(' ').slice(0, 8).join(' ')}...`;
+      });
+      return bulletPoints.join('\n');
       
     case 'executive':
-      // Max 3-4 short sentences, no bullet points
-      return "Analysis reveals fundamental shifts in market dynamics and consumer behavior patterns. Strategic opportunities emerge through systematic evaluation of core competencies and emerging trends. Implementation requires coordinated effort across multiple functional areas with clear accountability measures. Results demonstrate measurable impact on organizational performance metrics.";
+      // Create executive summary from actual input content
+      const execPoint1 = keyPoints[0] || 'Primary concept established';
+      const execPoint2 = keyPoints[1] || 'Secondary elements identified';
+      const execPoint3 = keyPoints[2] || 'Core relationships defined';
+      const execPoint4 = keyPoints[3] || 'Fundamental principles explained';
+      return `${execPoint1}. ${execPoint2}. ${execPoint3}. ${execPoint4}.`;
       
     case 'notes':
-      // Study-style notes, line-by-line format
+      // Create study notes from input content
+      const mainTerm = mainTopic.split(' ').slice(0, 3).join(' ');
+      const relatedTerms = keyPoints.slice(1, 4).map(p => p.split(' ').slice(0, 2).join(' '));
       const notes = [
-        "Core Concept: Primary framework analysis",
-        "Key Terms: Methodology, strategy, implementation",
-        "Main Points: Data-driven insights, strategic planning",
-        "Definitions: KPI = Key Performance Indicator",
-        "Important: Timeline critical for success",
-        "Abbrev: ROI = Return on Investment",
-        "Summary: Focus on measurable outcomes"
+        `Core Concept: ${mainTerm}`,
+        `Key Terms: ${relatedTerms.join(', ')}`,
+        `Main Points: ${keyPoints.slice(0, 3).join('; ')}`,
+        `Important: Focus on primary relationships`,
+        `Summary: ${keyPoints[0] || 'Central theme established'}`
       ];
       return notes.join('\n');
       
     case 'infostructured':
-      // Headings with sub-points, clear hierarchy
+      // Create structured summary from input content
+      const section1 = keyPoints[0] || 'Primary concept introduction';
+      const section2 = keyPoints[1] || 'Supporting elements';
+      const section3 = keyPoints[2] || 'Related concepts';
+      const section4 = keyPoints[3] || 'Key relationships';
+      
       return `## Overview
-Fundamental analysis reveals critical insights for strategic decision-making.
+${section1}.
 
-## Key Findings
-• Primary market opportunities identified
-• Competitive advantages clearly defined
-• Implementation roadmap established
-• Resource allocation optimized
+## Key Elements
+• ${section2}
+• ${section3}
+• ${section4}
 
-## Strategic Implications
-• Immediate actions required within 30 days
-• Long-term planning spans 12-18 months
-• Risk mitigation strategies implemented
-• Success metrics clearly defined
+## Connections
+• Primary relationships established
+• Secondary connections identified
+• Core principles defined
 
-## Next Steps
-• Execute phase one initiatives
-• Monitor progress against benchmarks
-• Adjust strategies based on feedback`;
+## Summary
+${keyPoints.slice(0, 2).join('. ')}`;
       
     default:
       return `## Summary\n\n${keyPoints.join('. ')}`;
@@ -444,47 +449,86 @@ Text:\n${inputText}`;
         break;
 
       case AppMode.SUMMARY:
-        systemInstruction = "You are a professional editor specializing in distinct summary formats.";
+        systemInstruction = "You are a professional editor specializing in distinct summary formats that stay strictly grounded in the source material.";
         let summaryInstructions = "";
         
         if (layout === 'executive') {
           summaryInstructions = `LAYOUT: EXECUTIVE
-STRICT REQUIREMENTS:
+STRUCTURE REQUIREMENTS:
 - Maximum 3-4 short sentences total
 - NO bullet points or lists
-- NO examples or storytelling
-- DO NOT reuse input phrasing - use fresh language
 - Concise, professional tone
-- Focus on core insights only`;
+
+GROUNDING RULES (CRITICAL):
+- Use ONLY information present in the input text
+- DO NOT introduce examples, terminology, or concepts not explicitly mentioned
+- DO NOT generalize beyond the input domain
+- DO NOT reframe academic content as business/strategy analysis
+- Paraphrase instead of copying sentences
+- Preserve original subject matter and intent
+- If input is academic → summary remains academic
+- If input is informational → summary remains informational
+- Summarize conservatively rather than creatively`;
         } else if (layout === 'bullet') {
           summaryInstructions = `LAYOUT: BULLET
-STRICT REQUIREMENTS:
+STRUCTURE REQUIREMENTS:
 - Bullet points ONLY - no paragraphs
 - Maximum 5-7 bullets
 - One distinct idea per bullet
-- NO explanations or examples
 - Keep bullets under 15 words each
-- Start each bullet with strong action verb or key concept`;
+- Start each bullet with strong action verb or key concept
+
+GROUNDING RULES (CRITICAL):
+- Use ONLY information present in the input text
+- DO NOT introduce examples, terminology, or concepts not explicitly mentioned
+- DO NOT generalize beyond the input domain
+- DO NOT reframe educational content as business/strategy
+- Paraphrase concepts rather than copying phrases
+- Preserve original subject matter and intent
+- If input is technical → bullets remain technical
+- If input is casual → bullets remain casual
+- Summarize conservatively rather than creatively`;
         } else if (layout === 'notes') {
           summaryInstructions = `LAYOUT: NOTES
-STRICT REQUIREMENTS:
+STRUCTURE REQUIREMENTS:
 - Short study-style notes format
 - Line-by-line structure
 - Can include definitions or abbreviations
 - Concise, informal tone
 - Key terms and concepts only
-- No long explanations`;
+
+GROUNDING RULES (CRITICAL):
+- Use ONLY information present in the input text
+- DO NOT introduce examples, terminology, or concepts not explicitly mentioned
+- DO NOT generalize beyond the input domain
+- DO NOT reframe academic content as business analysis
+- Paraphrase definitions and concepts
+- Preserve original subject matter and intent
+- If input is scientific → notes remain scientific
+- If input is educational → notes remain educational
+- Summarize conservatively rather than creatively`;
         } else if (layout === 'infostructured') {
           summaryInstructions = `LAYOUT: STRUCTURED
-STRICT REQUIREMENTS:
+STRUCTURE REQUIREMENTS:
 - Use clear headings with sub-points
 - Hierarchical structure with ## headers
 - NO long paragraphs
 - Break complex ideas into sub-points
 - Logical flow from general to specific
-- Clean markdown formatting only`;
+- Clean markdown formatting only
+
+GROUNDING RULES (CRITICAL):
+- Use ONLY information present in the input text
+- DO NOT introduce examples, terminology, or concepts not explicitly mentioned
+- DO NOT generalize beyond the input domain
+- DO NOT reframe informational content as strategic analysis
+- Paraphrase content rather than copying text
+- Preserve original subject matter and intent
+- If input is instructional → structure remains instructional
+- If input is descriptive → structure remains descriptive
+- Summarize conservatively rather than creatively`;
         } else {
-          summaryInstructions = "Create a clean, well-structured summary with clear organization.";
+          summaryInstructions = "Create a clean, well-structured summary that stays strictly grounded in the source material. Use ONLY information present in the input text and preserve the original subject matter and intent.";
         }
 
         userPrompt = `${summaryInstructions}
