@@ -2490,6 +2490,359 @@ Generate an abstracted summary following the rules above.`;
 }
 
 /**
+ * FINAL PRESENTATION FORMATTER
+ * Runs AFTER controlled AI abstraction and BEFORE rendering to canvas
+ * Removes all labels, merges ideas into natural sentences, ensures distinct layout styles
+ */
+function formatAbstractedSummary(
+  layout: SummaryLayout,
+  abstractedContent: string
+): string {
+  // HARD RULES:
+  // - REMOVE all labels, headings, metadata
+  // - MERGE ideas into natural sentences
+  // - ENSURE each layout sounds different
+  // - Do NOT reuse original sentences
+  // - Do NOT reuse abstraction sentences verbatim
+  // - Rewrite again at presentation level
+
+  // First, clean the abstracted content by removing any labels or structural artifacts
+  let cleanedContent = abstractedContent
+    // Remove common labels and headings
+    .replace(/##\s*Overview\s*/gi, '')
+    .replace(/##\s*Key\s*Points\s*/gi, '')
+    .replace(/##\s*Direction\s*/gi, '')
+    .replace(/##\s*Implications\s*/gi, '')
+    .replace(/##\s*Summary\s*/gi, '')
+    .replace(/Core\s*Idea\s*:\s*/gi, '')
+    .replace(/Key\s*Points\s*:\s*/gi, '')
+    .replace(/Direction\s*:\s*/gi, '')
+    .replace(/Main\s*Concept\s*:\s*/gi, '')
+    .replace(/Primary\s*Concept\s*:\s*/gi, '')
+    .replace(/Supporting\s*Evidence\s*:\s*/gi, '')
+    .replace(/Key\s*Mechanisms\s*:\s*/gi, '')
+    .replace(/Conclusions\s*:\s*/gi, '')
+    .replace(/Selection\s*Logic\s*:\s*/gi, '')
+    .replace(/Related\s*Concepts\s*:\s*/gi, '')
+    .replace(/Process\s*Steps\s*:\s*/gi, '')
+    .replace(/Comparison\s*:\s*/gi, '')
+    .replace(/Supporting\s*Details\s*:\s*/gi, '')
+    .replace(/Central\s*Thesis\s*:\s*/gi, '')
+    .replace(/^\s*[••]\s*/gm, '') // Remove bullet points
+    .replace(/^\s*[-–—]\s*/gm, '') // Remove dash bullet points
+    .replace(/^\s*[*]\s*/gm, '') // Remove asterisk bullet points
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+
+  // Split into sentences for processing
+  const sentences = cleanedContent.split(/[.!?]+/).filter(s => s.trim().length > 0);
+
+  // Layout-specific formatting
+  switch (layout) {
+    case 'executive':
+      // EXECUTIVE: 1 short paragraph, 3–4 sentences max, strategy + intent tone, NO bullets, NO headings
+      return formatExecutivePresentation(sentences);
+
+    case 'bullet':
+      // BULLET: 4–6 bullets, each bullet = ONE distinct idea, conversational but concise
+      return formatBulletPresentation(sentences);
+
+    case 'notes':
+      // NOTES: Short paragraph-style lines, sounds like personal notes, no formal framing
+      return formatNotesPresentation(sentences);
+
+    case 'infostructured':
+      // STRUCTURED: Keep sections but DO NOT expose labels, natural transitions
+      return formatStructuredPresentation(sentences);
+
+    default:
+      // Fallback to executive style for unknown layouts
+      return formatExecutivePresentation(sentences);
+  }
+}
+
+/**
+ * Format executive presentation - natural paragraph with strategy tone
+ */
+function formatExecutivePresentation(sentences: string[]): string {
+  if (sentences.length === 0) {
+    return "Summary could not be generated from the provided content.";
+  }
+
+  // Take the most important 3-4 sentences and rewrite them in a strategic, intent-focused way
+  const selectedSentences = sentences.slice(0, 4);
+  
+  // Rewrite to ensure natural flow and remove any remaining artifacts
+  const rewritten = selectedSentences.map((sentence, index) => {
+    // Make each sentence sound more strategic and intent-focused
+    let rewrittenSentence = sentence
+      .replace(/this shows that/gi, 'the strategy demonstrates')
+      .replace(/this indicates that/gi, 'this reveals')
+      .replace(/the key point is/gi, 'fundamentally,')
+      .replace(/it is important to note/gi, 'critically,')
+      .replace(/in conclusion,/gi, 'ultimately,')
+      .replace(/therefore,/gi, 'as a result,')
+      .replace(/however,/gi, 'yet')
+      .replace(/moreover,/gi, 'furthermore,')
+      .replace(/in addition,/gi, 'additionally,');
+
+    // Ensure proper sentence structure
+    if (!rewrittenSentence.match(/^[A-Z]/)) {
+      rewrittenSentence = rewrittenSentence.charAt(0).toUpperCase() + rewrittenSentence.slice(1);
+    }
+    
+    if (!rewrittenSentence.endsWith('.') && !rewrittenSentence.endsWith('!') && !rewrittenSentence.endsWith('?')) {
+      rewrittenSentence += '.';
+    }
+    
+    return rewrittenSentence;
+  });
+
+  // Combine into a single paragraph with natural flow
+  return rewritten.join(' ');
+}
+
+/**
+ * Format bullet presentation - distinct conversational bullets
+ */
+function formatBulletPresentation(sentences: string[]): string {
+  if (sentences.length === 0) {
+    return "• No key points identified";
+  }
+
+  // Select 4-6 most distinct ideas
+  const selectedIdeas = sentences.slice(0, 6);
+  
+  // Rewrite each as a distinct, conversational bullet
+  const bullets = selectedIdeas.map((idea, index) => {
+    // Make each bullet sound conversational and distinct
+    let bullet = idea
+      .replace(/the (\w+)/, 'a key $1') // "the concept" → "a key concept"
+      .replace(/demonstrates that/gi, 'shows how')
+      .replace(/indicates that/gi, 'reveals that')
+      .replace(/suggests that/gi, 'implies that')
+      .replace(/highlights that/gi, 'emphasizes that')
+      .replace(/illustrates that/gi, 'demonstrates how')
+      .replace(/proves that/gi, 'confirms that')
+      .replace(/results in/gi, 'leads to')
+      .replace(/causes/gi, 'drives')
+      .replace(/affects/gi, 'impacts')
+      .replace(/influences/gi, 'shapes');
+
+    // Ensure each bullet starts differently
+    const bulletStarters = [
+      'Key insight:',
+      'Important finding:',
+      'Critical observation:',
+      'Notable point:',
+      'Significant aspect:',
+      'Essential element:'
+    ];
+    
+    const starter = bulletStarters[index % bulletStarters.length];
+    
+    // Capitalize first letter and ensure proper punctuation
+    if (!bullet.match(/^[A-Z]/)) {
+      bullet = bullet.charAt(0).toUpperCase() + bullet.slice(1);
+    }
+    
+    if (!bullet.endsWith('.') && !bullet.endsWith('!') && !bullet.endsWith('?')) {
+      bullet += '.';
+    }
+    
+    return `• ${starter} ${bullet}`;
+  });
+
+  return bullets.join('\n');
+}
+
+/**
+ * Format notes presentation - personal, informal style
+ */
+function formatNotesPresentation(sentences: string[]): string {
+  if (sentences.length === 0) {
+    return "No significant notes to capture";
+  }
+
+  // Select key ideas and make them sound like personal notes
+  const selectedIdeas = sentences.slice(0, 5);
+  
+  const notes = selectedIdeas.map((idea, index) => {
+    // Make each line sound like personal notes
+    let note = idea
+      .replace(/the (\w+)/gi, 'this $1') // "the concept" → "this concept"
+      .replace(/demonstrates that/gi, 'shows')
+      .replace(/indicates that/gi, 'means')
+      .replace(/suggests that/gi, 'implies')
+      .replace(/highlights that/gi, 'points to')
+      .replace(/illustrates that/gi, 'demonstrates')
+      .replace(/proves that/gi, 'confirms')
+      .replace(/results in/gi, 'leads to')
+      .replace(/therefore,/gi, 'so')
+      .replace(/however,/gi, 'but')
+      .replace(/moreover,/gi, 'also')
+      .replace(/in addition,/gi, 'plus');
+
+    // Make notes more informal
+    note = note
+      .replace(/utilizes/gi, 'uses')
+      .replace(/implements/gi, 'applies')
+      .replace(/facilitates/gi, 'helps with')
+      .replace(/enables/gi, 'allows')
+      .replace(/optimizes/gi, 'improves')
+      .replace(/maximizes/gi, 'boosts')
+      .replace(/minimizes/gi, 'reduces')
+      .replace(/enhances/gi, 'makes better');
+
+    // Ensure proper sentence structure but keep it informal
+    if (!note.match(/^[A-Z]/)) {
+      note = note.charAt(0).toUpperCase() + note.slice(1);
+    }
+    
+    if (!note.endsWith('.') && !note.endsWith('!') && !note.endsWith('?')) {
+      note += '.';
+    }
+    
+    return note;
+  });
+
+  // Join with newlines to create note-style formatting
+  return notes.join('\n');
+}
+
+/**
+ * Format structured presentation - blog-like outline with natural transitions
+ */
+function formatStructuredPresentation(sentences: string[]): string {
+  if (sentences.length === 0) {
+    return "## Overview\n\nNo content available for structured summary.";
+  }
+
+  // Group sentences into logical sections
+  const overviewSentences = sentences.slice(0, 2);
+  const keyPointsSentences = sentences.slice(2, 5);
+  const implicationsSentences = sentences.slice(5, 7);
+
+  // Create natural transitions between sections
+  const sections = [];
+
+  if (overviewSentences.length > 0) {
+    sections.push(formatOverviewSection(overviewSentences));
+  }
+
+  if (keyPointsSentences.length > 0) {
+    sections.push(formatKeyPointsSection(keyPointsSentences));
+  }
+
+  if (implicationsSentences.length > 0) {
+    sections.push(formatImplicationsSection(implicationsSentences));
+  }
+
+  return sections.join('\n\n');
+}
+
+function formatOverviewSection(sentences: string[]): string {
+  const overview = sentences.map(sentence => {
+    // Make overview sound more introductory
+    return sentence
+      .replace(/the main idea is/gi, 'at its core,')
+      .replace(/the key concept is/gi, 'fundamentally,')
+      .replace(/this demonstrates/gi, 'this reveals')
+      .replace(/the analysis shows/gi, 'the examination uncovers')
+      .replace(/it is evident that/gi, 'clearly,');
+  }).join(' ');
+
+  return overview;
+}
+
+function formatKeyPointsSection(sentences: string[]): string {
+  const points = sentences.map((sentence, index) => {
+    // Make each point sound distinct
+    const pointStarters = [
+      'Firstly',
+      'Secondly',
+      'Additionally',
+      'Moreover',
+      'Furthermore'
+    ];
+    
+    const starter = pointStarters[index % pointStarters.length];
+    
+    let point = sentence
+      .replace(/the (\w+)/, 'a significant $1')
+      .replace(/demonstrates that/gi, 'shows how')
+      .replace(/indicates that/gi, 'reveals that')
+      .replace(/suggests that/gi, 'implies that');
+
+    return `${starter}, ${point}`;
+  });
+
+  return points.join(' ');
+}
+
+function formatImplicationsSection(sentences: string[]): string {
+  const implications = sentences.map(sentence => {
+    // Make implications sound forward-looking
+    return sentence
+      .replace(/this means that/gi, 'this suggests that')
+      .replace(/therefore,/gi, 'as a result,')
+      .replace(/in conclusion,/gi, 'ultimately,')
+      .replace(/this implies that/gi, 'this indicates that')
+      .replace(/the outcome is/gi, 'the result will be');
+  }).join(' ');
+
+  return implications;
+}
+
+/**
+ * SAFETY CHECK for presentation formatter
+ * If formatted output still contains labels or duplicated lines, fallback to simpler rewrite
+ */
+function checkPresentationSafety(formattedOutput: string): string {
+  // Check for remaining labels or structural artifacts
+  const hasLabels = /##\s*|Core\s*Idea\s*:|Key\s*Points\s*:|Direction\s*:/i.test(formattedOutput);
+  
+  // Check for duplicated lines
+  const lines = formattedOutput.split('\n').filter(line => line.trim().length > 0);
+  const uniqueLines = new Set(lines.map(line => line.trim().toLowerCase()));
+  const hasDuplicates = uniqueLines.size < lines.length;
+
+  if (hasLabels || hasDuplicates) {
+    console.warn("Presentation formatter safety check failed - falling back to simpler rewrite");
+    
+    // Fallback: create a simple human-style paragraph
+    const sentences = formattedOutput.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    if (sentences.length === 0) {
+      return "Summary could not be generated from the provided content.";
+    }
+    
+    // Take first 3 sentences and make them sound natural
+    const simpleSummary = sentences.slice(0, 3).map((sentence, index) => {
+      let simple = sentence
+        .replace(/##\s*|Core\s*Idea\s*:|Key\s*Points\s*:|Direction\s*:/gi, '')
+        .replace(/^\s*[••]\s*/, '')
+        .replace(/^\s*[-–—]\s*/, '')
+        .replace(/^\s*[*]\s*/, '')
+        .trim();
+
+      if (!simple.match(/^[A-Z]/)) {
+        simple = simple.charAt(0).toUpperCase() + simple.slice(1);
+      }
+      
+      if (!simple.endsWith('.') && !simple.endsWith('!') && !simple.endsWith('?')) {
+        simple += '.';
+      }
+      
+      return simple;
+    }).join(' ');
+    
+    return simpleSummary;
+  }
+
+  return formattedOutput;
+}
+
+/**
  * SAFETY & FALLBACK CHECKER
  * Validates AI output and falls back to extractive summary if needed
  */
@@ -2542,7 +2895,12 @@ async function validateAndFallback(
     return formatSummaryForPresentation(normalizedLayout as "executive" | "bullet" | "notes" | "structured", ideas);
   }
 
-  return aiOutput;
+  // STEP 5: Apply FINAL presentation formatter
+  // This runs AFTER AI abstraction and BEFORE rendering to canvas
+  const formattedOutput = formatAbstractedSummary(layout, aiOutput);
+  
+  // Apply safety check to ensure no labels or duplicates remain
+  return checkPresentationSafety(formattedOutput);
 }
 
 /**
