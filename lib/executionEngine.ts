@@ -291,13 +291,16 @@ function finalizeContentForMode(mode: AppMode, selectedIdeas: PerspectiveAwareCo
   // Step 5: Apply FINAL SEMANTIC EXCLUSION as the ultimate quality gate
   const threshold = getSimilarityThreshold(mode);
   const finalExcluded = finalSemanticExclusion(allContent, threshold);
-  
-  // Step 6: Convert back to FinalizedContent format for compatibility
-  const thesis = finalExcluded.find(item => item.role === 'thesis')?.content || '';
-  const primaryContent = finalExcluded.filter(item => item.role === 'primary').map(item => item.content);
-  const secondaryContent = finalExcluded.filter(item => item.role === 'secondary').map(item => item.content);
-  const tertiaryContent = finalExcluded.filter(item => item.role === 'tertiary').map(item => item.content);
-  
+
+  // Step 6: Check for catastrophic collapse and engage fallback if needed
+  const safeFinalExcluded = ensureMinimumIdeas(mode, allContent, finalExcluded);
+
+  // Step 7: Convert back to FinalizedContent format for compatibility
+  const thesis = safeFinalExcluded.find(item => item.role === 'central_thesis')?.content || '';
+  const primaryContent = safeFinalExcluded.filter(item => item.role === 'primary').map(item => item.content);
+  const secondaryContent = safeFinalExcluded.filter(item => item.role === 'secondary').map(item => item.content);
+  const tertiaryContent = safeFinalExcluded.filter(item => item.role === 'tertiary').map(item => item.content);
+
   return {
     thesis,
     primaryContent,
@@ -523,17 +526,60 @@ function getSimilarityThreshold(mode: AppMode): number {
 }
 
 /**
- * Get minimum output count per mode to prevent collapse
+ * Get minimum ideas per mode to prevent catastrophic collapse
  */
-function getMinimumCount(mode: AppMode): number {
+function getMinIdeas(mode: AppMode): number {
   switch (mode) {
-    case AppMode.MINDMAP: return 4;
-    case AppMode.FLASHCARDS: return 3;
+    case AppMode.MINDMAP: return 5;
+    case AppMode.FLASHCARDS: return 4;
     case AppMode.QUIZ: return 3;
-    case AppMode.SUMMARY: return 3;
+    case AppMode.SUMMARY: return 4;
     case AppMode.INFOGRAPHIC: return 3;
     default: return 3;
   }
+}
+
+/**
+ * Ensure minimum ideas per mode - fallback when semantic exclusion causes collapse
+ */
+function ensureMinimumIdeas(
+  mode: AppMode,
+  originalIdeas: Array<{content: string; importance: number; role: string}>,
+  processedIdeas: Array<{content: string; role: string}>
+): Array<{content: string; role: string}> {
+  const minIdeas = getMinIdeas(mode);
+
+  if (processedIdeas.length >= minIdeas) {
+    return processedIdeas; // No collapse detected
+  }
+
+  // semantic collapse detected — fallback engaged
+  const fallbackIdeas: Array<{content: string; role: string}> = [];
+
+  // Get top-K ideas by importance, ensuring uniqueness and no thesis duplication
+  const sortedOriginal = [...originalIdeas].sort((a, b) => b.importance - a.importance);
+  const usedContent = new Set<string>();
+
+  for (const idea of sortedOriginal) {
+    // Skip if content already used
+    if (usedContent.has(idea.content)) continue;
+
+    // Skip thesis if we already have one (only one central thesis allowed)
+    if (idea.role === 'central_thesis' && fallbackIdeas.some(f => f.role === 'central_thesis')) {
+      continue;
+    }
+
+    fallbackIdeas.push({
+      content: idea.content,
+      role: idea.role
+    });
+
+    usedContent.add(idea.content);
+
+    if (fallbackIdeas.length >= minIdeas) break;
+  }
+
+  return fallbackIdeas;
 }
 
 /**
@@ -1837,41 +1883,8 @@ function generateMindmapFromPlan(
     ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
   ].filter(item => item.content && item.content.trim().length > 0);
 
+  // Fallback logic now handled in finalizeContentForMode()
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.MINDMAP));
-
-  // RECOVERY LOGIC: Prevent collapse below minimum count
-  if (cleanedItems.length < getMinimumCount(AppMode.MINDMAP)) {
-    const missing = getMinimumCount(AppMode.MINDMAP) - cleanedItems.length;
-
-    const recoveryPool = items
-      .filter(i => !cleanedItems.some(c => c.content === i.content))
-      .filter(i => i.role !== "central_thesis")
-      .sort((a, b) => b.importance - a.importance);
-
-    cleanedItems.push(...recoveryPool.slice(0, missing));
-  }
-
-  // MODE-SPECIFIC ROLE DISTRIBUTION: Mindmap needs 1 thesis + ≥2 supporting + ≥1 mechanism/contrast
-  const thesisCount = cleanedItems.filter(item => item.role === 'central_thesis').length;
-  const supportingCount = cleanedItems.filter(item => item.role === 'primary').length;
-  const mechanismCount = cleanedItems.filter(item => item.role === 'secondary').length;
-  const contrastCount = cleanedItems.filter(item => item.role === 'tertiary').length;
-
-  if (supportingCount < 2) {
-    const additionalSupporting = items
-      .filter(i => i.role === 'primary' && !cleanedItems.some(c => c.content === i.content))
-      .sort((a, b) => b.importance - a.importance)
-      .slice(0, 2 - supportingCount);
-    cleanedItems.push(...additionalSupporting);
-  }
-
-  if (mechanismCount + contrastCount < 1) {
-    const additionalMechContrast = items
-      .filter(i => (i.role === 'secondary' || i.role === 'tertiary') && !cleanedItems.some(c => c.content === i.content))
-      .sort((a, b) => b.importance - a.importance)
-      .slice(0, 1 - (mechanismCount + contrastCount));
-    cleanedItems.push(...additionalMechContrast);
-  }
 
 
   // Reconstruct finalized content from cleaned items
@@ -2007,39 +2020,8 @@ function generateFlashcardsFromPlan(
     ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
   ].filter(item => item.content && item.content.trim().length > 0);
 
+  // Fallback logic now handled in finalizeContentForMode()
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.FLASHCARDS));
-
-  // RECOVERY LOGIC: Prevent collapse below minimum count
-  if (cleanedItems.length < getMinimumCount(AppMode.FLASHCARDS)) {
-    const missing = getMinimumCount(AppMode.FLASHCARDS) - cleanedItems.length;
-
-    const recoveryPool = items
-      .filter(i => !cleanedItems.some(c => c.content === i.content))
-      .filter(i => i.role !== "central_thesis")
-      .sort((a, b) => b.importance - a.importance);
-
-    cleanedItems.push(...recoveryPool.slice(0, missing));
-  }
-
-  // MODE-SPECIFIC ROLE DISTRIBUTION: Flashcards need at least 1 WHY + 1 HOW
-  const whyCount = cleanedItems.filter(item => item.role === 'primary').length; // WHY questions
-  const howCount = cleanedItems.filter(item => item.role === 'secondary').length; // HOW questions
-
-  if (whyCount < 1) {
-    const additionalWhy = items
-      .filter(i => i.role === 'primary' && !cleanedItems.some(c => c.content === i.content))
-      .sort((a, b) => b.importance - a.importance)
-      .slice(0, 1 - whyCount);
-    cleanedItems.push(...additionalWhy);
-  }
-
-  if (howCount < 1) {
-    const additionalHow = items
-      .filter(i => i.role === 'secondary' && !cleanedItems.some(c => c.content === i.content))
-      .sort((a, b) => b.importance - a.importance)
-      .slice(0, 1 - howCount);
-    cleanedItems.push(...additionalHow);
-  }
 
 
   // Reconstruct finalized content from cleaned items
@@ -2181,37 +2163,8 @@ function generateQuizFromPlan(
     ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
   ].filter(item => item.content && item.content.trim().length > 0);
 
+  // Fallback logic now handled in finalizeContentForMode()
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.QUIZ));
-
-  // RECOVERY LOGIC: Prevent collapse below minimum count
-  if (cleanedItems.length < getMinimumCount(AppMode.QUIZ)) {
-    const missing = getMinimumCount(AppMode.QUIZ) - cleanedItems.length;
-
-    const recoveryPool = items
-      .filter(i => !cleanedItems.some(c => c.content === i.content))
-      .filter(i => i.role !== "central_thesis")
-      .sort((a, b) => b.importance - a.importance);
-
-    cleanedItems.push(...recoveryPool.slice(0, missing));
-  }
-
-  // MODE-SPECIFIC ROLE DISTRIBUTION: Quiz questions must be derived from DIFFERENT ideas
-  // Ensure we have questions from different semantic roles
-  const thesisCount = cleanedItems.filter(item => item.role === 'central_thesis').length;
-  const primaryCount = cleanedItems.filter(item => item.role === 'primary').length;
-  const secondaryCount = cleanedItems.filter(item => item.role === 'secondary').length;
-  const tertiaryCount = cleanedItems.filter(item => item.role === 'tertiary').length;
-
-  // Ensure diversity: at least 2 different role types
-  const roleTypes = [thesisCount > 0, primaryCount > 0, secondaryCount > 0, tertiaryCount > 0].filter(Boolean).length;
-  if (roleTypes < 2) {
-    const additionalDiverse = items
-      .filter(i => !cleanedItems.some(c => c.content === i.content))
-      .filter(i => i.role !== cleanedItems[0]?.role) // Different from first item
-      .sort((a, b) => b.importance - a.importance)
-      .slice(0, 1);
-    cleanedItems.push(...additionalDiverse);
-  }
 
 
   // Reconstruct finalized content from cleaned items
@@ -2306,39 +2259,8 @@ function generateSummaryFromPlan(
     ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
   ].filter(item => item.content && item.content.trim().length > 0);
 
+  // Fallback logic now handled in finalizeContentForMode()
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.SUMMARY));
-
-  // RECOVERY LOGIC: Prevent collapse below minimum count
-  if (cleanedItems.length < getMinimumCount(AppMode.SUMMARY)) {
-    const missing = getMinimumCount(AppMode.SUMMARY) - cleanedItems.length;
-
-    const recoveryPool = items
-      .filter(i => !cleanedItems.some(c => c.content === i.content))
-      .filter(i => i.role !== "central_thesis")
-      .sort((a, b) => b.importance - a.importance);
-
-    cleanedItems.push(...recoveryPool.slice(0, missing));
-  }
-
-  // MODE-SPECIFIC ROLE DISTRIBUTION: Summary needs no sentence reuse, each bullet from different idea
-  // Ensure bullets come from different semantic roles
-  const roleCounts = {
-    thesis: cleanedItems.filter(item => item.role === 'central_thesis').length,
-    primary: cleanedItems.filter(item => item.role === 'primary').length,
-    secondary: cleanedItems.filter(item => item.role === 'secondary').length,
-    tertiary: cleanedItems.filter(item => item.role === 'tertiary').length
-  };
-
-  // Ensure we have at least 2 different role types for bullets
-  const activeRoles = Object.entries(roleCounts).filter(([_, count]) => count > 0).length;
-  if (activeRoles < 2) {
-    const additionalRoles = items
-      .filter(i => !cleanedItems.some(c => c.content === i.content))
-      .filter(i => i.role !== 'central_thesis') // Thesis is separate
-      .sort((a, b) => b.importance - a.importance)
-      .slice(0, 1);
-    cleanedItems.push(...additionalRoles);
-  }
 
 
   // Reconstruct finalized content from cleaned items
@@ -2442,36 +2364,8 @@ function generateInfographicFromPlan(
     ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
   ].filter(item => item.content && item.content.trim().length > 0);
 
+  // Fallback logic now handled in finalizeContentForMode()
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.INFOGRAPHIC));
-
-  // RECOVERY LOGIC: Prevent collapse below minimum count
-  if (cleanedItems.length < getMinimumCount(AppMode.INFOGRAPHIC)) {
-    const missing = getMinimumCount(AppMode.INFOGRAPHIC) - cleanedItems.length;
-
-    const recoveryPool = items
-      .filter(i => !cleanedItems.some(c => c.content === i.content))
-      .filter(i => i.role !== "central_thesis")
-      .sort((a, b) => b.importance - a.importance);
-
-    cleanedItems.push(...recoveryPool.slice(0, missing));
-  }
-
-  // MODE-SPECIFIC ROLE DISTRIBUTION: Infographic needs visual elements from different ideas
-  const thesisCount = cleanedItems.filter(item => item.role === 'central_thesis').length;
-  const primaryCount = cleanedItems.filter(item => item.role === 'primary').length;
-  const secondaryCount = cleanedItems.filter(item => item.role === 'secondary').length;
-  const tertiaryCount = cleanedItems.filter(item => item.role === 'tertiary').length;
-
-  // Ensure at least 2 different content types for visual variety
-  const contentTypes = [primaryCount > 0, secondaryCount > 0, tertiaryCount > 0].filter(Boolean).length;
-  if (contentTypes < 2) {
-    const additionalVisual = items
-      .filter(i => !cleanedItems.some(c => c.content === i.content))
-      .filter(i => i.role !== 'central_thesis')
-      .sort((a, b) => b.importance - a.importance)
-      .slice(0, 1);
-    cleanedItems.push(...additionalVisual);
-  }
 
 
   // Reconstruct finalized content from cleaned items
