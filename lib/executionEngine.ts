@@ -118,9 +118,10 @@ function removeSemanticDuplicates(ideas: ScoredIdea[], threshold: number): Score
 }
 
 /**
- * Calculate semantic overlap between two text strings based on meaningful tokens
+ * Calculate semantic similarity between two text strings using Jaccard similarity
+ * Tokenize, lowercase, remove stopwords, return value between 0 and 1
  */
-function calculateTokenOverlap(text1: string, text2: string): number {
+function semanticSimilarity(a: string, b: string): number {
   // Extract meaningful tokens (ignore common stop words)
   const stopWords = new Set([
     'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
@@ -130,13 +131,13 @@ function calculateTokenOverlap(text1: string, text2: string): number {
     'here', 'where', 'when', 'what', 'which', 'who', 'whom', 'whose', 'why', 'how'
   ]);
 
-  const tokens1 = text1.toLowerCase()
+  const tokens1 = a.toLowerCase()
     .split(/\W+/)
-    .filter(token => token.length > 3 && !stopWords.has(token));
+    .filter(token => token.length > 2 && !stopWords.has(token));
   
-  const tokens2 = text2.toLowerCase()
+  const tokens2 = b.toLowerCase()
     .split(/\W+/)
-    .filter(token => token.length > 3 && !stopWords.has(token));
+    .filter(token => token.length > 2 && !stopWords.has(token));
 
   const set1 = new Set(tokens1);
   const set2 = new Set(tokens2);
@@ -146,6 +147,14 @@ function calculateTokenOverlap(text1: string, text2: string): number {
   const union = new Set([...set1, ...set2]);
 
   return union.size === 0 ? 0 : intersection.size / union.size;
+}
+
+/**
+ * Calculate semantic overlap between two text strings based on meaningful tokens
+ * DEPRECATED: Use semanticSimilarity() instead
+ */
+function calculateTokenOverlap(text1: string, text2: string): number {
+  return semanticSimilarity(text1, text2);
 }
 
 /**
@@ -175,6 +184,392 @@ export interface IdeaGraph {
   mechanisms: ScoredIdea[];            // 2-5 how/why mechanisms or causes
   contrasts: ScoredIdea[];             // before-vs-after or contrast ideas if present
   conclusions: ScoredIdea[];           // conclusions or takeaways if present
+}
+
+/**
+ * STEP 3.3: SEMANTIC COMPRESSION & DE-DUPLICATION GATE
+ * Final processing function that enforces strict semantic compression and no-repeat rules
+ * Before rendering any output (mindmap, flashcards, quiz, summary, infographic)
+ */
+
+/**
+ * RENDER-SAFE INTERFACE
+ * Creates strict boundary between engine metadata and render output
+ */
+export interface RenderableContent {
+  text: string;
+  role: SemanticRole;
+}
+
+export enum SemanticRole {
+  THESIS = 'thesis',
+  EVIDENCE = 'evidence',
+  MECHANISM = 'mechanism',
+  CONTRAST = 'contrast',
+  EXTRA = 'extra'
+}
+
+interface FinalizedContent {
+  thesis: string;
+  primaryContent: string[];
+  secondaryContent: string[];
+  tertiaryContent: string[];
+  semanticRoles: {
+    centralThesis: string;
+    supportingEvidence: string[];
+    mechanisms: string[];
+    contrasts: string[];
+    extras: string[];
+  };
+}
+
+/**
+ * Final processing function that enforces strict semantic compression and no-repeat rules
+ * MUST be called BEFORE rendering any output
+ * Implements HARD thesis isolation to prevent central thesis duplication
+ */
+function finalizeContentForMode(mode: AppMode, selectedIdeas: PerspectiveAwareContent): FinalizedContent {
+  const wordLimits = getWordLimits(mode);
+  
+  // Step 1: Extract and LOCK Central Thesis FIRST
+  const lockedThesis = compressToWordLimit(selectedIdeas.thesis, wordLimits.thesis);
+  
+  // Step 2: Enforce word count limits and compress content
+  const compressedPrimary = selectedIdeas.primaryContent
+    .map(content => compressToWordLimit(content, wordLimits.primary))
+    .filter(content => content.length > 0); // Remove empty content
+  
+  const compressedSecondary = selectedIdeas.secondaryContent
+    .map(content => compressToWordLimit(content, wordLimits.secondary))
+    .filter(content => content.length > 0);
+    
+  const compressedTertiary = selectedIdeas.tertiaryContent
+    .map(content => compressToWordLimit(content, wordLimits.tertiary))
+    .filter(content => content.length > 0);
+  
+  // Step 3: HARD THESIS ISOLATION - Drop any content too similar to locked thesis
+  const thesisIsolationThreshold = 0.35; // Strict isolation threshold
+  
+  const isolatedPrimary = compressedPrimary.filter(content =>
+    semanticSimilarity(content, lockedThesis) <= thesisIsolationThreshold
+  );
+  
+  const isolatedSecondary = compressedSecondary.filter(content =>
+    semanticSimilarity(content, lockedThesis) <= thesisIsolationThreshold
+  );
+  
+  const isolatedTertiary = compressedTertiary.filter(content =>
+    semanticSimilarity(content, lockedThesis) <= thesisIsolationThreshold
+  );
+  
+  // Step 4: Cross-role semantic de-duplication with locked thesis
+  const allContent = [
+    { content: lockedThesis, role: 'thesis', importance: 100 },
+    ...isolatedPrimary.map((content, i) => ({ content, role: 'primary', importance: 90 - i })),
+    ...isolatedSecondary.map((content, i) => ({ content, role: 'secondary', importance: 80 - i })),
+    ...isolatedTertiary.map((content, i) => ({ content, role: 'tertiary', importance: 70 - i }))
+  ].filter(item => item.content && item.content.trim().length > 0);
+  
+  // Step 5: Remove semantic duplicates across all roles
+  const uniqueContent = removeSemanticDuplicatesAcrossRoles(allContent, mode);
+  
+  // Step 6: Enforce semantic role distinctiveness
+  const finalizedContent = enforceSemanticRoles(uniqueContent, mode);
+  
+  return finalizedContent;
+}
+
+/**
+ * Convert FinalizedContent to RenderableContent for safe UI consumption
+ * This creates the strict boundary between engine metadata and render output
+ */
+function convertToRenderableContent(finalizedContent: FinalizedContent): RenderableContent[] {
+  const renderableItems: RenderableContent[] = [];
+  
+  // Add thesis
+  if (finalizedContent.thesis) {
+    renderableItems.push({
+      text: finalizedContent.thesis,
+      role: SemanticRole.THESIS
+    });
+  }
+  
+  // Add primary content as evidence
+  finalizedContent.primaryContent.forEach(content => {
+    renderableItems.push({
+      text: content,
+      role: SemanticRole.EVIDENCE
+    });
+  });
+  
+  // Add secondary content as mechanisms
+  finalizedContent.secondaryContent.forEach(content => {
+    renderableItems.push({
+      text: content,
+      role: SemanticRole.MECHANISM
+    });
+  });
+  
+  // Add tertiary content as contrasts
+  finalizedContent.tertiaryContent.forEach(content => {
+    renderableItems.push({
+      text: content,
+      role: SemanticRole.CONTRAST
+    });
+  });
+  
+  // Add extras
+  finalizedContent.semanticRoles.extras.forEach(content => {
+    renderableItems.push({
+      text: content,
+      role: SemanticRole.EXTRA
+    });
+  });
+  
+  return renderableItems;
+}
+
+/**
+ * Convert PerspectiveAwareContent to ModeSpecificContent for backward compatibility
+ */
+function convertToModeSpecificContent(perspectiveContent: PerspectiveAwareContent): ModeSpecificContent {
+  return {
+    thesis: perspectiveContent.thesis,
+    primaryContent: perspectiveContent.primaryContent,
+    secondaryContent: perspectiveContent.secondaryContent,
+    tertiaryContent: perspectiveContent.tertiaryContent,
+    selectionReason: perspectiveContent.selectionReason
+  };
+}
+
+/**
+ * Get word count limits for each mode
+ */
+function getWordLimits(mode: AppMode): { thesis: number; primary: number; secondary: number; tertiary: number } {
+  switch (mode) {
+    case AppMode.MINDMAP:
+      return { thesis: 12, primary: 12, secondary: 12, tertiary: 12 };
+    case AppMode.FLASHCARDS:
+      return { thesis: 40, primary: 40, secondary: 40, tertiary: 40 };
+    case AppMode.QUIZ:
+      return { thesis: 20, primary: 20, secondary: 20, tertiary: 20 };
+    case AppMode.SUMMARY:
+      return { thesis: 18, primary: 18, secondary: 18, tertiary: 18 };
+    case AppMode.INFOGRAPHIC:
+      return { thesis: 25, primary: 25, secondary: 25, tertiary: 25 };
+    default:
+      return { thesis: 20, primary: 20, secondary: 20, tertiary: 20 };
+  }
+}
+
+/**
+ * Compress content to word limit using only existing words
+ */
+function compressToWordLimit(content: string, maxWords: number): string {
+  if (!content || content.trim().length === 0) return '';
+  
+  const words = content.split(/\s+/);
+  if (words.length <= maxWords) return content;
+  
+  // Try to extract most meaningful part within word limit
+  // Prioritize keeping subject + verb + key object
+  const meaningfulWords = words.filter(word =>
+    word.length > 2 &&
+    !['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from'].includes(word.toLowerCase())
+  );
+  
+  if (meaningfulWords.length <= maxWords) {
+    // If meaningful words fit, return them with minimal connectors
+    return meaningfulWords.slice(0, maxWords).join(' ');
+  }
+  
+  // Fallback: take first maxWords words
+  return words.slice(0, maxWords).join(' ');
+}
+
+/**
+ * Remove semantic duplicates across all semantic roles with strengthened cross-role exclusion
+ * Compares every item against all previously accepted items with mode-specific thresholds
+ */
+function removeSemanticDuplicatesAcrossRoles(contentItems: Array<{content: string; role: string; importance: number}>, mode: AppMode): Array<{content: string; role: string; importance: number}> {
+  const result: Array<{content: string; role: string; importance: number}> = [];
+  
+  for (const item of contentItems) {
+    let isDuplicate = false;
+    
+    for (const existing of result) {
+      // Check semantic similarity across roles with strict thresholds
+      const similarity = semanticSimilarity(item.content, existing.content);
+      const threshold = getCrossRoleDeduplicationThreshold(mode);
+      
+      if (similarity > threshold) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    
+    if (!isDuplicate) {
+      result.push(item);
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Get cross-role deduplication threshold for mode (stricter than original)
+ */
+function getCrossRoleDeduplicationThreshold(mode: AppMode): number {
+  switch (mode) {
+    case AppMode.MINDMAP: return 0.5; // Strict for distinct concepts
+    case AppMode.FLASHCARDS: return 0.35; // Moderate for Q&A (strengthened)
+    case AppMode.QUIZ: return 0.25; // Very strict for unique options
+    case AppMode.SUMMARY: return 0.4; // Lenient for comprehensive coverage (strengthened)
+    case AppMode.INFOGRAPHIC: return 0.3; // Strict for visual clarity (strengthened)
+    default: return 0.5;
+  }
+}
+
+/**
+ * Get deduplication threshold for mode
+ */
+function getDeduplicationThreshold(mode: AppMode): number {
+  switch (mode) {
+    case AppMode.MINDMAP: return 0.5; // Strict for distinct concepts
+    case AppMode.FLASHCARDS: return 0.6; // Moderate for Q&A
+    case AppMode.QUIZ: return 0.5; // Strict for unique options
+    case AppMode.SUMMARY: return 0.4; // Lenient for comprehensive coverage
+    case AppMode.INFOGRAPHIC: return 0.5; // Strict for visual clarity
+    default: return 0.5;
+  }
+}
+
+/**
+ * Enforce semantic role distinctiveness with strict thesis isolation
+ */
+function enforceSemanticRoles(contentItems: Array<{content: string; role: string; importance: number}>, mode: AppMode): FinalizedContent {
+  // Separate by original roles
+  const thesis = contentItems.find(item => item.role === 'thesis')?.content || '';
+  const primary = contentItems.filter(item => item.role === 'primary').map(item => item.content);
+  const secondary = contentItems.filter(item => item.role === 'secondary').map(item => item.content);
+  const tertiary = contentItems.filter(item => item.role === 'tertiary').map(item => item.content);
+  
+  // Ensure central thesis appears ONCE only (already isolated in finalizeContentForMode)
+  const uniqueThesis = thesis;
+  
+  // STRICT THESIS ISOLATION: Ensure all other content fails similarity check against thesis
+  const thesisSimilarityThreshold = 0.35;
+  
+  // Ensure supporting evidence differs from thesis (stricter threshold)
+  const uniqueSupporting = primary.filter(content =>
+    semanticSimilarity(content, thesis) <= thesisSimilarityThreshold
+  );
+  
+  // Ensure mechanisms describe process, not restate thesis (stricter threshold)
+  const uniqueMechanisms = secondary.filter(content =>
+    hasProcessLanguage(content) && semanticSimilarity(content, thesis) <= thesisSimilarityThreshold
+  );
+  
+  // Ensure contrasts explicitly compare or oppose
+  const uniqueContrasts = tertiary.filter(content =>
+    hasContrastLanguage(content) && semanticSimilarity(content, thesis) <= thesisSimilarityThreshold
+  );
+  
+  // MODE-SPECIFIC RULES
+  let processedSupporting = uniqueSupporting;
+  let processedMechanisms = uniqueMechanisms;
+  let processedContrasts = uniqueContrasts;
+  
+  // Quiz-specific rule: Ensure options are pairwise distinct
+  if (mode === AppMode.QUIZ) {
+    const allQuizContent = [...uniqueSupporting, ...uniqueMechanisms, ...uniqueContrasts];
+    const distinctQuizContent = ensurePairwiseDistinctness(allQuizContent, 0.25); // Very strict for quiz
+    processedSupporting = distinctQuizContent.filter(content => uniqueSupporting.includes(content));
+    processedMechanisms = distinctQuizContent.filter(content => uniqueMechanisms.includes(content));
+    processedContrasts = distinctQuizContent.filter(content => uniqueContrasts.includes(content));
+  }
+  
+  // Infographic-specific rule: Central Thesis appears ONLY in headline
+  if (mode === AppMode.INFOGRAPHIC) {
+    // Blocks must represent process OR contrast OR implication
+    processedMechanisms = processedMechanisms.filter(content =>
+      hasProcessLanguage(content) || content.toLowerCase().includes('step') || content.toLowerCase().includes('process')
+    );
+    processedContrasts = processedContrasts.filter(content =>
+      hasContrastLanguage(content) || content.toLowerCase().includes('compare') || content.toLowerCase().includes('versus')
+    );
+  }
+  
+  // Summary-specific rule: Thesis appears once at top, bullets must be distinct
+  if (mode === AppMode.SUMMARY) {
+    // Ensure bullets are pairwise distinct
+    const allSummaryContent = [...processedSupporting, ...processedMechanisms, ...processedContrasts];
+    const distinctSummaryContent = ensurePairwiseDistinctness(allSummaryContent, 0.4);
+    processedSupporting = distinctSummaryContent.filter(content => processedSupporting.includes(content));
+    processedMechanisms = distinctSummaryContent.filter(content => processedMechanisms.includes(content));
+    processedContrasts = distinctSummaryContent.filter(content => processedContrasts.includes(content));
+  }
+  
+  // Remaining content as extras (only if unique and not similar to used content)
+  const usedContent = [uniqueThesis, ...processedSupporting, ...processedMechanisms, ...processedContrasts];
+  const remainingContent = contentItems
+    .map(item => item.content)
+    .filter(content => !usedContent.includes(content));
+  
+  const uniqueExtras = remainingContent.filter(content =>
+    usedContent.every(used => semanticSimilarity(content, used) <= 0.4)
+  );
+  
+  return {
+    thesis: uniqueThesis,
+    primaryContent: processedSupporting,
+    secondaryContent: processedMechanisms,
+    tertiaryContent: processedContrasts,
+    semanticRoles: {
+      centralThesis: uniqueThesis,
+      supportingEvidence: processedSupporting,
+      mechanisms: processedMechanisms,
+      contrasts: processedContrasts,
+      extras: uniqueExtras
+    }
+  };
+}
+
+/**
+ * Ensure pairwise distinctness among content items (no two items exceed similarity threshold)
+ */
+function ensurePairwiseDistinctness(content: string[], threshold: number): string[] {
+  const result: string[] = [];
+  
+  for (const item of content) {
+    let isDuplicate = false;
+    
+    for (const existing of result) {
+      if (semanticSimilarity(item, existing) > threshold) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    
+    if (!isDuplicate) {
+      result.push(item);
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Check if content has process/mechanism language
+ */
+function hasProcessLanguage(content: string): boolean {
+  const processPatterns = [
+    'process', 'method', 'system', 'mechanism', 'procedure', 'steps', 'through',
+    'by', 'via', 'using', 'operates', 'works', 'function', 'technique', 'approach'
+  ];
+  
+  const lowerContent = content.toLowerCase();
+  return processPatterns.some(pattern => lowerContent.includes(pattern));
 }
 
 /**
@@ -1440,8 +1835,21 @@ function generateMindmapFromPlan(
   constraints: any,
   selectedContent: PerspectiveAwareContent
 ): string {
-  // Apply perspective-based ordering and framing
-  const orderedContent = applyPerspectiveOrdering(selectedContent);
+  // STEP 3.3: Apply final semantic compression and de-duplication gate
+  const finalizedContent = finalizeContentForMode(AppMode.MINDMAP, selectedContent);
+  
+  // Apply perspective-based ordering and framing to finalized content
+  const perspectiveContent: PerspectiveAwareContent = {
+    thesis: finalizedContent.thesis,
+    primaryContent: finalizedContent.primaryContent,
+    secondaryContent: finalizedContent.secondaryContent,
+    tertiaryContent: finalizedContent.tertiaryContent,
+    selectionReason: selectedContent.selectionReason,
+    perspective: selectedContent.perspective,
+    perspectiveReason: selectedContent.perspectiveReason
+  };
+  
+  const orderedContent = applyPerspectiveOrdering(perspectiveContent);
   let mermaidCode = '';
 
   switch (structure.layout) {
@@ -1535,8 +1943,11 @@ function generateFlashcardsFromPlan(
   inputText: string,
   structure: any,
   constraints: any,
-  selectedContent: ModeSpecificContent
+  selectedContent: PerspectiveAwareContent
 ): any[] {
+  // STEP 3.3: Apply final semantic compression and de-duplication gate
+  const finalizedContent = finalizeContentForMode(AppMode.FLASHCARDS, selectedContent);
+  
   const cards = [];
 
   // Ensure minimum card count
@@ -1547,11 +1958,11 @@ function generateFlashcardsFromPlan(
       // Create cards from thesis and primary content (why-focused arguments)
       cards.push({
         question: `What is the main thesis presented in the text?`,
-        answer: selectedContent.thesis,
+        answer: finalizedContent.thesis,
         tag: 'thesis'
       });
       
-      selectedContent.primaryContent.slice(0, targetCount - 1).forEach((argument, i) => {
+      finalizedContent.primaryContent.slice(0, targetCount - 1).forEach((argument, i) => {
         cards.push({
           question: `What supporting evidence is provided for the main thesis?`,
           answer: argument,
@@ -1564,12 +1975,12 @@ function generateFlashcardsFromPlan(
       // Detailed Q&A from different content types
       cards.push({
         question: `Explain the central concept presented in this text.`,
-        answer: selectedContent.thesis,
+        answer: finalizedContent.thesis,
         tag: 'main-concept'
       });
       
       // How-focused: mechanisms become process questions
-      selectedContent.primaryContent.slice(0, Math.ceil((targetCount - 1) / 2)).forEach((mechanism, i) => {
+      finalizedContent.secondaryContent.slice(0, Math.ceil((targetCount - 1) / 2)).forEach((mechanism, i) => {
         cards.push({
           question: `How does the process described in the text work?`,
           answer: mechanism,
@@ -1578,7 +1989,7 @@ function generateFlashcardsFromPlan(
       });
       
       // Why-focused: supporting arguments become evidence questions
-      selectedContent.secondaryContent.slice(0, Math.floor((targetCount - 1) / 2)).forEach((argument, i) => {
+      finalizedContent.primaryContent.slice(0, Math.floor((targetCount - 1) / 2)).forEach((argument, i) => {
         cards.push({
           question: `What evidence supports the main argument?`,
           answer: argument,
@@ -1588,28 +1999,28 @@ function generateFlashcardsFromPlan(
       break;
 
     case 'keyword':
-      // Term-definition pairs from all content
+      // Term-definition pairs from finalized content
       const allContent = [
-        selectedContent.thesis,
-        ...selectedContent.primaryContent,
-        ...selectedContent.secondaryContent
+        finalizedContent.thesis,
+        ...finalizedContent.primaryContent,
+        ...finalizedContent.secondaryContent
       ];
       const keywords = extractKeywords(allContent.join(' '));
       keywords.slice(0, targetCount).forEach((keyword, i) => {
         cards.push({
           question: keyword,
-          answer: findKeywordInSelectedContent(keyword, selectedContent) || 'Definition not explicitly provided in text',
+          answer: findKeywordInRenderableContent(keyword, finalizedContent) || 'Definition not explicitly provided in text',
           tag: 'keyword'
         });
       });
       break;
 
     case 'chunked':
-      // Group related concepts from all content layers
+      // Group related concepts from all content layers (finalized)
       const chunkedContent = [
-        ...selectedContent.primaryContent,
-        ...selectedContent.secondaryContent,
-        ...selectedContent.tertiaryContent
+        ...finalizedContent.primaryContent,
+        ...finalizedContent.secondaryContent,
+        ...finalizedContent.tertiaryContent
       ].slice(0, targetCount);
       
       chunkedContent.forEach((chunk, i) => {
@@ -1622,11 +2033,11 @@ function generateFlashcardsFromPlan(
       break;
 
     case 'scenario':
-      // Situation-response cards from all content
+      // Situation-response cards from finalized content
       const scenarios = [
-        selectedContent.thesis,
-        ...selectedContent.primaryContent,
-        ...selectedContent.secondaryContent
+        finalizedContent.thesis,
+        ...finalizedContent.primaryContent,
+        ...finalizedContent.secondaryContent
       ].slice(0, targetCount);
       
       scenarios.forEach((scenario, i) => {
@@ -1648,8 +2059,11 @@ function generateQuizFromPlan(
   inputText: string,
   structure: any,
   constraints: any,
-  selectedContent: ModeSpecificContent
+  selectedContent: PerspectiveAwareContent
 ): any[] {
+  // STEP 3.3: Apply final semantic compression and de-duplication gate
+  const finalizedContent = finalizeContentForMode(AppMode.QUIZ, selectedContent);
+  
   const questions = [];
 
   // Ensure minimum question count
@@ -1657,10 +2071,10 @@ function generateQuizFromPlan(
 
   // Create questions from mode-specific content (mechanisms, contrasts, conclusions focus)
   const questionSources = [
-    { content: selectedContent.thesis, type: 'thesis' },
-    ...selectedContent.primaryContent.map(content => ({ content, type: 'primary' })),
-    ...selectedContent.secondaryContent.map(content => ({ content, type: 'secondary' })),
-    ...selectedContent.tertiaryContent.map(content => ({ content, type: 'tertiary' }))
+    { content: finalizedContent.thesis, type: 'thesis' },
+    ...finalizedContent.primaryContent.map(content => ({ content, type: 'primary' })),
+    ...finalizedContent.secondaryContent.map(content => ({ content, type: 'secondary' })),
+    ...finalizedContent.tertiaryContent.map(content => ({ content, type: 'tertiary' }))
   ].filter(item => item.content && item.content.length > 10);
 
   questionSources.slice(0, targetCount).forEach((source, i) => {
@@ -1676,13 +2090,28 @@ function generateQuizFromPlan(
         meta: { difficulty: constraints.difficulty, style: structure.layout, category: source.type }
       });
     } else if (questionType === 'multiple-choice') {
-      // Create multiple choice from the source plus other sources
+      // QUIZ-SPECIFIC RULE: Every option must be pairwise-compared against all others
+      // If any two options have similarity > 0.25, drop the lower-importance option
       const relatedSources = questionSources.filter((related, idx) => idx !== i).slice(0, 3);
-      const options = [
+      let options = [
         source.content.slice(0, 40) + '...',
         ...relatedSources.map(ri => ri.content.slice(0, 35) + '...'),
         'None of the above'
       ];
+      
+      // Apply pairwise distinctness rule
+      options = ensurePairwiseDistinctness(options, 0.25);
+      
+      // Ensure we have at least 3 semantically distinct options
+      if (options.length < 3) {
+        // Add generic distractors if we don't have enough distinct options
+        const genericOptions = ['All of the above', 'Both A and B', 'Cannot be determined'];
+        for (const generic of genericOptions) {
+          if (options.length < 4 && !options.includes(generic)) {
+            options.push(generic);
+          }
+        }
+      }
       
       questions.push({
         type: 'multiple-choice',
@@ -1713,15 +2142,18 @@ function generateSummaryFromPlan(
   inputText: string,
   structure: any,
   constraints: any,
-  selectedContent: ModeSpecificContent
+  selectedContent: PerspectiveAwareContent
 ): string {
+  // STEP 3.3: Apply final semantic compression and de-duplication gate
+  const finalizedContent = finalizeContentForMode(AppMode.SUMMARY, selectedContent);
+  
   switch (structure.layout) {
     case 'executive':
       // Use logical flow: thesis → primary content → conclusion
       const executivePoints = [
-        selectedContent.thesis,
-        ...selectedContent.primaryContent.slice(0, 2), // Key supporting points
-        ...selectedContent.tertiaryContent.slice(0, 1)  // Final takeaway
+        finalizedContent.thesis,
+        ...finalizedContent.primaryContent.slice(0, 2), // Key supporting points
+        ...finalizedContent.tertiaryContent.slice(0, 1)  // Final takeaway
       ].filter(point => point && point.length > 10);
       
       return executivePoints.join('. ') + (executivePoints.length > 0 ? '.' : '');
@@ -1729,10 +2161,10 @@ function generateSummaryFromPlan(
     case 'bullet':
       // Create bullets from all content layers
       const bullets = [
-        `• Central thesis: ${selectedContent.thesis.slice(0, 50)}...`,
-        ...selectedContent.primaryContent.slice(0, 2).map(arg => `• Supporting evidence: ${arg.slice(0, 45)}...`),
-        ...selectedContent.secondaryContent.slice(0, 2).map(mech => `• Process/mechanism: ${mech.slice(0, 45)}...`),
-        ...selectedContent.tertiaryContent.slice(0, 1).map(contrast => `• Contrast: ${contrast.slice(0, 45)}...`)
+        `• Central thesis: ${finalizedContent.thesis.slice(0, 50)}...`,
+        ...finalizedContent.primaryContent.slice(0, 2).map(arg => `• Supporting evidence: ${arg.slice(0, 45)}...`),
+        ...finalizedContent.secondaryContent.slice(0, 2).map(mech => `• Process/mechanism: ${mech.slice(0, 45)}...`),
+        ...finalizedContent.tertiaryContent.slice(0, 1).map(contrast => `• Contrast: ${contrast.slice(0, 45)}...`)
       ].slice(0, constraints.length.bullets);
       
       return bullets.join('\n');
@@ -1740,36 +2172,36 @@ function generateSummaryFromPlan(
     case 'notes':
       // Create study notes with labeled sections
       const notes = [
-        `Central Thesis: ${selectedContent.thesis || 'Main concept not clearly identified'}`,
-        `Supporting Arguments: ${selectedContent.primaryContent.slice(0, 3).map(arg => arg.slice(0, 40)).join('; ') || 'No specific arguments identified'}`,
-        `Key Mechanisms: ${selectedContent.secondaryContent.slice(0, 2).map(mech => mech.slice(0, 40)).join('; ') || 'No mechanisms identified'}`,
-        `Conclusions: ${selectedContent.tertiaryContent.slice(0, 2).join('; ') || 'No explicit conclusions'}`,
+        `Central Thesis: ${finalizedContent.thesis || 'Main concept not clearly identified'}`,
+        `Supporting Arguments: ${finalizedContent.primaryContent.slice(0, 3).map(arg => arg.slice(0, 40)).join('; ') || 'No specific arguments identified'}`,
+        `Key Mechanisms: ${finalizedContent.secondaryContent.slice(0, 2).map(mech => mech.slice(0, 40)).join('; ') || 'No mechanisms identified'}`,
+        `Conclusions: ${finalizedContent.tertiaryContent.slice(0, 2).join('; ') || 'No explicit conclusions'}`,
         `Selection Logic: ${selectedContent.selectionReason}`
       ];
       return notes.join('\n');
 
     case 'infostructured':
       return `## Overview
-${selectedContent.thesis || 'Main concept'}
+${finalizedContent.thesis || 'Main concept'}
 
 ## Key Elements
-• Thesis: ${selectedContent.thesis.slice(0, 60) || 'Central idea'}
-• Evidence: ${selectedContent.primaryContent[0]?.slice(0, 50) || 'Primary supporting point'}
-• Process: ${selectedContent.secondaryContent[0]?.slice(0, 50) || 'Key mechanism'}
-• Contrast: ${selectedContent.tertiaryContent[0]?.slice(0, 50) || 'Comparative element'}
+• Thesis: ${finalizedContent.thesis.slice(0, 60) || 'Central idea'}
+• Evidence: ${finalizedContent.primaryContent[0]?.slice(0, 50) || 'Primary supporting point'}
+• Process: ${finalizedContent.secondaryContent[0]?.slice(0, 50) || 'Key mechanism'}
+• Contrast: ${finalizedContent.tertiaryContent[0]?.slice(0, 50) || 'Comparative element'}
 
 ## Summary
 ${[
-  selectedContent.thesis,
-  ...selectedContent.primaryContent.slice(0, 1),
-  ...selectedContent.tertiaryContent.slice(0, 1)
+  finalizedContent.thesis,
+  ...finalizedContent.primaryContent.slice(0, 1),
+  ...finalizedContent.tertiaryContent.slice(0, 1)
 ].filter(point => point && point.length > 10).join('. ')}`;
 
     default:
       // Fallback to thesis and primary content
       const defaultPoints = [
-        selectedContent.thesis,
-        ...selectedContent.primaryContent.slice(0, 2)
+        finalizedContent.thesis,
+        ...finalizedContent.primaryContent.slice(0, 2)
       ].filter(point => point && point.length > 10);
       return defaultPoints.join('. ');
   }
@@ -1788,20 +2220,23 @@ function generateInfographicFromPlan(
   inputText: string,
   structure: any,
   constraints: any,
-  selectedContent: ModeSpecificContent
+  selectedContent: PerspectiveAwareContent
 ): any {
-  const title = selectedContent.thesis || 'Generated Infographic';
+  // STEP 3.3: Apply final semantic compression and de-duplication gate
+  const finalizedContent = finalizeContentForMode(AppMode.INFOGRAPHIC, selectedContent);
+  
+  const title = finalizedContent.thesis || 'Generated Infographic';
   
   // Create sections from mode-specific content (mechanisms as steps, contrasts as comparisons)
   const sections = [
-    { title: 'Central Thesis', content: selectedContent.thesis, icon: 'star' },
-    ...selectedContent.primaryContent.map(content => ({
+    { title: 'Central Thesis', content: finalizedContent.thesis, icon: 'star' },
+    ...finalizedContent.primaryContent.map(content => ({
       title: 'Process Step', content, icon: 'arrow'
     })),
-    ...selectedContent.secondaryContent.map(content => ({
+    ...finalizedContent.secondaryContent.map(content => ({
       title: 'Comparison', content, icon: 'dot'
     })),
-    ...selectedContent.tertiaryContent.map(content => ({
+    ...finalizedContent.tertiaryContent.map(content => ({
       title: 'Supporting Detail', content, icon: 'check'
     }))
   ].filter(section => section.content && section.content.length > 10).slice(0, structure.minOutputCount);
@@ -1850,6 +2285,23 @@ function findKeywordInSelectedContent(keyword: string, selectedContent: ModeSpec
     ...selectedContent.primaryContent,
     ...selectedContent.secondaryContent,
     ...selectedContent.tertiaryContent
+  ].join(' ');
+  
+  const sentences = allContent.split(/[.!?]+/);
+  const sentence = sentences.find(s => s.toLowerCase().includes(keyword.toLowerCase()));
+  return sentence?.trim() || '';
+}
+
+/**
+ * Find keyword in FinalizedContent for render-safe usage
+ */
+function findKeywordInRenderableContent(keyword: string, finalizedContent: FinalizedContent): string {
+  const allContent = [
+    finalizedContent.thesis,
+    ...finalizedContent.primaryContent,
+    ...finalizedContent.secondaryContent,
+    ...finalizedContent.tertiaryContent,
+    ...finalizedContent.semanticRoles.extras
   ].join(' ');
   
   const sentences = allContent.split(/[.!?]+/);
