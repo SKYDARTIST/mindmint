@@ -75,31 +75,39 @@ const generateMermaidFallback = (text: string, layout: string = 'classic'): stri
       return `graph TD\n${chainNodes}\n${chainLinks}`;
       
     case 'cluster':
+      // VERTICAL LAYOUT - Single linear chain, no branching
+      // Exactly one node per level, stacked top-to-bottom
+      const verticalIds = parts.map((_, i) => `V${i}`);
+      const verticalNodes = verticalIds.map((id, i) => `${id}["${parts[i].slice(0, 40)}"]`).join("\n");
+      const verticalLinks = verticalIds.slice(0, -1).map((id, i) => `${id} --> ${verticalIds[i + 1]}`).join("\n");
+      return `graph TD\n${verticalNodes}\n${verticalLinks}`;
+      
     case 'layered':
+      // LAYERED LAYOUT - Multi-level hierarchy with branching
       // ENFORCED MULTI-LEVEL HIERARCHY - must always have 3 levels
       // Level 0: Root (1 node)
       // Level 1: 3 children minimum
       // Level 2: At least 1 child per Level 1 node
-      const clusterCenter = parts[0]?.slice(0, 30) || 'Main Topic';
-      const clusterL1A = parts[1]?.slice(0, 25) || 'Category A';
-      const clusterL1B = parts[2]?.slice(0, 25) || 'Category B';
-      const clusterL1C = parts[3]?.slice(0, 25) || 'Category C';
-      const clusterL2A1 = parts[4]?.slice(0, 20) || 'Detail A.1';
-      const clusterL2A2 = 'Sub-point A.2';
-      const clusterL2B1 = parts[5]?.slice(0, 20) || 'Detail B.1';
-      const clusterL2C1 = 'Detail C.1';
-      const clusterL2C2 = 'Detail C.2';
+      const layeredCenter = parts[0]?.slice(0, 30) || 'Main Topic';
+      const layeredL1A = parts[1]?.slice(0, 25) || 'Category A';
+      const layeredL1B = parts[2]?.slice(0, 25) || 'Category B';
+      const layeredL1C = parts[3]?.slice(0, 25) || 'Category C';
+      const layeredL2A1 = parts[4]?.slice(0, 20) || 'Detail A.1';
+      const layeredL2A2 = 'Sub-point A.2';
+      const layeredL2B1 = parts[5]?.slice(0, 20) || 'Detail B.1';
+      const layeredL2C1 = 'Detail C.1';
+      const layeredL2C2 = 'Detail C.2';
       
       return `graph TD
-Root["${clusterCenter}"]
-L1A["${clusterL1A}"]
-L1B["${clusterL1B}"]
-L1C["${clusterL1C}"]
-L2A1["${clusterL2A1}"]
-L2A2["${clusterL2A2}"]
-L2B1["${clusterL2B1}"]
-L2C1["${clusterL2C1}"]
-L2C2["${clusterL2C2}"]
+Root["${layeredCenter}"]
+L1A["${layeredL1A}"]
+L1B["${layeredL1B}"]
+L1C["${layeredL1C}"]
+L2A1["${layeredL2A1}"]
+L2A2["${layeredL2A2}"]
+L2B1["${layeredL2B1}"]
+L2C1["${layeredL2C1}"]
+L2C2["${layeredL2C2}"]
 Root --> L1A
 Root --> L1B
 Root --> L1C
@@ -143,7 +151,23 @@ const generateMockMindmap = (text: string, layout: string): string => {
     E --> F`;
     
     case 'cluster':
+      // VERTICAL LAYOUT - Single linear chain, priority stack/timeline
+      // Exactly one node per level, stacked top-to-bottom, no branching
+      return `graph TD
+    A[${center}]
+    B[${topics[1]?.slice(0, 25) || 'Priority 1'}]
+    C[${topics[2]?.slice(0, 25) || 'Priority 2'}]
+    D[${topics[3]?.slice(0, 25) || 'Priority 3'}]
+    E[${topics[4]?.slice(0, 25) || 'Priority 4'}]
+    F[${topics[5]?.slice(0, 25) || 'Priority 5'}]
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F`;
+    
     case 'layered':
+      // LAYERED LAYOUT - Multi-level hierarchy with branching
       // ENFORCED MULTI-LEVEL HIERARCHY - must always have 3 levels minimum
       // Level 0: Root (1 node)
       // Level 1: At least 3 children of root
@@ -307,8 +331,17 @@ STRUCTURE REQUIREMENTS:
 - Single directional chain: Step1 --> Step2 --> Step3 --> Step4
 - Pure linear progression, no connections between non-consecutive nodes
 - Example structure: A[Start] --> B[Step1] --> C[Step2] --> D[Step3]`;
-        } else if (layout === 'cluster' || layout === 'layered') {
-          mindmapInstructions = `LAYOUT: LAYERED/CLUSTER (graph TD)
+        } else if (layout === 'cluster') {
+          mindmapInstructions = `LAYOUT: VERTICAL (graph TD)
+STRUCTURE REQUIREMENTS:
+- Single vertical chain - priority stack/timeline style
+- Exactly one node per level, stacked top-to-bottom
+- NO branching, NO grandchildren, NO sibling connections
+- Linear progression: Node1 --> Node2 --> Node3 --> Node4
+- Pure vertical flow like a priority list or timeline
+- Example structure: A[Start] --> B[Step1] --> C[Step2] --> D[Step3]`;
+        } else if (layout === 'layered') {
+          mindmapInstructions = `LAYOUT: LAYERED (graph TD)
 ENFORCED STRUCTURE REQUIREMENTS:
 - MUST have 3 levels minimum: Root -> Level1 -> Level2
 - 1 root node at the top
