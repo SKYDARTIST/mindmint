@@ -7,7 +7,7 @@ export enum AppMode {
   INFOGRAPHIC = 'infographic',
 }
 
-export type MindmapLayout = 'classic' | 'flow' | 'layered' | 'chain' | 'cluster';
+export type MindmapLayout = 'classic' | 'flow' | 'layered' | 'chain';
 export type FlashcardLayout = 'minimal' | 'qa' | 'keyword' | 'chunked' | 'scenario';
 export type QuizLayout = 'classic' | 'mcq-heavy' | 'tf-speed' | 'scenario' | 'mixed';
 export type SummaryLayout = 'executive' | 'bullet' | 'story' | 'notes' | 'infostructured';

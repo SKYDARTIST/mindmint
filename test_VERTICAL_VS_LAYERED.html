@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vertical vs Layered Layout Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .mermaid { background: #f9f9f9; padding: 10px; margin: 10px 0; }
+        h2 { color: #333; }
+        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
+        .description { background: #e8f4fd; padding: 15px; margin: 10px 0; border-left: 4px solid #2196F3; }
+    </style>
+</head>
+<body>
+    <h1>Vertical vs Layered Layout Visual Test</h1>
+    <p>This test verifies that Vertical layout creates a single linear chain while Layered creates multi-level hierarchy.</p>
+
+    <div class="test-section">
+        <h2>Vertical Layout (Single Linear Chain)</h2>
+        <div class="description">
+            <strong>Structure:</strong> Single vertical chain, priority stack/timeline style
+            <br><strong>Pattern:</strong> Exactly one node per level, stacked top-to-bottom
+            <br><strong>NO branching, NO grandchildren, NO sibling connections</strong>
+        </div>
+        <pre><code>Pattern: A --> B --> C --> D --> E
+Single linear progression like a priority list or timeline</code></pre>
+        <div class="mermaid">
+graph TD
+    A[Main Topic]
+    B[Priority 1]
+    C[Priority 2]
+    D[Priority 3]
+    E[Priority 4]
+    F[Priority 5]
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Layered Layout (Multi-Level Hierarchy)</h2>
+        <div class="description">
+            <strong>Structure:</strong> Multi-level hierarchy with branching
+            <br><strong>Pattern:</strong> 3 levels minimum: Root -> Level1 -> Level2
+            <br><strong>Each Level-1 node MUST have Level-2 children</strong>
+        </div>
+        <pre><code>Pattern: Root --> L1A --> L2A1
+                --> L2A2
+       --> L1B --> L2B1
+       --> L1C --> L2C1
+                --> L2C2
+Multi-level hierarchy with clear parent-child relationships</code></pre>
+        <div class="mermaid">
+graph TD
+    Root["Main Topic"]
+    L1A["Category A"]
+    L1B["Category B"]
+    L1C["Category C"]
+    L2A1["Detail A.1"]
+    L2A2["Detail A.2"]
+    L2B1["Detail B.1"]
+    L2C1["Detail C.1"]
+    L2C2["Detail C.2"]
+    Root --> L1A
+    Root --> L1B
+    Root --> L1C
+    L1A --> L2A1
+    L1A --> L2A2
+    L1B --> L2B1
+    L1C --> L2C1
+    L1C --> L2C2
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Visual Comparison</h2>
+        <div class="description">
+            <strong>Key Differences:</strong>
+            <ul>
+                <li><strong>Vertical:</strong> Single path, linear progression, priority/timeline feel</li>
+                <li><strong>Layered:</strong> Multiple branches, hierarchical structure, category organization</li>
+                <li><strong>Immediate Recognition:</strong> Users can instantly tell which layout is which without reading labels</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>

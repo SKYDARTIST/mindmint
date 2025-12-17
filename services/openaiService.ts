@@ -74,14 +74,6 @@ const generateMermaidFallback = (text: string, layout: string = 'classic'): stri
       const chainLinks = chainIds.slice(0, -1).map((id, i) => `${id} --> ${chainIds[i + 1]}`).join("\n");
       return `graph TD\n${chainNodes}\n${chainLinks}`;
       
-    case 'cluster':
-      // VERTICAL LAYOUT - Single linear chain, no branching
-      // Exactly one node per level, stacked top-to-bottom
-      const verticalIds = parts.map((_, i) => `V${i}`);
-      const verticalNodes = verticalIds.map((id, i) => `${id}["${parts[i].slice(0, 40)}"]`).join("\n");
-      const verticalLinks = verticalIds.slice(0, -1).map((id, i) => `${id} --> ${verticalIds[i + 1]}`).join("\n");
-      return `graph TD\n${verticalNodes}\n${verticalLinks}`;
-      
     case 'layered':
       // LAYERED LAYOUT - Multi-level hierarchy with branching
       // ENFORCED MULTI-LEVEL HIERARCHY - must always have 3 levels
@@ -144,22 +136,6 @@ const generateMockMindmap = (text: string, layout: string): string => {
     D[${topics[3]?.slice(0, 30) || 'Step 3'}]
     E[${topics[4]?.slice(0, 30) || 'Step 4'}]
     F[${topics[5]?.slice(0, 30) || 'Step 5'}]
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F`;
-    
-    case 'cluster':
-      // VERTICAL LAYOUT - Single linear chain, priority stack/timeline
-      // Exactly one node per level, stacked top-to-bottom, no branching
-      return `graph TD
-    A[${center}]
-    B[${topics[1]?.slice(0, 25) || 'Priority 1'}]
-    C[${topics[2]?.slice(0, 25) || 'Priority 2'}]
-    D[${topics[3]?.slice(0, 25) || 'Priority 3'}]
-    E[${topics[4]?.slice(0, 25) || 'Priority 4'}]
-    F[${topics[5]?.slice(0, 25) || 'Priority 5'}]
     A --> B
     B --> C
     C --> D
@@ -330,15 +306,6 @@ STRUCTURE REQUIREMENTS:
 - NO branching, NO hub patterns
 - Single directional chain: Step1 --> Step2 --> Step3 --> Step4
 - Pure linear progression, no connections between non-consecutive nodes
-- Example structure: A[Start] --> B[Step1] --> C[Step2] --> D[Step3]`;
-        } else if (layout === 'cluster') {
-          mindmapInstructions = `LAYOUT: VERTICAL (graph TD)
-STRUCTURE REQUIREMENTS:
-- Single vertical chain - priority stack/timeline style
-- Exactly one node per level, stacked top-to-bottom
-- NO branching, NO grandchildren, NO sibling connections
-- Linear progression: Node1 --> Node2 --> Node3 --> Node4
-- Pure vertical flow like a priority list or timeline
 - Example structure: A[Start] --> B[Step1] --> C[Step2] --> D[Step3]`;
         } else if (layout === 'layered') {
           mindmapInstructions = `LAYOUT: LAYERED (graph TD)
