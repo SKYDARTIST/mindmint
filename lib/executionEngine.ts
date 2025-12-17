@@ -270,13 +270,29 @@ function finalizeContentForMode(mode: AppMode, selectedIdeas: PerspectiveAwareCo
     ...isolatedTertiary.map((content, i) => ({ content, role: 'tertiary', importance: 70 - i }))
   ].filter(item => item.content && item.content.trim().length > 0);
   
-  // Step 5: Remove semantic duplicates across all roles
-  const uniqueContent = removeSemanticDuplicatesAcrossRoles(allContent, mode);
+  // Step 5: Apply FINAL SEMANTIC EXCLUSION as the ultimate quality gate
+  const threshold = getFinalExclusionThreshold(mode);
+  const finalExcluded = finalSemanticExclusion(allContent, threshold);
   
-  // Step 6: Enforce semantic role distinctiveness
-  const finalizedContent = enforceSemanticRoles(uniqueContent, mode);
+  // Step 6: Convert back to FinalizedContent format for compatibility
+  const thesis = finalExcluded.find(item => item.role === 'thesis')?.content || '';
+  const primaryContent = finalExcluded.filter(item => item.role === 'primary').map(item => item.content);
+  const secondaryContent = finalExcluded.filter(item => item.role === 'secondary').map(item => item.content);
+  const tertiaryContent = finalExcluded.filter(item => item.role === 'tertiary').map(item => item.content);
   
-  return finalizedContent;
+  return {
+    thesis,
+    primaryContent,
+    secondaryContent,
+    tertiaryContent,
+    semanticRoles: {
+      centralThesis: thesis,
+      supportingEvidence: primaryContent,
+      mechanisms: secondaryContent,
+      contrasts: tertiaryContent,
+      extras: []
+    }
+  };
 }
 
 /**
@@ -388,28 +404,59 @@ function compressToWordLimit(content: string, maxWords: number): string {
 }
 
 /**
- * Remove semantic duplicates across all semantic roles with strengthened cross-role exclusion
- * Compares every item against all previously accepted items with mode-specific thresholds
+ * FINAL SEMANTIC EXCLUSION QUALITY GATE
+ * Runs AFTER all other processing steps and BEFORE rendering to UI
+ * Ensures each rendered item represents a DISTINCT semantic idea
  */
-function removeSemanticDuplicatesAcrossRoles(contentItems: Array<{content: string; role: string; importance: number}>, mode: AppMode): Array<{content: string; role: string; importance: number}> {
-  const result: Array<{content: string; role: string; importance: number}> = [];
+function finalSemanticExclusion(
+  items: { content: string; importance: number; role: string }[],
+  similarityThreshold: number
+): { content: string; role: string }[] {
+  const result: { content: string; role: string }[] = [];
   
-  for (const item of contentItems) {
+  // Sort by importance (descending) to keep higher-importance items
+  const sortedItems = [...items].sort((a, b) => b.importance - a.importance);
+  
+  for (const item of sortedItems) {
     let isDuplicate = false;
     
+    // Compare against already accepted items
     for (const existing of result) {
-      // Check semantic similarity across roles with strict thresholds
       const similarity = semanticSimilarity(item.content, existing.content);
-      const threshold = getCrossRoleDeduplicationThreshold(mode);
       
-      if (similarity > threshold) {
+      // ROLE SAFETY: Special rules for cross-role similarity
+      if (isCrossRoleSimilar(item.role, existing.role)) {
+        // If thesis appears in other roles, always drop the lower-importance one
+        if (item.role === 'thesis' || existing.role === 'thesis') {
+          isDuplicate = true;
+          break;
+        }
+        // Mechanisms should not repeat thesis meaning
+        if ((item.role === 'mechanism' && existing.role === 'thesis') ||
+            (item.role === 'thesis' && existing.role === 'mechanism')) {
+          isDuplicate = true;
+          break;
+        }
+        // Evidence should not restate mechanisms
+        if ((item.role === 'evidence' && existing.role === 'mechanism') ||
+            (item.role === 'mechanism' && existing.role === 'evidence')) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      
+      // Standard similarity check
+      if (similarity >= similarityThreshold) {
         isDuplicate = true;
         break;
       }
     }
     
     if (!isDuplicate) {
-      result.push(item);
+      result.push({
+        content: item.content,
+        role: item.role
+      });
     }
   }
   
@@ -417,16 +464,34 @@ function removeSemanticDuplicatesAcrossRoles(contentItems: Array<{content: strin
 }
 
 /**
- * Get cross-role deduplication threshold for mode (stricter than original)
+ * Check if two roles represent cross-role similarity that should be prevented
  */
-function getCrossRoleDeduplicationThreshold(mode: AppMode): number {
+function isCrossRoleSimilar(role1: string, role2: string): boolean {
+  const thesisRoles = ['thesis', 'central-thesis'];
+  const mechanismRoles = ['mechanism', 'secondary', 'process'];
+  const evidenceRoles = ['evidence', 'primary', 'support'];
+  
+  // Thesis should never appear in other roles
+  if (thesisRoles.includes(role1) || thesisRoles.includes(role2)) {
+    return thesisRoles.includes(role1) && thesisRoles.includes(role2);
+  }
+  
+  // Mechanisms and evidence should be distinct
+  return (mechanismRoles.includes(role1) && evidenceRoles.includes(role2)) ||
+         (evidenceRoles.includes(role1) && mechanismRoles.includes(role2));
+}
+
+/**
+ * Get similarity threshold for final exclusion based on mode
+ */
+function getFinalExclusionThreshold(mode: AppMode): number {
   switch (mode) {
-    case AppMode.MINDMAP: return 0.5; // Strict for distinct concepts
-    case AppMode.FLASHCARDS: return 0.35; // Moderate for Q&A (strengthened)
-    case AppMode.QUIZ: return 0.25; // Very strict for unique options
-    case AppMode.SUMMARY: return 0.4; // Lenient for comprehensive coverage (strengthened)
-    case AppMode.INFOGRAPHIC: return 0.3; // Strict for visual clarity (strengthened)
-    default: return 0.5;
+    case AppMode.MINDMAP: return 0.35;
+    case AppMode.FLASHCARDS: return 0.45;
+    case AppMode.QUIZ: return 0.50;
+    case AppMode.SUMMARY: return 0.40;
+    case AppMode.INFOGRAPHIC: return 0.45;
+    default: return 0.40;
   }
 }
 
@@ -442,121 +507,6 @@ function getDeduplicationThreshold(mode: AppMode): number {
     case AppMode.INFOGRAPHIC: return 0.5; // Strict for visual clarity
     default: return 0.5;
   }
-}
-
-/**
- * Enforce semantic role distinctiveness with strict thesis isolation
- */
-function enforceSemanticRoles(contentItems: Array<{content: string; role: string; importance: number}>, mode: AppMode): FinalizedContent {
-  // Separate by original roles
-  const thesis = contentItems.find(item => item.role === 'thesis')?.content || '';
-  const primary = contentItems.filter(item => item.role === 'primary').map(item => item.content);
-  const secondary = contentItems.filter(item => item.role === 'secondary').map(item => item.content);
-  const tertiary = contentItems.filter(item => item.role === 'tertiary').map(item => item.content);
-  
-  // Ensure central thesis appears ONCE only (already isolated in finalizeContentForMode)
-  const uniqueThesis = thesis;
-  
-  // STRICT THESIS ISOLATION: Ensure all other content fails similarity check against thesis
-  const thesisSimilarityThreshold = 0.35;
-  
-  // Ensure supporting evidence differs from thesis (stricter threshold)
-  const uniqueSupporting = primary.filter(content =>
-    semanticSimilarity(content, thesis) <= thesisSimilarityThreshold
-  );
-  
-  // Ensure mechanisms describe process, not restate thesis (stricter threshold)
-  const uniqueMechanisms = secondary.filter(content =>
-    hasProcessLanguage(content) && semanticSimilarity(content, thesis) <= thesisSimilarityThreshold
-  );
-  
-  // Ensure contrasts explicitly compare or oppose
-  const uniqueContrasts = tertiary.filter(content =>
-    hasContrastLanguage(content) && semanticSimilarity(content, thesis) <= thesisSimilarityThreshold
-  );
-  
-  // MODE-SPECIFIC RULES
-  let processedSupporting = uniqueSupporting;
-  let processedMechanisms = uniqueMechanisms;
-  let processedContrasts = uniqueContrasts;
-  
-  // Quiz-specific rule: Ensure options are pairwise distinct
-  if (mode === AppMode.QUIZ) {
-    const allQuizContent = [...uniqueSupporting, ...uniqueMechanisms, ...uniqueContrasts];
-    const distinctQuizContent = ensurePairwiseDistinctness(allQuizContent, 0.25); // Very strict for quiz
-    processedSupporting = distinctQuizContent.filter(content => uniqueSupporting.includes(content));
-    processedMechanisms = distinctQuizContent.filter(content => uniqueMechanisms.includes(content));
-    processedContrasts = distinctQuizContent.filter(content => uniqueContrasts.includes(content));
-  }
-  
-  // Infographic-specific rule: Central Thesis appears ONLY in headline
-  if (mode === AppMode.INFOGRAPHIC) {
-    // Blocks must represent process OR contrast OR implication
-    processedMechanisms = processedMechanisms.filter(content =>
-      hasProcessLanguage(content) || content.toLowerCase().includes('step') || content.toLowerCase().includes('process')
-    );
-    processedContrasts = processedContrasts.filter(content =>
-      hasContrastLanguage(content) || content.toLowerCase().includes('compare') || content.toLowerCase().includes('versus')
-    );
-  }
-  
-  // Summary-specific rule: Thesis appears once at top, bullets must be distinct
-  if (mode === AppMode.SUMMARY) {
-    // Ensure bullets are pairwise distinct
-    const allSummaryContent = [...processedSupporting, ...processedMechanisms, ...processedContrasts];
-    const distinctSummaryContent = ensurePairwiseDistinctness(allSummaryContent, 0.4);
-    processedSupporting = distinctSummaryContent.filter(content => processedSupporting.includes(content));
-    processedMechanisms = distinctSummaryContent.filter(content => processedMechanisms.includes(content));
-    processedContrasts = distinctSummaryContent.filter(content => processedContrasts.includes(content));
-  }
-  
-  // Remaining content as extras (only if unique and not similar to used content)
-  const usedContent = [uniqueThesis, ...processedSupporting, ...processedMechanisms, ...processedContrasts];
-  const remainingContent = contentItems
-    .map(item => item.content)
-    .filter(content => !usedContent.includes(content));
-  
-  const uniqueExtras = remainingContent.filter(content =>
-    usedContent.every(used => semanticSimilarity(content, used) <= 0.4)
-  );
-  
-  return {
-    thesis: uniqueThesis,
-    primaryContent: processedSupporting,
-    secondaryContent: processedMechanisms,
-    tertiaryContent: processedContrasts,
-    semanticRoles: {
-      centralThesis: uniqueThesis,
-      supportingEvidence: processedSupporting,
-      mechanisms: processedMechanisms,
-      contrasts: processedContrasts,
-      extras: uniqueExtras
-    }
-  };
-}
-
-/**
- * Ensure pairwise distinctness among content items (no two items exceed similarity threshold)
- */
-function ensurePairwiseDistinctness(content: string[], threshold: number): string[] {
-  const result: string[] = [];
-  
-  for (const item of content) {
-    let isDuplicate = false;
-    
-    for (const existing of result) {
-      if (semanticSimilarity(item, existing) > threshold) {
-        isDuplicate = true;
-        break;
-      }
-    }
-    
-    if (!isDuplicate) {
-      result.push(item);
-    }
-  }
-  
-  return result;
 }
 
 /**
@@ -2090,28 +2040,14 @@ function generateQuizFromPlan(
         meta: { difficulty: constraints.difficulty, style: structure.layout, category: source.type }
       });
     } else if (questionType === 'multiple-choice') {
-      // QUIZ-SPECIFIC RULE: Every option must be pairwise-compared against all others
-      // If any two options have similarity > 0.25, drop the lower-importance option
+      // Create multiple choice from the source plus other sources
+      // Final semantic exclusion will handle option distinctness
       const relatedSources = questionSources.filter((related, idx) => idx !== i).slice(0, 3);
-      let options = [
+      const options = [
         source.content.slice(0, 40) + '...',
         ...relatedSources.map(ri => ri.content.slice(0, 35) + '...'),
         'None of the above'
       ];
-      
-      // Apply pairwise distinctness rule
-      options = ensurePairwiseDistinctness(options, 0.25);
-      
-      // Ensure we have at least 3 semantically distinct options
-      if (options.length < 3) {
-        // Add generic distractors if we don't have enough distinct options
-        const genericOptions = ['All of the above', 'Both A and B', 'Cannot be determined'];
-        for (const generic of genericOptions) {
-          if (options.length < 4 && !options.includes(generic)) {
-            options.push(generic);
-          }
-        }
-      }
       
       questions.push({
         type: 'multiple-choice',
