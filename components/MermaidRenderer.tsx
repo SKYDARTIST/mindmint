@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import mermaid from 'mermaid';
 
 interface MermaidRendererProps {
   chart: string;
@@ -49,17 +50,6 @@ const MermaidRenderer: React.FC<MermaidRendererProps> = ({ chart, theme = 'light
       if (!chart) return;
       
       try {
-        // Dynamic import handling for reliability
-        let mermaid;
-        try {
-           const mod = await import("https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs");
-           mermaid = mod.default;
-        } catch (e) {
-           console.error("Failed to load Mermaid module", e);
-           if(isMounted) setError("Could not load visualization engine. Please check your connection.");
-           return;
-        }
-        
         const isDark = theme === 'dark';
         const hasClusters = chart.includes('subgraph');
 
