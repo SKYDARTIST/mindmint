@@ -6,6 +6,31 @@
 
 import { AppMode, MindmapLayout, FlashcardLayout, QuizLayout, SummaryLayout, InfographicLayout } from '../types';
 
+export interface ScoredIdea {
+  content: string;
+  importance: number;              // 1-100 importance score
+}
+
+export interface IdeaGraph {
+  centralThesis: ScoredIdea;           // 1 sentence - main idea/claim with score
+  supportingArguments: ScoredIdea[];   // 3-7 points that support the thesis
+  mechanisms: ScoredIdea[];            // 2-5 how/why mechanisms or causes
+  contrasts: ScoredIdea[];             // before-vs-after or contrast ideas if present
+  conclusions: ScoredIdea[];           // conclusions or takeaways if present
+}
+
+/**
+ * Helper function to select top content from scored ideas array
+ * Sorts by importance score (desc), slices to max, returns content strings
+ */
+function selectTopContent(ideas: ScoredIdea[], max: number): string[] {
+  if (!ideas || ideas.length === 0) return [];
+  return ideas
+    .sort((a, b) => b.importance - a.importance)
+    .slice(0, max)
+    .map(idea => idea.content);
+}
+
 export interface TextAnalysis {
   domain: string;
   intent: string;
@@ -14,6 +39,39 @@ export interface TextAnalysis {
   structure: 'linear' | 'hierarchical' | 'procedural' | 'descriptive' | 'comparative' | 'narrative';
   contentType: 'educational' | 'informational' | 'technical' | 'business' | 'academic' | 'casual';
   extractedIdeas: string[];
+  ideaGraph: IdeaGraph;            // NEW: Structured idea extraction
+}
+
+/**
+ * Mode-aware idea selection interface
+ * Each mode receives tailored, prioritized content based on its specific needs
+ */
+export interface ModeSpecificContent {
+  thesis: string;              // Central thesis for all modes
+  primaryContent: string[];    // Main content array (varies by mode)
+  secondaryContent: string[];  // Supporting content (varies by mode)
+  tertiaryContent: string[];   // Additional content (varies by mode)
+  selectionReason: string;     // Explanation of selection logic
+}
+
+/**
+ * Perspective enum for internal generation approach
+ * Determines how content is ordered and framed without adding new content
+ */
+export enum GenerationPerspective {
+  CAUSE_FIRST = 'cause-first',
+  EFFECT_FIRST = 'effect-first',
+  PROBLEM_FIRST = 'problem-first',
+  SOLUTION_FIRST = 'solution-first',
+  MECHANISM_FIRST = 'mechanism-first'
+}
+
+/**
+ * Enhanced content structure with perspective consideration
+ */
+export interface PerspectiveAwareContent extends ModeSpecificContent {
+  perspective: GenerationPerspective;  // Chosen perspective for this generation
+  perspectiveReason: string;           // Why this perspective was chosen
 }
 
 export interface StructuredPlan {
@@ -37,7 +95,14 @@ export function analyzeInputText(inputText: string): TextAnalysis {
       keyConcepts: [],
       structure: 'descriptive',
       contentType: 'informational',
-      extractedIdeas: []
+      extractedIdeas: [],
+      ideaGraph: {
+        centralThesis: { content: '', importance: 0 },
+        supportingArguments: [],
+        mechanisms: [],
+        contrasts: [],
+        conclusions: []
+      }
     };
   }
 
@@ -66,6 +131,9 @@ export function analyzeInputText(inputText: string): TextAnalysis {
   // Extract ALL distinct ideas for grounded expansion
   const extractedIdeas = extractAllIdeas(text, sentences);
 
+  // Extract structured idea graph BEFORE other analysis
+  const ideaGraph = extractIdeaGraph(text, sentences);
+
   return {
     domain,
     intent,
@@ -73,7 +141,8 @@ export function analyzeInputText(inputText: string): TextAnalysis {
     keyConcepts,
     structure,
     contentType,
-    extractedIdeas
+    extractedIdeas,
+    ideaGraph
   };
 }
 
@@ -130,6 +199,305 @@ function extractAllIdeas(text: string, sentences: string[]): string[] {
     .slice(0, 15); // Limit to prevent over-generation
   
   return uniqueIdeas.length > 0 ? uniqueIdeas : sentences.map(s => s.trim()).filter(s => s.length > 10);
+}
+
+/**
+ * INTERNAL: Extract structured IdeaGraph from input text
+ * Runs BEFORE any generation - no user-facing output
+ * Uses ONLY information from input text - never invents content
+ */
+function extractIdeaGraph(text: string, sentences: string[]): IdeaGraph {
+  const cleanSentences = sentences.filter(s => s.trim().length > 10);
+  
+  // Extract central thesis (1 sentence) - usually the first or most comprehensive sentence
+  const centralThesisText = extractCentralThesis(cleanSentences);
+  const centralThesis = {
+    content: centralThesisText,
+    importance: calculateImportanceScore(centralThesisText, 0, cleanSentences.length, cleanSentences)
+  };
+  
+  // Extract supporting arguments (3-7) - sentences that support the main idea
+  const supportingArgumentTexts = extractSupportingArguments(cleanSentences, centralThesisText);
+  const supportingArguments = supportingArgumentTexts.map((text, index) => ({
+    content: text,
+    importance: calculateImportanceScore(text, index + 1, cleanSentences.length, cleanSentences)
+  })).sort((a, b) => b.importance - a.importance); // Sort by importance
+  
+  // Extract mechanisms/causes (2-5) - how/why explanations
+  const mechanismTexts = extractMechanisms(cleanSentences);
+  const mechanisms = mechanismTexts.map((text, index) => ({
+    content: text,
+    importance: calculateImportanceScore(text, index + 1, cleanSentences.length, cleanSentences)
+  })).sort((a, b) => b.importance - a.importance); // Sort by importance
+  
+  // Extract contrasts (0+) - before-vs-after or contrast ideas if present
+  const contrastTexts = extractContrasts(cleanSentences);
+  const contrasts = contrastTexts.map((text, index) => ({
+    content: text,
+    importance: calculateImportanceScore(text, index + 1, cleanSentences.length, cleanSentences)
+  })).sort((a, b) => b.importance - a.importance); // Sort by importance
+  
+  // Extract conclusions (0+) - final takeaways if present
+  const conclusionTexts = extractConclusions(cleanSentences);
+  const conclusions = conclusionTexts.map((text, index) => ({
+    content: text,
+    importance: calculateImportanceScore(text, cleanSentences.length - index - 1, cleanSentences.length, cleanSentences)
+  })).sort((a, b) => b.importance - a.importance); // Sort by importance
+  
+  return {
+    centralThesis,
+    supportingArguments,
+    mechanisms,
+    contrasts,
+    conclusions
+  };
+}
+
+/**
+ * Calculate importance score for an idea using specified heuristics
+ */
+function calculateImportanceScore(
+  content: string,
+  position: number,
+  totalSentences: number,
+  allSentences: string[]
+): number {
+  let score = 50; // Base score
+
+  // Position heuristic: Intro/conclusion get higher scores
+  if (position === 0) {
+    score += 25; // First sentence (likely thesis)
+  } else if (position >= totalSentences - 2) {
+    score += 20; // Last 2 sentences (likely conclusion)
+  }
+
+  // Causal language heuristic
+  if (hasCausalLanguage(content)) {
+    score += 15;
+  }
+
+  // Repetition heuristic: Check how often key terms appear
+  const repetitionScore = calculateRepetitionScore(content, allSentences);
+  score += repetitionScore;
+
+  // Cross-reference heuristic: Check if other sentences reference this one
+  const crossReferenceScore = calculateCrossReferenceScore(content, allSentences);
+  score += crossReferenceScore;
+
+  // Ensure score is within 1-100 range
+  return Math.max(1, Math.min(100, score));
+}
+
+function hasCausalLanguage(content: string): boolean {
+  const causalPatterns = [
+    'causes', 'caused by', 'results in', 'leads to', 'because', 'due to',
+    'therefore', 'thus', 'hence', 'consequently', 'as a result',
+    'this leads to', 'this results in', 'this causes', 'this means'
+  ];
+  
+  const lowerContent = content.toLowerCase();
+  return causalPatterns.some(pattern => lowerContent.includes(pattern));
+}
+
+function calculateRepetitionScore(content: string, allSentences: string[]): number {
+  const contentWords = content.toLowerCase()
+    .split(/\W+/)
+    .filter(word => word.length > 3);
+  
+  let repetitionCount = 0;
+  const contentWordSet = new Set(contentWords);
+  
+  for (const sentence of allSentences) {
+    if (sentence === content) continue; // Don't count self-reference
+    
+    const sentenceWords = sentence.toLowerCase().split(/\W+/);
+    const overlappingWords = sentenceWords.filter(word =>
+      contentWordSet.has(word) && word.length > 3
+    );
+    
+    repetitionCount += overlappingWords.length;
+  }
+  
+  // Cap at 20 points for repetition
+  return Math.min(20, repetitionCount * 2);
+}
+
+function calculateCrossReferenceScore(content: string, allSentences: string[]): number {
+  const contentWords = content.toLowerCase()
+    .split(/\W+/)
+    .filter(word => word.length > 4); // Focus on significant words
+  
+  let crossReferenceCount = 0;
+  
+  for (const sentence of allSentences) {
+    if (sentence === content) continue;
+    
+    const sentenceLower = sentence.toLowerCase();
+    
+    // Check for explicit references
+    if (sentenceLower.includes('this') || sentenceLower.includes('that')) {
+      // Count how many of our significant words appear in referencing sentences
+      const referencedWords = contentWords.filter(word => sentenceLower.includes(word));
+      crossReferenceCount += referencedWords.length * 0.5;
+    }
+  }
+  
+  // Cap at 15 points for cross-reference
+  return Math.min(15, crossReferenceCount);
+}
+
+function extractCentralThesis(sentences: string[]): string {
+  if (sentences.length === 0) return '';
+  
+  // Usually the first sentence or the most comprehensive one
+  // Look for sentences with definitive language or topic sentences
+  const firstSentence = sentences[0].trim();
+  
+  // Check if first sentence is comprehensive enough (contains key terms)
+  const words = firstSentence.toLowerCase().split(/\W+/);
+  const hasKeyTerms = words.filter(w => w.length > 4).length >= 3;
+  
+  if (hasKeyTerms || sentences.length === 1) {
+    return firstSentence;
+  }
+  
+  // If first sentence is too short, look for most comprehensive sentence
+  let longestSentence = sentences[0];
+  for (const sentence of sentences) {
+    if (sentence.length > longestSentence.length) {
+      longestSentence = sentence;
+    }
+  }
+  
+  return longestSentence.trim();
+}
+
+function extractSupportingArguments(sentences: string[], centralThesis: string): string[] {
+  const argumentsList: string[] = [];
+  const thesisWords = centralThesis.toLowerCase().split(/\W+/);
+  
+  for (const sentence of sentences) {
+    // Skip the central thesis itself
+    if (sentence.trim() === centralThesis.trim()) continue;
+    
+    // Look for sentences that support or elaborate on the thesis
+    const sentenceWords = sentence.toLowerCase().split(/\W+/);
+    const commonWords = sentenceWords.filter(word =>
+      thesisWords.includes(word) && word.length > 3
+    );
+    
+    // If sentence shares significant vocabulary with thesis, it's likely supportive
+    if (commonWords.length >= 2) {
+      argumentsList.push(sentence.trim());
+    }
+    // Also include sentences with supportive language patterns
+    else if (hasSupportiveLanguage(sentence)) {
+      argumentsList.push(sentence.trim());
+    }
+  }
+  
+  // Ensure we have 3-7 arguments, pad with additional sentences if needed
+  while (argumentsList.length < 3 && argumentsList.length < sentences.length - 1) {
+    const remainingSentences = sentences.filter(s =>
+      s.trim() !== centralThesis.trim() &&
+      !argumentsList.includes(s.trim())
+    );
+    if (remainingSentences.length > 0) {
+      argumentsList.push(remainingSentences[0].trim());
+    } else {
+      break;
+    }
+  }
+  
+  return argumentsList.slice(0, 7); // Cap at 7
+}
+
+function extractMechanisms(sentences: string[]): string[] {
+  const mechanisms: string[] = [];
+  
+  for (const sentence of sentences) {
+    const lowerSentence = sentence.toLowerCase();
+    
+    // Look for mechanism/cause indicators
+    if (hasMechanismLanguage(lowerSentence)) {
+      mechanisms.push(sentence.trim());
+    }
+  }
+  
+  return mechanisms.slice(0, 5); // Cap at 5
+}
+
+function extractContrasts(sentences: string[]): string[] {
+  const contrasts: string[] = [];
+  
+  for (const sentence of sentences) {
+    const lowerSentence = sentence.toLowerCase();
+    
+    // Look for contrast indicators
+    if (hasContrastLanguage(lowerSentence)) {
+      contrasts.push(sentence.trim());
+    }
+  }
+  
+  return contrasts; // Return all found (could be 0)
+}
+
+function extractConclusions(sentences: string[]): string[] {
+  const conclusions: string[] = [];
+  
+  // Usually at the end, look for conclusive language
+  for (let i = sentences.length - 1; i >= Math.max(0, sentences.length - 3); i--) {
+    const sentence = sentences[i];
+    const lowerSentence = sentence.toLowerCase();
+    
+    if (hasConclusionLanguage(lowerSentence)) {
+      conclusions.push(sentence.trim());
+    }
+  }
+  
+  return conclusions; // Return all found (could be 0)
+}
+
+// Helper functions for language pattern detection
+function hasSupportiveLanguage(sentence: string): boolean {
+  const supportivePatterns = [
+    'this means', 'therefore', 'thus', 'which shows', 'demonstrates',
+    'indicates', 'suggests', 'proves', 'reveals', 'illustrates',
+    'because', 'since', 'as a result', 'leads to', 'results in'
+  ];
+  
+  const lowerSentence = sentence.toLowerCase();
+  return supportivePatterns.some(pattern => lowerSentence.includes(pattern));
+}
+
+function hasMechanismLanguage(sentence: string): boolean {
+  const mechanismPatterns = [
+    'by', 'through', 'via', 'using', 'method', 'process', 'system',
+    'mechanism', 'function', 'operates', 'works by', ' mechanism of',
+    'caused by', 'results from', 'due to', 'because of', 'leads to'
+  ];
+  
+  return mechanismPatterns.some(pattern => sentence.includes(pattern));
+}
+
+function hasContrastLanguage(sentence: string): boolean {
+  const contrastPatterns = [
+    'but', 'however', 'although', 'despite', 'whereas', 'while',
+    'versus', 'vs', 'compared to', 'in contrast', 'on the other hand',
+    'before', 'after', 'previously', 'formerly', 'historically'
+  ];
+  
+  return contrastPatterns.some(pattern => sentence.includes(pattern));
+}
+
+function hasConclusionLanguage(sentence: string): boolean {
+  const conclusionPatterns = [
+    'in conclusion', 'to summarize', 'overall', 'finally', 'ultimately',
+    'therefore', 'thus', 'hence', 'as a result', 'consequently',
+    'this shows', 'this demonstrates', 'the key point is', 'the main idea'
+  ];
+  
+  return conclusionPatterns.some(pattern => sentence.includes(pattern));
 }
 
 function detectDomain(text: string, words: string[]): string {
@@ -604,6 +972,273 @@ function getInfographicVisualRules(layout: InfographicLayout): any {
 }
 
 /**
+ * PERSPECTIVE SELECTION
+ * Analyzes content to determine optimal generation perspective
+ */
+function selectGenerationPerspective(ideaGraph: IdeaGraph, mode: AppMode): GenerationPerspective {
+  const allText = [
+    ideaGraph.centralThesis.content,
+    ...ideaGraph.supportingArguments.map(arg => arg.content),
+    ...ideaGraph.mechanisms.map(mech => mech.content),
+    ...ideaGraph.contrasts.map(contrast => contrast.content),
+    ...ideaGraph.conclusions.map(conclusion => conclusion.content)
+  ].join(' ').toLowerCase();
+
+  // Score each perspective based on content characteristics
+  const perspectiveScores = {
+    [GenerationPerspective.CAUSE_FIRST]: 0,
+    [GenerationPerspective.EFFECT_FIRST]: 0,
+    [GenerationPerspective.PROBLEM_FIRST]: 0,
+    [GenerationPerspective.SOLUTION_FIRST]: 0,
+    [GenerationPerspective.MECHANISM_FIRST]: 0
+  };
+
+  // Cause-first indicators
+  if (allText.includes('because') || allText.includes('due to') || allText.includes('caused by') ||
+      allText.includes('origin') || allText.includes('source') || allText.includes('reason')) {
+    perspectiveScores[GenerationPerspective.CAUSE_FIRST] += 2;
+  }
+
+  // Effect-first indicators
+  if (allText.includes('therefore') || allText.includes('result') || allText.includes('outcome') ||
+      allText.includes('consequence') || allText.includes('leads to') || allText.includes('thus')) {
+    perspectiveScores[GenerationPerspective.EFFECT_FIRST] += 2;
+  }
+
+  // Problem-first indicators
+  if (allText.includes('problem') || allText.includes('issue') || allText.includes('challenge') ||
+      allText.includes('difficulty') || allText.includes('obstacle') || allText.includes('conflict')) {
+    perspectiveScores[GenerationPerspective.PROBLEM_FIRST] += 2;
+  }
+
+  // Solution-first indicators
+  if (allText.includes('solution') || allText.includes('method') || allText.includes('approach') ||
+      allText.includes('strategy') || allText.includes('fix') || allText.includes('resolve')) {
+    perspectiveScores[GenerationPerspective.SOLUTION_FIRST] += 2;
+  }
+
+  // Mechanism-first indicators
+  if (allText.includes('how') || allText.includes('process') || allText.includes('mechanism') ||
+      allText.includes('system') || allText.includes('work') || allText.includes('function')) {
+    perspectiveScores[GenerationPerspective.MECHANISM_FIRST] += 2;
+  }
+
+  // Mode-specific biasing
+  switch (mode) {
+    case AppMode.QUIZ:
+      // Quizzes benefit from cause-effect perspectives
+      perspectiveScores[GenerationPerspective.CAUSE_FIRST] += 1;
+      perspectiveScores[GenerationPerspective.EFFECT_FIRST] += 1;
+      break;
+    case AppMode.FLASHCARDS:
+      // Flashcards work well with mechanism-first (how/why)
+      perspectiveScores[GenerationPerspective.MECHANISM_FIRST] += 1;
+      break;
+    case AppMode.INFOGRAPHIC:
+      // Infographics favor mechanism-first (process flow)
+      perspectiveScores[GenerationPerspective.MECHANISM_FIRST] += 1;
+      break;
+    case AppMode.SUMMARY:
+      // Summaries work with solution-first (logical flow)
+      perspectiveScores[GenerationPerspective.SOLUTION_FIRST] += 1;
+      break;
+  }
+
+  // Return the perspective with highest score
+  const maxScore = Math.max(...Object.values(perspectiveScores));
+  const selectedPerspective = Object.entries(perspectiveScores).find(([_, score]) => score === maxScore)?.[0] as GenerationPerspective;
+  
+  return selectedPerspective || GenerationPerspective.MECHANISM_FIRST; // Default fallback
+}
+
+/**
+ * Apply perspective-based ordering to content
+ * Rearranges content based on chosen perspective without adding new content
+ */
+interface OrderedPerspectiveContent {
+  rootElement: string;
+  orderedElements: string[];
+  primaryGroup: string[];
+  secondaryGroup: string[];
+}
+
+function applyPerspectiveOrdering(content: PerspectiveAwareContent): OrderedPerspectiveContent {
+  const { perspective, thesis, primaryContent, secondaryContent, tertiaryContent } = content;
+  const allElements = [thesis, ...primaryContent, ...secondaryContent, ...tertiaryContent].filter(Boolean);
+  
+  let rootElement = thesis;
+  let orderedElements = [...primaryContent];
+  
+  switch (perspective) {
+    case GenerationPerspective.CAUSE_FIRST:
+      // Put cause-related content first
+      const causeElements = allElements.filter(el =>
+        el.toLowerCase().includes('because') || el.toLowerCase().includes('due to') ||
+        el.toLowerCase().includes('origin') || el.toLowerCase().includes('reason')
+      );
+      orderedElements = [...causeElements, ...primaryContent.filter(el => !causeElements.includes(el))];
+      break;
+      
+    case GenerationPerspective.EFFECT_FIRST:
+      // Put effect/result content first
+      const effectElements = allElements.filter(el =>
+        el.toLowerCase().includes('therefore') || el.toLowerCase().includes('result') ||
+        el.toLowerCase().includes('outcome') || el.toLowerCase().includes('leads to')
+      );
+      orderedElements = [...effectElements, ...primaryContent.filter(el => !effectElements.includes(el))];
+      break;
+      
+    case GenerationPerspective.PROBLEM_FIRST:
+      // Put problem-related content first
+      const problemElements = allElements.filter(el =>
+        el.toLowerCase().includes('problem') || el.toLowerCase().includes('issue') ||
+        el.toLowerCase().includes('challenge') || el.toLowerCase().includes('difficulty')
+      );
+      orderedElements = [...problemElements, ...primaryContent.filter(el => !problemElements.includes(el))];
+      break;
+      
+    case GenerationPerspective.SOLUTION_FIRST:
+      // Put solution-related content first
+      const solutionElements = allElements.filter(el =>
+        el.toLowerCase().includes('solution') || el.toLowerCase().includes('method') ||
+        el.toLowerCase().includes('approach') || el.toLowerCase().includes('strategy')
+      );
+      orderedElements = [...solutionElements, ...primaryContent.filter(el => !solutionElements.includes(el))];
+      break;
+      
+    case GenerationPerspective.MECHANISM_FIRST:
+    default:
+      // Default: mechanisms/process first
+      const mechanismElements = allElements.filter(el =>
+        el.toLowerCase().includes('how') || el.toLowerCase().includes('process') ||
+        el.toLowerCase().includes('mechanism') || el.toLowerCase().includes('system')
+      );
+      orderedElements = [...mechanismElements, ...primaryContent.filter(el => !mechanismElements.includes(el))];
+      break;
+  }
+  
+  return {
+    rootElement,
+    orderedElements: orderedElements.slice(0, 8), // Limit for mindmap practicality
+    primaryGroup: orderedElements.slice(0, 3),
+    secondaryGroup: orderedElements.slice(3, 6)
+  };
+}
+
+/**
+ * MODE-AWARE IDEA SELECTION LAYER WITH PERSPECTIVE
+ * Selects and prioritizes ideas based on mode-specific requirements and chosen perspective
+ * Uses importance scores to ensure highest-quality content for each mode
+ */
+export function selectModeSpecificContent(
+  ideaGraph: IdeaGraph,
+  mode: AppMode,
+  layout: string
+): PerspectiveAwareContent {
+  const thesis = ideaGraph.centralThesis.content;
+  const perspective = selectGenerationPerspective(ideaGraph, mode);
+  
+  switch (mode) {
+    case AppMode.MINDMAP:
+      // Mindmap: 1 thesis + 5–7 highest-importance arguments/mechanisms
+      const mindmapContent = [
+        ...selectTopContent(ideaGraph.supportingArguments, 4),
+        ...selectTopContent(ideaGraph.mechanisms, 3)
+      ];
+      
+      return {
+        thesis,
+        primaryContent: mindmapContent,
+        secondaryContent: selectTopContent(ideaGraph.contrasts, 2),
+        tertiaryContent: selectTopContent(ideaGraph.conclusions, 1),
+        selectionReason: 'Selected highest-importance arguments and mechanisms for mindmap branches',
+        perspective,
+        perspectiveReason: `Chosen ${perspective} perspective for optimal mindmap structure`
+      };
+
+    case AppMode.FLASHCARDS:
+      // Flashcards: convert arguments/mechanisms into why/how Q&A
+      const flashcardContent = [
+        ...selectTopContent(ideaGraph.supportingArguments, 4), // "why" focused
+        ...selectTopContent(ideaGraph.mechanisms, 3)          // "how" focused
+      ];
+      
+      return {
+        thesis,
+        primaryContent: flashcardContent,
+        secondaryContent: selectTopContent(ideaGraph.contrasts, 2), // Comparison cards
+        tertiaryContent: selectTopContent(ideaGraph.conclusions, 1), // Summary cards
+        selectionReason: 'Prioritized arguments (why) and mechanisms (how) for Q&A format',
+        perspective,
+        perspectiveReason: `Applied ${perspective} perspective for effective question framing`
+      };
+
+    case AppMode.QUIZ:
+      // Quiz: use mechanisms, contrasts, and conclusions only (cause-effect focus)
+      const quizContent = [
+        ...selectTopContent(ideaGraph.mechanisms, 3),    // Process questions
+        ...selectTopContent(ideaGraph.contrasts, 2),     // Comparison questions
+        ...selectTopContent(ideaGraph.conclusions, 2)    // Outcome questions
+      ];
+      
+      return {
+        thesis,
+        primaryContent: quizContent,
+        secondaryContent: selectTopContent(ideaGraph.supportingArguments, 2), // Supporting evidence
+        tertiaryContent: [],
+        selectionReason: 'Focused on mechanisms, contrasts, and conclusions for cause-effect assessment',
+        perspective,
+        perspectiveReason: `Selected ${perspective} for optimal cause-effect question structure`
+      };
+
+    case AppMode.SUMMARY:
+      // Summary: reorder ideas logically (thesis → arguments → conclusion), never preserve input order
+      const summaryContent = [
+        thesis, // Always start with thesis
+        ...selectTopContent(ideaGraph.supportingArguments, 3), // Key supporting points
+        ...selectTopContent(ideaGraph.conclusions, 1)          // Final takeaway
+      ];
+      
+      return {
+        thesis,
+        primaryContent: summaryContent, // Logical flow: thesis → arguments → conclusion
+        secondaryContent: selectTopContent(ideaGraph.mechanisms, 2), // Process details
+        tertiaryContent: selectTopContent(ideaGraph.contrasts, 1),   // Context/contrast
+        selectionReason: 'Reordered for logical flow: thesis → supporting points → conclusion',
+        perspective,
+        perspectiveReason: `Structured with ${perspective} approach for coherent summary flow`
+      };
+
+    case AppMode.INFOGRAPHIC:
+      // Infographic: turn mechanisms into steps and contrasts into comparison sections
+      const infographicSteps = selectTopContent(ideaGraph.mechanisms, 4); // Process steps
+      const infographicComparisons = selectTopContent(ideaGraph.contrasts, 2); // Comparison sections
+      
+      return {
+        thesis,
+        primaryContent: infographicSteps,     // Main process flow
+        secondaryContent: infographicComparisons, // Comparison elements
+        tertiaryContent: selectTopContent(ideaGraph.supportingArguments, 2), // Supporting details
+        selectionReason: 'Structured mechanisms as steps and contrasts as comparisons',
+        perspective,
+        perspectiveReason: `Organized with ${perspective} perspective for visual flow optimization`
+      };
+
+    default:
+      // Fallback: use basic content selection
+      return {
+        thesis,
+        primaryContent: selectTopContent(ideaGraph.supportingArguments, 5),
+        secondaryContent: selectTopContent(ideaGraph.mechanisms, 3),
+        tertiaryContent: selectTopContent(ideaGraph.contrasts, 2),
+        selectionReason: 'Default selection based on importance scores',
+        perspective,
+        perspectiveReason: `Applied default ${perspective} perspective for basic generation`
+      };
+  }
+}
+
+/**
  * STEP 3: GENERATE
  * Execute the structured plan using only input text information
  */
@@ -613,17 +1248,21 @@ export function executeStructuredPlan(
 ): any {
   const { mode, layout, structure, outputConstraints } = plan;
 
+  // Apply mode-aware idea selection with perspective BEFORE generation
+  const analysis = analyzeInputText(inputText);
+  const selectedContent = selectModeSpecificContent(analysis.ideaGraph, mode, layout);
+
   switch (mode) {
     case AppMode.MINDMAP:
-      return generateMindmapFromPlan(inputText, structure, outputConstraints);
+      return generateMindmapFromPlan(inputText, structure, outputConstraints, selectedContent);
     case AppMode.FLASHCARDS:
-      return generateFlashcardsFromPlan(inputText, structure, outputConstraints);
+      return generateFlashcardsFromPlan(inputText, structure, outputConstraints, selectedContent);
     case AppMode.QUIZ:
-      return generateQuizFromPlan(inputText, structure, outputConstraints);
+      return generateQuizFromPlan(inputText, structure, outputConstraints, selectedContent);
     case AppMode.SUMMARY:
-      return generateSummaryFromPlan(inputText, structure, outputConstraints);
+      return generateSummaryFromPlan(inputText, structure, outputConstraints, selectedContent);
     case AppMode.INFOGRAPHIC:
-      return generateInfographicFromPlan(inputText, structure, outputConstraints);
+      return generateInfographicFromPlan(inputText, structure, outputConstraints, selectedContent);
     default:
       throw new Error(`Unsupported mode: ${mode}`);
   }
@@ -632,25 +1271,19 @@ export function executeStructuredPlan(
 function generateMindmapFromPlan(
   inputText: string,
   structure: any,
-  constraints: any
+  constraints: any,
+  selectedContent: PerspectiveAwareContent
 ): string {
-  // Use extracted ideas for better decomposition
-  const analysis = analyzeInputText(inputText);
-  const ideas = analysis.extractedIdeas;
-  
-  if (ideas.length < structure.minOutputCount) {
-    // Regenerate with more ideas if needed
-    return generateMindmapWithValidation(inputText, structure, constraints);
-  }
-
-  const mainTopic = ideas[0] || 'Main Topic';
-  const branches = ideas.slice(1, structure.minOutputCount);
-
+  // Apply perspective-based ordering and framing
+  const orderedContent = applyPerspectiveOrdering(selectedContent);
   let mermaidCode = '';
 
   switch (structure.layout) {
     case 'classic':
-      mermaidCode = `graph TD\nA["${mainTopic.slice(0, 40)}"]\n`;
+      // Perspective affects root choice and branch ordering
+      const rootNode = orderedContent.rootElement;
+      mermaidCode = `graph TD\nA["${rootNode.slice(0, 40)}"]\n`;
+      const branches = orderedContent.orderedElements.slice(0, Math.max(5, structure.minOutputCount - 1));
       branches.forEach((branch, i) => {
         const nodeId = String.fromCharCode(66 + i); // B, C, D, etc.
         mermaidCode += `${nodeId}["${branch.slice(0, 30)}"]\nA --> ${nodeId}\n`;
@@ -658,10 +1291,13 @@ function generateMindmapFromPlan(
       break;
 
     case 'chain':
+      // Linear progression with perspective-based ordering
       mermaidCode = `graph TD\n`;
-      ideas.slice(0, structure.minOutputCount).forEach((idea, i) => {
+      const chainElements = orderedContent.orderedElements.slice(0, structure.minOutputCount);
+      
+      chainElements.forEach((element, i) => {
         const nodeId = String.fromCharCode(65 + i); // A, B, C, etc.
-        const label = idea;
+        const label = element || `Step ${i + 1}`;
         mermaidCode += `${nodeId}["${label.slice(0, 30)}"]\n`;
         if (i > 0) {
           const prevId = String.fromCharCode(64 + i);
@@ -671,12 +1307,17 @@ function generateMindmapFromPlan(
       break;
 
     case 'layered':
-      const level1Items = branches.slice(0, 3);
-      const level2Items = branches.slice(3, 6);
-      mermaidCode = `graph TD\nRoot["${mainTopic.slice(0, 30)}"]\n`;
+      // Multi-level with perspective-based categorization
+      const level1Items = orderedContent.primaryGroup;
+      const level2Items = orderedContent.secondaryGroup;
+      
+      const rootLabel = orderedContent.rootElement.slice(0, 30);
+      mermaidCode = `graph TD\nRoot["${rootLabel}"]\n`;
       level1Items.forEach((item, i) => {
         const l1Id = `L1${String.fromCharCode(65 + i)}`;
-        mermaidCode += `${l1Id}["${item.slice(0, 25)}"]\nRoot --> ${l1Id}\n`;
+        const displayItem = item || `Category ${i + 1}`;
+        mermaidCode += `${l1Id}["${displayItem.slice(0, 25)}"]\nRoot --> ${l1Id}\n`;
+        
         const l2Item = level2Items[i] || `Detail ${i + 1}`;
         const l2Id = `L2${String.fromCharCode(65 + i)}1`;
         mermaidCode += `${l2Id}["${l2Item.slice(0, 20)}"]\n${l1Id} --> ${l2Id}\n`;
@@ -684,10 +1325,14 @@ function generateMindmapFromPlan(
       break;
 
     case 'flow':
-      mermaidCode = `graph LR\nA["${mainTopic.slice(0, 25)}"]\n`;
-      branches.forEach((branch, i) => {
+      // Left-to-right with perspective-based flow
+      mermaidCode = `graph LR\nA["${orderedContent.rootElement.slice(0, 25)}"]\n`;
+      const flowElements = orderedContent.orderedElements.slice(0, 4);
+      
+      flowElements.forEach((element, i) => {
         const nodeId = String.fromCharCode(66 + i);
-        mermaidCode += `${nodeId}["${branch.slice(0, 25)}"]\n`;
+        const label = element || `Element ${i + 1}`;
+        mermaidCode += `${nodeId}["${label.slice(0, 25)}"]\n`;
         if (i === 0) {
           mermaidCode += `A --> ${nodeId}\n`;
         } else {
@@ -698,7 +1343,7 @@ function generateMindmapFromPlan(
       break;
   }
 
-  return mermaidCode.trim();
+  return mermaidCode.trim() || generateMindmapWithValidation(inputText, structure, constraints);
 }
 
 function generateMindmapWithValidation(
@@ -723,10 +1368,9 @@ function generateMindmapWithValidation(
 function generateFlashcardsFromPlan(
   inputText: string,
   structure: any,
-  constraints: any
+  constraints: any,
+  selectedContent: ModeSpecificContent
 ): any[] {
-  const analysis = analyzeInputText(inputText);
-  const ideas = analysis.extractedIdeas;
   const cards = [];
 
   // Ensure minimum card count
@@ -734,67 +1378,107 @@ function generateFlashcardsFromPlan(
 
   switch (structure.layout) {
     case 'minimal':
-      ideas.slice(0, targetCount).forEach((idea, i) => {
+      // Create cards from thesis and primary content (why-focused arguments)
+      cards.push({
+        question: `What is the main thesis presented in the text?`,
+        answer: selectedContent.thesis,
+        tag: 'thesis'
+      });
+      
+      selectedContent.primaryContent.slice(0, targetCount - 1).forEach((argument, i) => {
         cards.push({
-          question: `What does the text explain about "${idea.slice(0, 40)}..."?`,
-          answer: idea,
-          tag: `basic-${Math.floor(i / 3) + 1}`
+          question: `What supporting evidence is provided for the main thesis?`,
+          answer: argument,
+          tag: `support-${i + 1}`
         });
       });
       break;
 
     case 'qa':
-      ideas.slice(0, targetCount).forEach((idea, i) => {
-        const keyTerm = extractKeyTerm(idea);
+      // Detailed Q&A from different content types
+      cards.push({
+        question: `Explain the central concept presented in this text.`,
+        answer: selectedContent.thesis,
+        tag: 'main-concept'
+      });
+      
+      // How-focused: mechanisms become process questions
+      selectedContent.primaryContent.slice(0, Math.ceil((targetCount - 1) / 2)).forEach((mechanism, i) => {
         cards.push({
-          question: `Explain the concept of "${keyTerm}" as presented in the text.`,
-          answer: idea,
-          tag: `qa-${i + 1}`
+          question: `How does the process described in the text work?`,
+          answer: mechanism,
+          tag: `process-${i + 1}`
+        });
+      });
+      
+      // Why-focused: supporting arguments become evidence questions
+      selectedContent.secondaryContent.slice(0, Math.floor((targetCount - 1) / 2)).forEach((argument, i) => {
+        cards.push({
+          question: `What evidence supports the main argument?`,
+          answer: argument,
+          tag: `evidence-${i + 1}`
         });
       });
       break;
 
     case 'keyword':
-      const keywords = extractKeywords(inputText);
+      // Term-definition pairs from all content
+      const allContent = [
+        selectedContent.thesis,
+        ...selectedContent.primaryContent,
+        ...selectedContent.secondaryContent
+      ];
+      const keywords = extractKeywords(allContent.join(' '));
       keywords.slice(0, targetCount).forEach((keyword, i) => {
-        const context = findKeywordContext(keyword, inputText);
         cards.push({
           question: keyword,
-          answer: context || 'Definition not explicitly provided in text',
+          answer: findKeywordInSelectedContent(keyword, selectedContent) || 'Definition not explicitly provided in text',
           tag: 'keyword'
         });
       });
       break;
 
     case 'chunked':
-      // Group related ideas
-      for (let i = 0; i < Math.min(targetCount, ideas.length); i += 2) {
-        const group = ideas.slice(i, i + 2);
+      // Group related concepts from all content layers
+      const chunkedContent = [
+        ...selectedContent.primaryContent,
+        ...selectedContent.secondaryContent,
+        ...selectedContent.tertiaryContent
+      ].slice(0, targetCount);
+      
+      chunkedContent.forEach((chunk, i) => {
         cards.push({
-          question: `Related concepts: ${group.map(g => g.slice(0, 20)).join(', ')}`,
-          answer: group.join(' and '),
-          tag: `group-${Math.floor(i / 2) + 1}`
+          question: `Related concepts: ${chunk.slice(0, 30)}...`,
+          answer: chunk,
+          tag: `chunk-${i + 1}`
         });
-      }
+      });
       break;
 
     case 'scenario':
-      ideas.slice(0, targetCount).forEach((idea, i) => {
+      // Situation-response cards from all content
+      const scenarios = [
+        selectedContent.thesis,
+        ...selectedContent.primaryContent,
+        ...selectedContent.secondaryContent
+      ].slice(0, targetCount);
+      
+      scenarios.forEach((scenario, i) => {
         cards.push({
-          question: `Given the information that "${idea.slice(0, 50)}...", what would be the appropriate response?`,
-          answer: `Based on the text: ${idea}`,
+          question: `Based on the information that "${scenario.slice(0, 50)}...", what conclusion can be drawn?`,
+          answer: `According to the text: ${scenario}`,
           tag: `scenario-${i + 1}`
         });
       });
       break;
   }
 
-  // Validation: ensure minimum count
+  // Validation: ensure minimum count using tertiary content if needed
   while (cards.length < structure.minOutputCount) {
-    const extraIdea = ideas[cards.length] || 'Additional concept from text';
+    const fallbackContent = selectedContent.tertiaryContent[cards.length] || 'Additional concept from text';
     cards.push({
       question: `What additional information does the text provide?`,
-      answer: extraIdea,
+      answer: fallbackContent,
       tag: `extra-${cards.length + 1}`
     });
   }
@@ -805,66 +1489,73 @@ function generateFlashcardsFromPlan(
 function generateQuizFromPlan(
   inputText: string,
   structure: any,
-  constraints: any
+  constraints: any,
+  selectedContent: ModeSpecificContent
 ): any[] {
-  const analysis = analyzeInputText(inputText);
-  const ideas = analysis.extractedIdeas;
   const questions = [];
 
   // Ensure minimum question count
   const targetCount = Math.max(structure.minOutputCount, 4);
 
-  ideas.slice(0, targetCount).forEach((idea, i) => {
+  // Create questions from mode-specific content (mechanisms, contrasts, conclusions focus)
+  const questionSources = [
+    { content: selectedContent.thesis, type: 'thesis' },
+    ...selectedContent.primaryContent.map(content => ({ content, type: 'primary' })),
+    ...selectedContent.secondaryContent.map(content => ({ content, type: 'secondary' })),
+    ...selectedContent.tertiaryContent.map(content => ({ content, type: 'tertiary' }))
+  ].filter(item => item.content && item.content.length > 10);
+
+  questionSources.slice(0, targetCount).forEach((source, i) => {
     const questionType = structure.questionTypes[i % structure.questionTypes.length];
     
     if (questionType === 'true-false') {
       questions.push({
         type: 'true-false',
-        question: `Based on the text, is the following statement true: "${idea.slice(0, 60)}..."?`,
+        question: `Based on the text, is the following statement true: "${source.content.slice(0, 60)}..."?`,
         options: ['True', 'False'],
         correctAnswer: 'True',
-        explanation: idea,
-        meta: { difficulty: constraints.difficulty, style: structure.layout }
+        explanation: source.content,
+        meta: { difficulty: constraints.difficulty, style: structure.layout, category: source.type }
       });
     } else if (questionType === 'multiple-choice') {
-      // Create multiple choice from the idea plus related ideas
-      const relatedIdeas = ideas.filter((related, idx) => idx !== i).slice(0, 3);
+      // Create multiple choice from the source plus other sources
+      const relatedSources = questionSources.filter((related, idx) => idx !== i).slice(0, 3);
       const options = [
-        idea.slice(0, 40) + '...',
-        ...relatedIdeas.map(ri => ri.slice(0, 35) + '...'),
+        source.content.slice(0, 40) + '...',
+        ...relatedSources.map(ri => ri.content.slice(0, 35) + '...'),
         'None of the above'
       ];
       
       questions.push({
         type: 'multiple-choice',
-        question: `According to the text, what is mentioned about "${idea.slice(0, 50)}..."?`,
+        question: `According to the text, what is mentioned about "${source.content.slice(0, 50)}..."?`,
         options: options.slice(0, 4),
-        correctAnswer: idea.slice(0, 40) + '...',
-        explanation: idea,
-        meta: { difficulty: constraints.difficulty, style: structure.layout }
+        correctAnswer: source.content.slice(0, 40) + '...',
+        explanation: source.content,
+        meta: { difficulty: constraints.difficulty, style: structure.layout, category: source.type }
       });
     } else {
       questions.push({
         type: 'short-answer',
-        question: `What does the text say about "${idea.slice(0, 50)}..."?`,
+        question: `What does the text say about "${source.content.slice(0, 50)}..."?`,
         options: [],
-        correctAnswer: idea,
-        explanation: idea,
-        meta: { difficulty: constraints.difficulty, style: structure.layout }
+        correctAnswer: source.content,
+        explanation: source.content,
+        meta: { difficulty: constraints.difficulty, style: structure.layout, category: source.type }
       });
     }
   });
 
-  // Validation: ensure minimum count
+  // Validation: ensure minimum count using tertiary content if needed
   while (questions.length < structure.minOutputCount) {
-    const extraIdea = ideas[questions.length] || 'Additional concept from text';
+    const fallbackContent = selectedContent.tertiaryContent[questions.length] || 'Additional concept from text';
     questions.push({
       type: 'true-false',
-      question: `Based on the text, is this statement true: "${extraIdea.slice(0, 60)}..."?`,
+      question: `Based on the text, is this statement true: "${fallbackContent.slice(0, 60)}..."?`,
       options: ['True', 'False'],
       correctAnswer: 'True',
-      explanation: extraIdea,
-      meta: { difficulty: constraints.difficulty, style: structure.layout }
+      explanation: fallbackContent,
+      meta: { difficulty: constraints.difficulty, style: structure.layout, category: 'extra' }
     });
   }
 
@@ -874,48 +1565,66 @@ function generateQuizFromPlan(
 function generateSummaryFromPlan(
   inputText: string,
   structure: any,
-  constraints: any
+  constraints: any,
+  selectedContent: ModeSpecificContent
 ): string {
-  const analysis = analyzeInputText(inputText);
-  const ideas = analysis.extractedIdeas;
-  
   switch (structure.layout) {
     case 'executive':
-      // Combine multiple ideas into cohesive paragraph
-      const keyPoints = ideas.slice(0, 4);
-      return keyPoints.join('. ') + (keyPoints.length > 0 ? '.' : '');
+      // Use logical flow: thesis → primary content → conclusion
+      const executivePoints = [
+        selectedContent.thesis,
+        ...selectedContent.primaryContent.slice(0, 2), // Key supporting points
+        ...selectedContent.tertiaryContent.slice(0, 1)  // Final takeaway
+      ].filter(point => point && point.length > 10);
+      
+      return executivePoints.join('. ') + (executivePoints.length > 0 ? '.' : '');
 
     case 'bullet':
-      // Create bullets from distinct ideas
-      const bullets = ideas.slice(0, constraints.length.bullets).map(idea => 
-        `• ${paraphraseForBullet(idea)}`
-      );
+      // Create bullets from all content layers
+      const bullets = [
+        `• Central thesis: ${selectedContent.thesis.slice(0, 50)}...`,
+        ...selectedContent.primaryContent.slice(0, 2).map(arg => `• Supporting evidence: ${arg.slice(0, 45)}...`),
+        ...selectedContent.secondaryContent.slice(0, 2).map(mech => `• Process/mechanism: ${mech.slice(0, 45)}...`),
+        ...selectedContent.tertiaryContent.slice(0, 1).map(contrast => `• Contrast: ${contrast.slice(0, 45)}...`)
+      ].slice(0, constraints.length.bullets);
+      
       return bullets.join('\n');
 
     case 'notes':
-      // Create study notes with labels
+      // Create study notes with labeled sections
       const notes = [
-        `Definitions: ${ideas[0] || 'Main concept'}`,
-        `Key Points: ${ideas.slice(1, 4).map(idea => idea.slice(0, 30)).join('; ')}`,
-        `Important: ${ideas[4] || 'Focus on primary relationships'}`,
-        `Summary: ${ideas[0] || 'Central theme established'}`
+        `Central Thesis: ${selectedContent.thesis || 'Main concept not clearly identified'}`,
+        `Supporting Arguments: ${selectedContent.primaryContent.slice(0, 3).map(arg => arg.slice(0, 40)).join('; ') || 'No specific arguments identified'}`,
+        `Key Mechanisms: ${selectedContent.secondaryContent.slice(0, 2).map(mech => mech.slice(0, 40)).join('; ') || 'No mechanisms identified'}`,
+        `Conclusions: ${selectedContent.tertiaryContent.slice(0, 2).join('; ') || 'No explicit conclusions'}`,
+        `Selection Logic: ${selectedContent.selectionReason}`
       ];
       return notes.join('\n');
 
     case 'infostructured':
       return `## Overview
-${ideas[0] || 'Main concept'}
+${selectedContent.thesis || 'Main concept'}
 
 ## Key Elements
-• ${ideas[1] || 'Primary element'}
-• ${ideas[2] || 'Secondary element'}
-• ${ideas[3] || 'Supporting element'}
+• Thesis: ${selectedContent.thesis.slice(0, 60) || 'Central idea'}
+• Evidence: ${selectedContent.primaryContent[0]?.slice(0, 50) || 'Primary supporting point'}
+• Process: ${selectedContent.secondaryContent[0]?.slice(0, 50) || 'Key mechanism'}
+• Contrast: ${selectedContent.tertiaryContent[0]?.slice(0, 50) || 'Comparative element'}
 
 ## Summary
-${ideas.slice(0, 2).join('. ')}`;
+${[
+  selectedContent.thesis,
+  ...selectedContent.primaryContent.slice(0, 1),
+  ...selectedContent.tertiaryContent.slice(0, 1)
+].filter(point => point && point.length > 10).join('. ')}`;
 
     default:
-      return ideas.slice(0, 3).join('. ');
+      // Fallback to thesis and primary content
+      const defaultPoints = [
+        selectedContent.thesis,
+        ...selectedContent.primaryContent.slice(0, 2)
+      ].filter(point => point && point.length > 10);
+      return defaultPoints.join('. ');
   }
 }
 
@@ -931,22 +1640,33 @@ function paraphraseForBullet(idea: string): string {
 function generateInfographicFromPlan(
   inputText: string,
   structure: any,
-  constraints: any
+  constraints: any,
+  selectedContent: ModeSpecificContent
 ): any {
-  const analysis = analyzeInputText(inputText);
-  const ideas = analysis.extractedIdeas;
+  const title = selectedContent.thesis || 'Generated Infographic';
   
-  const title = ideas[0] || 'Generated Infographic';
-  const sections = ideas.slice(1, structure.minOutputCount);
+  // Create sections from mode-specific content (mechanisms as steps, contrasts as comparisons)
+  const sections = [
+    { title: 'Central Thesis', content: selectedContent.thesis, icon: 'star' },
+    ...selectedContent.primaryContent.map(content => ({
+      title: 'Process Step', content, icon: 'arrow'
+    })),
+    ...selectedContent.secondaryContent.map(content => ({
+      title: 'Comparison', content, icon: 'dot'
+    })),
+    ...selectedContent.tertiaryContent.map(content => ({
+      title: 'Supporting Detail', content, icon: 'check'
+    }))
+  ].filter(section => section.content && section.content.length > 10).slice(0, structure.minOutputCount);
   
   return {
     title: title,
-    tagline: 'Structured information from input text',
+    tagline: `Mode-aware selection: ${selectedContent.selectionReason}`,
     layout: structure.layout,
     steps: sections.map((section, i) => ({
-      title: section.slice(0, 30) || `Section ${i + 1}`,
-      description: section,
-      icon: ['star', 'arrow', 'check', 'dot', 'bulb', 'target'][i % 6],
+      title: section.title,
+      description: section.content.slice(0, 80) + (section.content.length > 80 ? '...' : ''),
+      icon: section.icon,
       accent: ['blue', 'green', 'purple', 'orange', 'red', 'gray'][i % 6]
     }))
   };
@@ -973,6 +1693,33 @@ function extractKeywords(text: string): string[] {
 
 function findKeywordContext(keyword: string, text: string): string {
   const sentences = text.split(/[.!?]+/);
+  const sentence = sentences.find(s => s.toLowerCase().includes(keyword.toLowerCase()));
+  return sentence?.trim() || '';
+}
+
+function findKeywordInSelectedContent(keyword: string, selectedContent: ModeSpecificContent): string {
+  const allContent = [
+    selectedContent.thesis,
+    ...selectedContent.primaryContent,
+    ...selectedContent.secondaryContent,
+    ...selectedContent.tertiaryContent
+  ].join(' ');
+  
+  const sentences = allContent.split(/[.!?]+/);
+  const sentence = sentences.find(s => s.toLowerCase().includes(keyword.toLowerCase()));
+  return sentence?.trim() || '';
+}
+
+function findKeywordContextInIdeaGraph(keyword: string, ideaGraph: IdeaGraph): string {
+  const allText = [
+    ideaGraph.centralThesis.content,
+    ...selectTopContent(ideaGraph.supportingArguments, 10),
+    ...selectTopContent(ideaGraph.mechanisms, 5),
+    ...selectTopContent(ideaGraph.contrasts, 3),
+    ...selectTopContent(ideaGraph.conclusions, 3)
+  ].join(' ');
+  
+  const sentences = allText.split(/[.!?]+/);
   const sentence = sentences.find(s => s.toLowerCase().includes(keyword.toLowerCase()));
   return sentence?.trim() || '';
 }
