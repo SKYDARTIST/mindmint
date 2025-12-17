@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "mermaid": "^11.12.2",
     "next": "^16.0.10",
     "openai": "^6.10.0",
     "react": "^19.2.3",
