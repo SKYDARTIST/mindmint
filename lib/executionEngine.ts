@@ -11,6 +11,164 @@ export interface ScoredIdea {
   importance: number;              // 1-100 importance score
 }
 
+/**
+ * SEMANTIC COMPRESSION & DE-DUPLICATION
+ * Prevents paragraph-level repetition, duplicated ideas, and filler output
+ * while preserving strict grounding to input text
+ */
+
+/**
+ * Compress ideas to prevent duplication and enforce mode-specific length limits
+ * Editorial compression only - no creative rewriting
+ */
+function compressIdeas(
+  ideas: ScoredIdea[],
+  options: { maxLength: number; dedupeThreshold: number }
+): ScoredIdea[] {
+  if (!ideas || ideas.length === 0) return [];
+
+  // Step 1: Length compression - shorten ideas that exceed max length
+  const lengthCompressed = ideas.map(idea => ({
+    ...idea,
+    content: compressToLength(idea.content, options.maxLength)
+  }));
+
+  // Step 2: De-duplication based on token overlap
+  const deduplicated = removeSemanticDuplicates(lengthCompressed, options.dedupeThreshold);
+
+  // Step 3: Sort by importance and ensure uniqueness
+  const uniqueSorted = deduplicated
+    .sort((a, b) => b.importance - a.importance)
+    .filter((idea, index, arr) =>
+      // Keep only unique content strings
+      arr.findIndex(i => i.content.toLowerCase().trim() === idea.content.toLowerCase().trim()) === index
+    );
+
+  return uniqueSorted;
+}
+
+/**
+ * Compress content to specified length using only words present in original
+ * Editorial compression to noun phrases or causal/process statements
+ */
+function compressToLength(content: string, maxLength: number): string {
+  if (content.length <= maxLength) return content;
+
+  // Extract key terms from the original content
+  const words = content.split(/\W+/).filter(word => word.length > 2);
+  const originalWords = new Set(words.map(w => w.toLowerCase()));
+
+  // If it's a long sentence, try to extract the core concept
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  if (sentences.length > 1) {
+    // Use the shortest meaningful sentence as the compressed version
+    const shortSentence = sentences
+      .map(s => s.trim())
+      .filter(s => s.length > 10)
+      .sort((a, b) => a.length - b.length)[0];
+    
+    if (shortSentence && shortSentence.length <= maxLength) {
+      return shortSentence;
+    }
+  }
+
+  // If it's a single long sentence, extract key noun phrase
+  // Look for patterns like "[noun phrase] [verb] [object]" and keep just the noun phrase
+  const keyPatterns = [
+    /^(.{10,30})\s+(causes?|results?\s+in|leads?\s+to|means?|indicates?\s+)/i,
+    /^(.{10,30})\s+(is\s+an?\s+|is\s+the\s+|represents?\s+|involves?\s+)/i,
+    /^(.{10,30})\s+(process|mechanism|system|method|approach)/i
+  ];
+
+  for (const pattern of keyPatterns) {
+    const match = content.match(pattern);
+    if (match && match[1] && match[1].length <= maxLength) {
+      return match[1].trim();
+    }
+  }
+
+  // Fallback: take first maxLength characters
+  return content.slice(0, maxLength).trim() + (content.length > maxLength ? '...' : '');
+}
+
+/**
+ * Remove semantically duplicated ideas based on token overlap threshold
+ * Keeps the idea with higher importance score
+ */
+function removeSemanticDuplicates(ideas: ScoredIdea[], threshold: number): ScoredIdea[] {
+  const result: ScoredIdea[] = [];
+  
+  for (const idea of ideas) {
+    let isDuplicate = false;
+    
+    for (const existing of result) {
+      const overlap = calculateTokenOverlap(idea.content, existing.content);
+      if (overlap > threshold) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    
+    if (!isDuplicate) {
+      result.push(idea);
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Calculate semantic overlap between two text strings based on meaningful tokens
+ */
+function calculateTokenOverlap(text1: string, text2: string): number {
+  // Extract meaningful tokens (ignore common stop words)
+  const stopWords = new Set([
+    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
+    'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has',
+    'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
+    'this', 'that', 'these', 'those', 'it', 'its', 'they', 'them', 'their', 'there',
+    'here', 'where', 'when', 'what', 'which', 'who', 'whom', 'whose', 'why', 'how'
+  ]);
+
+  const tokens1 = text1.toLowerCase()
+    .split(/\W+/)
+    .filter(token => token.length > 3 && !stopWords.has(token));
+  
+  const tokens2 = text2.toLowerCase()
+    .split(/\W+/)
+    .filter(token => token.length > 3 && !stopWords.has(token));
+
+  const set1 = new Set(tokens1);
+  const set2 = new Set(tokens2);
+
+  // Calculate Jaccard similarity (intersection over union)
+  const intersection = new Set([...set1].filter(token => set2.has(token)));
+  const union = new Set([...set1, ...set2]);
+
+  return union.size === 0 ? 0 : intersection.size / union.size;
+}
+
+/**
+ * Get mode-specific compression settings
+ */
+function getCompressionSettings(mode: AppMode): { maxLength: number; dedupeThreshold: number } {
+  switch (mode) {
+    case AppMode.MINDMAP:
+      return { maxLength: 60, dedupeThreshold: 0.6 };
+    case AppMode.FLASHCARDS:
+      return { maxLength: 160, dedupeThreshold: 0.7 };
+    case AppMode.QUIZ:
+      return { maxLength: 120, dedupeThreshold: 0.6 };
+    case AppMode.SUMMARY:
+      return { maxLength: 240, dedupeThreshold: 0.5 };
+    case AppMode.INFOGRAPHIC:
+      return { maxLength: 80, dedupeThreshold: 0.6 };
+    default:
+      return { maxLength: 100, dedupeThreshold: 0.6 };
+  }
+}
+
+
 export interface IdeaGraph {
   centralThesis: ScoredIdea;           // 1 sentence - main idea/claim with score
   supportingArguments: ScoredIdea[];   // 3-7 points that support the thesis
@@ -1126,8 +1284,9 @@ function applyPerspectiveOrdering(content: PerspectiveAwareContent): OrderedPers
 }
 
 /**
- * MODE-AWARE IDEA SELECTION LAYER WITH PERSPECTIVE
+ * MODE-AWARE IDEA SELECTION LAYER WITH PERSPECTIVE AND COMPRESSION
  * Selects and prioritizes ideas based on mode-specific requirements and chosen perspective
+ * Applies semantic compression and de-duplication to prevent repetition and enforce length limits
  * Uses importance scores to ensure highest-quality content for each mode
  */
 export function selectModeSpecificContent(
@@ -1137,54 +1296,61 @@ export function selectModeSpecificContent(
 ): PerspectiveAwareContent {
   const thesis = ideaGraph.centralThesis.content;
   const perspective = selectGenerationPerspective(ideaGraph, mode);
+  const compressionSettings = getCompressionSettings(mode);
+  
+  // Apply compression to all idea categories AFTER importance scoring
+  const compressedSupportingArguments = compressIdeas(ideaGraph.supportingArguments, compressionSettings);
+  const compressedMechanisms = compressIdeas(ideaGraph.mechanisms, compressionSettings);
+  const compressedContrasts = compressIdeas(ideaGraph.contrasts, compressionSettings);
+  const compressedConclusions = compressIdeas(ideaGraph.conclusions, compressionSettings);
   
   switch (mode) {
     case AppMode.MINDMAP:
-      // Mindmap: 1 thesis + 5–7 highest-importance arguments/mechanisms
+      // Mindmap: 1 thesis + 5–7 highest-importance arguments/mechanisms (after compression)
       const mindmapContent = [
-        ...selectTopContent(ideaGraph.supportingArguments, 4),
-        ...selectTopContent(ideaGraph.mechanisms, 3)
+        ...selectTopContent(compressedSupportingArguments, 4),
+        ...selectTopContent(compressedMechanisms, 3)
       ];
       
       return {
-        thesis,
+        thesis: compressToLength(thesis, compressionSettings.maxLength),
         primaryContent: mindmapContent,
-        secondaryContent: selectTopContent(ideaGraph.contrasts, 2),
-        tertiaryContent: selectTopContent(ideaGraph.conclusions, 1),
+        secondaryContent: selectTopContent(compressedContrasts, 2),
+        tertiaryContent: selectTopContent(compressedConclusions, 1),
         selectionReason: 'Selected highest-importance arguments and mechanisms for mindmap branches',
         perspective,
         perspectiveReason: `Chosen ${perspective} perspective for optimal mindmap structure`
       };
 
     case AppMode.FLASHCARDS:
-      // Flashcards: convert arguments/mechanisms into why/how Q&A
+      // Flashcards: convert arguments/mechanisms into why/how Q&A (after compression)
       const flashcardContent = [
-        ...selectTopContent(ideaGraph.supportingArguments, 4), // "why" focused
-        ...selectTopContent(ideaGraph.mechanisms, 3)          // "how" focused
+        ...selectTopContent(compressedSupportingArguments, 4), // "why" focused
+        ...selectTopContent(compressedMechanisms, 3)          // "how" focused
       ];
       
       return {
-        thesis,
+        thesis: compressToLength(thesis, compressionSettings.maxLength),
         primaryContent: flashcardContent,
-        secondaryContent: selectTopContent(ideaGraph.contrasts, 2), // Comparison cards
-        tertiaryContent: selectTopContent(ideaGraph.conclusions, 1), // Summary cards
+        secondaryContent: selectTopContent(compressedContrasts, 2), // Comparison cards
+        tertiaryContent: selectTopContent(compressedConclusions, 1), // Summary cards
         selectionReason: 'Prioritized arguments (why) and mechanisms (how) for Q&A format',
         perspective,
         perspectiveReason: `Applied ${perspective} perspective for effective question framing`
       };
 
     case AppMode.QUIZ:
-      // Quiz: use mechanisms, contrasts, and conclusions only (cause-effect focus)
+      // Quiz: use mechanisms, contrasts, and conclusions only (cause-effect focus, after compression)
       const quizContent = [
-        ...selectTopContent(ideaGraph.mechanisms, 3),    // Process questions
-        ...selectTopContent(ideaGraph.contrasts, 2),     // Comparison questions
-        ...selectTopContent(ideaGraph.conclusions, 2)    // Outcome questions
+        ...selectTopContent(compressedMechanisms, 3),    // Process questions
+        ...selectTopContent(compressedContrasts, 2),     // Comparison questions
+        ...selectTopContent(compressedConclusions, 2)    // Outcome questions
       ];
       
       return {
-        thesis,
+        thesis: compressToLength(thesis, compressionSettings.maxLength),
         primaryContent: quizContent,
-        secondaryContent: selectTopContent(ideaGraph.supportingArguments, 2), // Supporting evidence
+        secondaryContent: selectTopContent(compressedSupportingArguments, 2), // Supporting evidence
         tertiaryContent: [],
         selectionReason: 'Focused on mechanisms, contrasts, and conclusions for cause-effect assessment',
         perspective,
@@ -1192,45 +1358,45 @@ export function selectModeSpecificContent(
       };
 
     case AppMode.SUMMARY:
-      // Summary: reorder ideas logically (thesis → arguments → conclusion), never preserve input order
+      // Summary: reorder ideas logically (thesis → arguments → conclusion), never preserve input order (after compression)
       const summaryContent = [
-        thesis, // Always start with thesis
-        ...selectTopContent(ideaGraph.supportingArguments, 3), // Key supporting points
-        ...selectTopContent(ideaGraph.conclusions, 1)          // Final takeaway
+        compressToLength(thesis, compressionSettings.maxLength), // Always start with compressed thesis
+        ...selectTopContent(compressedSupportingArguments, 3), // Key supporting points
+        ...selectTopContent(compressedConclusions, 1)          // Final takeaway
       ];
       
       return {
-        thesis,
+        thesis: compressToLength(thesis, compressionSettings.maxLength),
         primaryContent: summaryContent, // Logical flow: thesis → arguments → conclusion
-        secondaryContent: selectTopContent(ideaGraph.mechanisms, 2), // Process details
-        tertiaryContent: selectTopContent(ideaGraph.contrasts, 1),   // Context/contrast
+        secondaryContent: selectTopContent(compressedMechanisms, 2), // Process details
+        tertiaryContent: selectTopContent(compressedContrasts, 1),   // Context/contrast
         selectionReason: 'Reordered for logical flow: thesis → supporting points → conclusion',
         perspective,
         perspectiveReason: `Structured with ${perspective} approach for coherent summary flow`
       };
 
     case AppMode.INFOGRAPHIC:
-      // Infographic: turn mechanisms into steps and contrasts into comparison sections
-      const infographicSteps = selectTopContent(ideaGraph.mechanisms, 4); // Process steps
-      const infographicComparisons = selectTopContent(ideaGraph.contrasts, 2); // Comparison sections
+      // Infographic: turn mechanisms into steps and contrasts into comparison sections (after compression)
+      const infographicSteps = selectTopContent(compressedMechanisms, 4); // Process steps
+      const infographicComparisons = selectTopContent(compressedContrasts, 2); // Comparison sections
       
       return {
-        thesis,
+        thesis: compressToLength(thesis, compressionSettings.maxLength),
         primaryContent: infographicSteps,     // Main process flow
         secondaryContent: infographicComparisons, // Comparison elements
-        tertiaryContent: selectTopContent(ideaGraph.supportingArguments, 2), // Supporting details
+        tertiaryContent: selectTopContent(compressedSupportingArguments, 2), // Supporting details
         selectionReason: 'Structured mechanisms as steps and contrasts as comparisons',
         perspective,
         perspectiveReason: `Organized with ${perspective} perspective for visual flow optimization`
       };
 
     default:
-      // Fallback: use basic content selection
+      // Fallback: use basic content selection (with compression)
       return {
-        thesis,
-        primaryContent: selectTopContent(ideaGraph.supportingArguments, 5),
-        secondaryContent: selectTopContent(ideaGraph.mechanisms, 3),
-        tertiaryContent: selectTopContent(ideaGraph.contrasts, 2),
+        thesis: compressToLength(thesis, compressionSettings.maxLength),
+        primaryContent: selectTopContent(compressedSupportingArguments, 5),
+        secondaryContent: selectTopContent(compressedMechanisms, 3),
+        tertiaryContent: selectTopContent(compressedContrasts, 2),
         selectionReason: 'Default selection based on importance scores',
         perspective,
         perspectiveReason: `Applied default ${perspective} perspective for basic generation`
@@ -1474,16 +1640,8 @@ function generateFlashcardsFromPlan(
   }
 
   // Validation: ensure minimum count using tertiary content if needed
-  while (cards.length < structure.minOutputCount) {
-    const fallbackContent = selectedContent.tertiaryContent[cards.length] || 'Additional concept from text';
-    cards.push({
-      question: `What additional information does the text provide?`,
-      answer: fallbackContent,
-      tag: `extra-${cards.length + 1}`
-    });
-  }
-
-  return cards.slice(0, structure.maxOutputCount);
+  // If insufficient content remains after compression, reduce output count instead of adding filler
+  return cards.slice(0, Math.min(cards.length, structure.maxOutputCount));
 }
 
 function generateQuizFromPlan(
@@ -1547,19 +1705,8 @@ function generateQuizFromPlan(
   });
 
   // Validation: ensure minimum count using tertiary content if needed
-  while (questions.length < structure.minOutputCount) {
-    const fallbackContent = selectedContent.tertiaryContent[questions.length] || 'Additional concept from text';
-    questions.push({
-      type: 'true-false',
-      question: `Based on the text, is this statement true: "${fallbackContent.slice(0, 60)}..."?`,
-      options: ['True', 'False'],
-      correctAnswer: 'True',
-      explanation: fallbackContent,
-      meta: { difficulty: constraints.difficulty, style: structure.layout, category: 'extra' }
-    });
-  }
-
-  return questions.slice(0, structure.maxOutputCount);
+  // If insufficient content remains after compression, reduce output count instead of adding filler
+  return questions.slice(0, Math.min(questions.length, structure.maxOutputCount));
 }
 
 function generateSummaryFromPlan(
