@@ -10,7 +10,7 @@ export enum AppMode {
 export type MindmapLayout = 'classic' | 'flow' | 'layered' | 'chain';
 export type FlashcardLayout = 'minimal' | 'qa' | 'keyword' | 'chunked' | 'scenario';
 export type QuizLayout = 'classic' | 'mcq-heavy' | 'tf-speed' | 'scenario' | 'mixed';
-export type SummaryLayout = 'executive' | 'bullet' | 'story' | 'notes' | 'infostructured';
+export type SummaryLayout = 'executive' | 'bullet' | 'notes' | 'infostructured';
 export type InfographicLayout = 'three_column' | 'timeline' | 'pillars' | 'flow' | 'comparison';
 
 export interface Flashcard {

@@ -247,18 +247,64 @@ const generateMockInfographic = (text: string, layout: string) => {
 };
 
 const generateMockSummary = (text: string, layout: string) => {
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim()).slice(0, 5);
-  const mainPoints = sentences.map(s => s.trim()).join(' ');
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim()).slice(0, 8);
+  const keyPoints = sentences.slice(0, 6).map(s => s.trim());
   
   switch (layout) {
     case 'bullet':
-      return mainPoints.split(/\n/).map(point => `• ${point.trim()}`).join('\n');
+      // Bullet points only - 5-7 bullets, one idea each
+      const bulletPoints = [
+        "Core concept identifies primary themes and methodologies",
+        "Key findings reveal significant patterns in the data",
+        "Main implications suggest strategic opportunities ahead",
+        "Critical factors determine success in implementation",
+        "Essential components require focused attention",
+        "Important considerations shape final outcomes",
+        "Significant benefits emerge from systematic approach"
+      ];
+      return bulletPoints.slice(0, 6).map(point => `• ${point}`).join('\n');
+      
     case 'executive':
-      return `## Executive Summary\n\n**Main Thesis:** ${mainPoints.slice(0, 100)}...\n\n**Key Findings:**\n${sentences.slice(0, 3).map(s => `- ${s.trim()}`).join('\n')}`;
-    case 'story':
-      return `## Story Summary\n\n${mainPoints}`;
+      // Max 3-4 short sentences, no bullet points
+      return "Analysis reveals fundamental shifts in market dynamics and consumer behavior patterns. Strategic opportunities emerge through systematic evaluation of core competencies and emerging trends. Implementation requires coordinated effort across multiple functional areas with clear accountability measures. Results demonstrate measurable impact on organizational performance metrics.";
+      
+    case 'notes':
+      // Study-style notes, line-by-line format
+      const notes = [
+        "Core Concept: Primary framework analysis",
+        "Key Terms: Methodology, strategy, implementation",
+        "Main Points: Data-driven insights, strategic planning",
+        "Definitions: KPI = Key Performance Indicator",
+        "Important: Timeline critical for success",
+        "Abbrev: ROI = Return on Investment",
+        "Summary: Focus on measurable outcomes"
+      ];
+      return notes.join('\n');
+      
+    case 'infostructured':
+      // Headings with sub-points, clear hierarchy
+      return `## Overview
+Fundamental analysis reveals critical insights for strategic decision-making.
+
+## Key Findings
+• Primary market opportunities identified
+• Competitive advantages clearly defined
+• Implementation roadmap established
+• Resource allocation optimized
+
+## Strategic Implications
+• Immediate actions required within 30 days
+• Long-term planning spans 12-18 months
+• Risk mitigation strategies implemented
+• Success metrics clearly defined
+
+## Next Steps
+• Execute phase one initiatives
+• Monitor progress against benchmarks
+• Adjust strategies based on feedback`;
+      
     default:
-      return `## Summary\n\n${mainPoints}`;
+      return `## Summary\n\n${keyPoints.join('. ')}`;
   }
 };
 
@@ -398,15 +444,52 @@ Text:\n${inputText}`;
         break;
 
       case AppMode.SUMMARY:
-        systemInstruction = "You are a professional editor. Output clean Markdown.";
-        userPrompt = `Summarize the text in this format: ${layout}.
-        - executive: Business headers, bold thesis.
-        - bullet: Bullet points only.
-        - story: Narrative flow.
-        - notes: Cornell style (## Headers, - bullets).
-        - infostructured: Emoji headers.
+        systemInstruction = "You are a professional editor specializing in distinct summary formats.";
+        let summaryInstructions = "";
         
-        Text:\n${inputText}`;
+        if (layout === 'executive') {
+          summaryInstructions = `LAYOUT: EXECUTIVE
+STRICT REQUIREMENTS:
+- Maximum 3-4 short sentences total
+- NO bullet points or lists
+- NO examples or storytelling
+- DO NOT reuse input phrasing - use fresh language
+- Concise, professional tone
+- Focus on core insights only`;
+        } else if (layout === 'bullet') {
+          summaryInstructions = `LAYOUT: BULLET
+STRICT REQUIREMENTS:
+- Bullet points ONLY - no paragraphs
+- Maximum 5-7 bullets
+- One distinct idea per bullet
+- NO explanations or examples
+- Keep bullets under 15 words each
+- Start each bullet with strong action verb or key concept`;
+        } else if (layout === 'notes') {
+          summaryInstructions = `LAYOUT: NOTES
+STRICT REQUIREMENTS:
+- Short study-style notes format
+- Line-by-line structure
+- Can include definitions or abbreviations
+- Concise, informal tone
+- Key terms and concepts only
+- No long explanations`;
+        } else if (layout === 'infostructured') {
+          summaryInstructions = `LAYOUT: STRUCTURED
+STRICT REQUIREMENTS:
+- Use clear headings with sub-points
+- Hierarchical structure with ## headers
+- NO long paragraphs
+- Break complex ideas into sub-points
+- Logical flow from general to specific
+- Clean markdown formatting only`;
+        } else {
+          summaryInstructions = "Create a clean, well-structured summary with clear organization.";
+        }
+
+        userPrompt = `${summaryInstructions}
+
+Text:\n${inputText}`;
         break;
     }
 

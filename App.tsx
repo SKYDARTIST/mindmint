@@ -106,7 +106,6 @@ const QUIZ_LAYOUTS: { id: QuizLayout; label: string }[] = [
 const SUMMARY_LAYOUTS: { id: SummaryLayout; label: string }[] = [
   { id: 'executive', label: 'Executive' },
   { id: 'bullet', label: 'Bullet' },
-  { id: 'story', label: 'Story' },
   { id: 'notes', label: 'Notes' },
   { id: 'infostructured', label: 'Structured' },
 ];
