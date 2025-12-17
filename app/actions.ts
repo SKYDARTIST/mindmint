@@ -29,7 +29,7 @@ export async function generateContentAction(
       return generateRateLimitFallback(mode, layout, rateLimitResult.resetTime);
     }
 
-    const result = await generateContent(mode, inputText, layout as any);
+const result = await generateContent(mode, inputText, layout as any, true); // Use execution engine by default
     return result;
   } catch (error) {
     console.error("Server action error:", error);

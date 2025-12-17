@@ -13,6 +13,7 @@ export interface TextAnalysis {
   keyConcepts: string[];
   structure: 'linear' | 'hierarchical' | 'procedural' | 'descriptive' | 'comparative' | 'narrative';
   contentType: 'educational' | 'informational' | 'technical' | 'business' | 'academic' | 'casual';
+  extractedIdeas: string[];
 }
 
 export interface StructuredPlan {
@@ -24,8 +25,8 @@ export interface StructuredPlan {
 }
 
 /**
- * STEP 1: UNDERSTAND
- * Analyze input text to extract domain, intent, audience level, key concepts, structure
+ * STEP 1: UNDERSTAND - Extract ALL distinct ideas for grounded expansion
+ * GROUNDED EXPANSION RULE: May split/paraphrase/group input ideas, but MUST NOT add external concepts
  */
 export function analyzeInputText(inputText: string): TextAnalysis {
   if (!inputText || typeof inputText !== 'string') {
@@ -35,7 +36,8 @@ export function analyzeInputText(inputText: string): TextAnalysis {
       audienceLevel: 'mixed',
       keyConcepts: [],
       structure: 'descriptive',
-      contentType: 'informational'
+      contentType: 'informational',
+      extractedIdeas: []
     };
   }
 
@@ -60,6 +62,9 @@ export function analyzeInputText(inputText: string): TextAnalysis {
   
   // Content type detection
   const contentType = detectContentType(text, words);
+  
+  // Extract ALL distinct ideas for grounded expansion
+  const extractedIdeas = extractAllIdeas(text, sentences);
 
   return {
     domain,
@@ -67,8 +72,64 @@ export function analyzeInputText(inputText: string): TextAnalysis {
     audienceLevel,
     keyConcepts,
     structure,
-    contentType
+    contentType,
+    extractedIdeas
   };
+}
+
+function extractAllIdeas(text: string, sentences: string[]): string[] {
+  const ideas: string[] = [];
+  
+  // Extract individual sentences as base ideas
+  sentences.forEach(sentence => {
+    const trimmed = sentence.trim();
+    if (trimmed.length > 10) {
+      ideas.push(trimmed);
+    }
+  });
+  
+  // Split longer sentences into multiple concepts
+  const expandedIdeas: string[] = [];
+  ideas.forEach(idea => {
+    if (idea.length > 100) {
+      // Split long sentences by conjunctions and commas
+      const subIdeas = idea.split(/[,;]|(?:\s+and\s+)|(?:\s+but\s+)|(?:\s+or\s+)/i)
+        .map(sub => sub.trim())
+        .filter(sub => sub.length > 15);
+      expandedIdeas.push(...subIdeas);
+    } else {
+      expandedIdeas.push(idea);
+    }
+  });
+  
+  // Extract key phrases and concepts
+  const words = text.toLowerCase().split(/\W+/);
+  const importantPhrases: string[] = [];
+  
+  // Find noun phrases (simple extraction)
+  for (let i = 0; i < words.length - 1; i++) {
+    if (words[i].length > 4 && words[i + 1].length > 3) {
+      const phrase = `${words[i]} ${words[i + 1]}`;
+      if (!importantPhrases.includes(phrase)) {
+        importantPhrases.push(phrase);
+      }
+    }
+  }
+  
+  // Combine all ideas, ensuring we have enough for minimum requirements
+  const allIdeas = [...expandedIdeas];
+  
+  // Add important phrases if we need more content
+  if (allIdeas.length < 6) {
+    allIdeas.push(...importantPhrases.slice(0, 6 - allIdeas.length));
+  }
+  
+  // Remove duplicates and filter
+  const uniqueIdeas = [...new Set(allIdeas)]
+    .filter(idea => idea.length > 8)
+    .slice(0, 15); // Limit to prevent over-generation
+  
+  return uniqueIdeas.length > 0 ? uniqueIdeas : sentences.map(s => s.trim()).filter(s => s.length > 10);
 }
 
 function detectDomain(text: string, words: string[]): string {
@@ -208,6 +269,12 @@ export function createStructuredPlan(
       break;
   }
 
+  // ENFORCE MINIMUM OUTPUT COUNTS
+  const minRequirements = getMinimumRequirements(mode);
+  structure.minOutputCount = minRequirements.count;
+  structure.maxOutputCount = minRequirements.maxCount;
+  structure.validationRequired = true;
+
   return {
     mode,
     layout,
@@ -215,6 +282,23 @@ export function createStructuredPlan(
     groundingRules,
     outputConstraints
   };
+}
+
+function getMinimumRequirements(mode: AppMode): { count: number; maxCount: number } {
+  switch (mode) {
+    case AppMode.MINDMAP:
+      return { count: 6, maxCount: 12 }; // 6–12 concepts
+    case AppMode.FLASHCARDS:
+      return { count: 5, maxCount: 10 }; // 5–10 concepts
+    case AppMode.QUIZ:
+      return { count: 4, maxCount: 6 }; // 4–6 testable statements
+    case AppMode.SUMMARY:
+      return { count: 3, maxCount: 8 }; // All major points grouped
+    case AppMode.INFOGRAPHIC:
+      return { count: 4, maxCount: 6 }; // headline + 3–6 sections
+    default:
+      return { count: 1, maxCount: 5 };
+  }
 }
 
 function generateGroundingRules(analysis: TextAnalysis, mode: AppMode): string[] {
@@ -550,9 +634,17 @@ function generateMindmapFromPlan(
   structure: any,
   constraints: any
 ): string {
-  const sentences = inputText.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  const mainTopic = sentences[0]?.trim() || 'Main Topic';
-  const branches = sentences.slice(1, constraints.nodeCount - 1).map(s => s.trim());
+  // Use extracted ideas for better decomposition
+  const analysis = analyzeInputText(inputText);
+  const ideas = analysis.extractedIdeas;
+  
+  if (ideas.length < structure.minOutputCount) {
+    // Regenerate with more ideas if needed
+    return generateMindmapWithValidation(inputText, structure, constraints);
+  }
+
+  const mainTopic = ideas[0] || 'Main Topic';
+  const branches = ideas.slice(1, structure.minOutputCount);
 
   let mermaidCode = '';
 
@@ -567,9 +659,9 @@ function generateMindmapFromPlan(
 
     case 'chain':
       mermaidCode = `graph TD\n`;
-      branches.forEach((branch, i) => {
+      ideas.slice(0, structure.minOutputCount).forEach((idea, i) => {
         const nodeId = String.fromCharCode(65 + i); // A, B, C, etc.
-        const label = i === 0 ? mainTopic : branch;
+        const label = idea;
         mermaidCode += `${nodeId}["${label.slice(0, 30)}"]\n`;
         if (i > 0) {
           const prevId = String.fromCharCode(64 + i);
@@ -609,31 +701,54 @@ function generateMindmapFromPlan(
   return mermaidCode.trim();
 }
 
+function generateMindmapWithValidation(
+  inputText: string,
+  structure: any,
+  constraints: any
+): string {
+  // Fallback: generate with sentence splitting
+  const sentences = inputText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const mainTopic = sentences[0]?.trim() || 'Main Topic';
+  const branches = sentences.slice(1, structure.minOutputCount).map(s => s.trim());
+  
+  let mermaidCode = `graph TD\nA["${mainTopic.slice(0, 40)}"]\n`;
+  branches.forEach((branch, i) => {
+    const nodeId = String.fromCharCode(66 + i);
+    mermaidCode += `${nodeId}["${branch.slice(0, 30)}"]\nA --> ${nodeId}\n`;
+  });
+  
+  return mermaidCode.trim();
+}
+
 function generateFlashcardsFromPlan(
   inputText: string,
   structure: any,
   constraints: any
 ): any[] {
-  const sentences = inputText.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const analysis = analyzeInputText(inputText);
+  const ideas = analysis.extractedIdeas;
   const cards = [];
+
+  // Ensure minimum card count
+  const targetCount = Math.max(structure.minOutputCount, 5);
 
   switch (structure.layout) {
     case 'minimal':
-      sentences.slice(0, constraints.cardCount).forEach((sentence, i) => {
+      ideas.slice(0, targetCount).forEach((idea, i) => {
         cards.push({
-          question: `What does the text say about "${sentence.trim().slice(0, 40)}..."?`,
-          answer: sentence.trim(),
+          question: `What does the text explain about "${idea.slice(0, 40)}..."?`,
+          answer: idea,
           tag: `basic-${Math.floor(i / 3) + 1}`
         });
       });
       break;
 
     case 'qa':
-      sentences.slice(0, constraints.cardCount).forEach((sentence, i) => {
-        const keyTerm = extractKeyTerm(sentence);
+      ideas.slice(0, targetCount).forEach((idea, i) => {
+        const keyTerm = extractKeyTerm(idea);
         cards.push({
           question: `Explain the concept of "${keyTerm}" as presented in the text.`,
-          answer: sentence.trim(),
+          answer: idea,
           tag: `qa-${i + 1}`
         });
       });
@@ -641,7 +756,7 @@ function generateFlashcardsFromPlan(
 
     case 'keyword':
       const keywords = extractKeywords(inputText);
-      keywords.slice(0, constraints.cardCount).forEach((keyword, i) => {
+      keywords.slice(0, targetCount).forEach((keyword, i) => {
         const context = findKeywordContext(keyword, inputText);
         cards.push({
           question: keyword,
@@ -650,9 +765,41 @@ function generateFlashcardsFromPlan(
         });
       });
       break;
+
+    case 'chunked':
+      // Group related ideas
+      for (let i = 0; i < Math.min(targetCount, ideas.length); i += 2) {
+        const group = ideas.slice(i, i + 2);
+        cards.push({
+          question: `Related concepts: ${group.map(g => g.slice(0, 20)).join(', ')}`,
+          answer: group.join(' and '),
+          tag: `group-${Math.floor(i / 2) + 1}`
+        });
+      }
+      break;
+
+    case 'scenario':
+      ideas.slice(0, targetCount).forEach((idea, i) => {
+        cards.push({
+          question: `Given the information that "${idea.slice(0, 50)}...", what would be the appropriate response?`,
+          answer: `Based on the text: ${idea}`,
+          tag: `scenario-${i + 1}`
+        });
+      });
+      break;
   }
 
-  return cards;
+  // Validation: ensure minimum count
+  while (cards.length < structure.minOutputCount) {
+    const extraIdea = ideas[cards.length] || 'Additional concept from text';
+    cards.push({
+      question: `What additional information does the text provide?`,
+      answer: extraIdea,
+      tag: `extra-${cards.length + 1}`
+    });
+  }
+
+  return cards.slice(0, structure.maxOutputCount);
 }
 
 function generateQuizFromPlan(
@@ -660,39 +807,68 @@ function generateQuizFromPlan(
   structure: any,
   constraints: any
 ): any[] {
-  const sentences = inputText.split(/[.!?]+/).filter(s => s.trim().length > 15);
+  const analysis = analyzeInputText(inputText);
+  const ideas = analysis.extractedIdeas;
   const questions = [];
 
-  sentences.slice(0, constraints.questionCount).forEach((sentence, i) => {
+  // Ensure minimum question count
+  const targetCount = Math.max(structure.minOutputCount, 4);
+
+  ideas.slice(0, targetCount).forEach((idea, i) => {
     const questionType = structure.questionTypes[i % structure.questionTypes.length];
     
     if (questionType === 'true-false') {
       questions.push({
         type: 'true-false',
-        question: `Based on the text, is the following statement true: "${sentence.trim().slice(0, 60)}..."?`,
+        question: `Based on the text, is the following statement true: "${idea.slice(0, 60)}..."?`,
         options: ['True', 'False'],
         correctAnswer: 'True',
-        explanation: sentence.trim(),
+        explanation: idea,
+        meta: { difficulty: constraints.difficulty, style: structure.layout }
+      });
+    } else if (questionType === 'multiple-choice') {
+      // Create multiple choice from the idea plus related ideas
+      const relatedIdeas = ideas.filter((related, idx) => idx !== i).slice(0, 3);
+      const options = [
+        idea.slice(0, 40) + '...',
+        ...relatedIdeas.map(ri => ri.slice(0, 35) + '...'),
+        'None of the above'
+      ];
+      
+      questions.push({
+        type: 'multiple-choice',
+        question: `According to the text, what is mentioned about "${idea.slice(0, 50)}..."?`,
+        options: options.slice(0, 4),
+        correctAnswer: idea.slice(0, 40) + '...',
+        explanation: idea,
         meta: { difficulty: constraints.difficulty, style: structure.layout }
       });
     } else {
       questions.push({
-        type: 'multiple-choice',
-        question: `According to the text, what is mentioned about "${sentence.trim().slice(0, 50)}..."?`,
-        options: [
-          sentence.trim().slice(0, 40) + '...',
-          'Alternative interpretation',
-          'Different perspective',
-          'Unrelated concept'
-        ],
-        correctAnswer: sentence.trim().slice(0, 40) + '...',
-        explanation: sentence.trim(),
+        type: 'short-answer',
+        question: `What does the text say about "${idea.slice(0, 50)}..."?`,
+        options: [],
+        correctAnswer: idea,
+        explanation: idea,
         meta: { difficulty: constraints.difficulty, style: structure.layout }
       });
     }
   });
 
-  return questions;
+  // Validation: ensure minimum count
+  while (questions.length < structure.minOutputCount) {
+    const extraIdea = ideas[questions.length] || 'Additional concept from text';
+    questions.push({
+      type: 'true-false',
+      question: `Based on the text, is this statement true: "${extraIdea.slice(0, 60)}..."?`,
+      options: ['True', 'False'],
+      correctAnswer: 'True',
+      explanation: extraIdea,
+      meta: { difficulty: constraints.difficulty, style: structure.layout }
+    });
+  }
+
+  return questions.slice(0, structure.maxOutputCount);
 }
 
 function generateSummaryFromPlan(
@@ -700,43 +876,56 @@ function generateSummaryFromPlan(
   structure: any,
   constraints: any
 ): string {
-  const sentences = inputText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const analysis = analyzeInputText(inputText);
+  const ideas = analysis.extractedIdeas;
   
   switch (structure.layout) {
     case 'executive':
-      const keyPoints = sentences.slice(0, 4).map(s => s.trim());
+      // Combine multiple ideas into cohesive paragraph
+      const keyPoints = ideas.slice(0, 4);
       return keyPoints.join('. ') + (keyPoints.length > 0 ? '.' : '');
 
     case 'bullet':
-      const bullets = sentences.slice(0, constraints.length.bullets).map(s => 
-        `• ${s.trim().split(' ').slice(0, 12).join(' ')}...`
+      // Create bullets from distinct ideas
+      const bullets = ideas.slice(0, constraints.length.bullets).map(idea => 
+        `• ${paraphraseForBullet(idea)}`
       );
       return bullets.join('\n');
 
     case 'notes':
+      // Create study notes with labels
       const notes = [
-        `Definitions: ${sentences[0]?.trim() || 'Main concept'}`,
-        `Key Points: ${sentences.slice(1, 4).map(s => s.trim()).join('; ')}`,
-        `Important: ${sentences[4]?.trim() || 'Focus on primary relationships'}`,
-        `Summary: ${sentences[0]?.trim() || 'Central theme established'}`
+        `Definitions: ${ideas[0] || 'Main concept'}`,
+        `Key Points: ${ideas.slice(1, 4).map(idea => idea.slice(0, 30)).join('; ')}`,
+        `Important: ${ideas[4] || 'Focus on primary relationships'}`,
+        `Summary: ${ideas[0] || 'Central theme established'}`
       ];
       return notes.join('\n');
 
     case 'infostructured':
       return `## Overview
-${sentences[0]?.trim() || 'Main concept'}
+${ideas[0] || 'Main concept'}
 
 ## Key Elements
-• ${sentences[1]?.trim() || 'Primary element'}
-• ${sentences[2]?.trim() || 'Secondary element'}
-• ${sentences[3]?.trim() || 'Supporting element'}
+• ${ideas[1] || 'Primary element'}
+• ${ideas[2] || 'Secondary element'}
+• ${ideas[3] || 'Supporting element'}
 
 ## Summary
-${sentences.slice(0, 2).map(s => s.trim()).join('. ')}`;
+${ideas.slice(0, 2).join('. ')}`;
 
     default:
-      return sentences.slice(0, 3).map(s => s.trim()).join('. ');
+      return ideas.slice(0, 3).join('. ');
   }
+}
+
+function paraphraseForBullet(idea: string): string {
+  // Simple paraphrasing for bullets
+  const words = idea.split(' ');
+  if (words.length > 12) {
+    return words.slice(0, 12).join(' ') + '...';
+  }
+  return idea;
 }
 
 function generateInfographicFromPlan(
@@ -744,15 +933,19 @@ function generateInfographicFromPlan(
   structure: any,
   constraints: any
 ): any {
-  const steps = inputText.split(/\n+/).filter(line => line.trim()).slice(0, 6);
+  const analysis = analyzeInputText(inputText);
+  const ideas = analysis.extractedIdeas;
+  
+  const title = ideas[0] || 'Generated Infographic';
+  const sections = ideas.slice(1, structure.minOutputCount);
   
   return {
-    title: steps[0]?.trim() || 'Generated Infographic',
+    title: title,
     tagline: 'Structured information from input text',
     layout: structure.layout,
-    steps: steps.map((step, i) => ({
-      title: step.trim().slice(0, 30) || `Step ${i + 1}`,
-      description: `Information extracted from input text`,
+    steps: sections.map((section, i) => ({
+      title: section.slice(0, 30) || `Section ${i + 1}`,
+      description: section,
       icon: ['star', 'arrow', 'check', 'dot', 'bulb', 'target'][i % 6],
       accent: ['blue', 'green', 'purple', 'orange', 'red', 'gray'][i % 6]
     }))
