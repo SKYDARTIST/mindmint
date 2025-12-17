@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { AppMode, MindmapLayout, FlashcardLayout, QuizLayout, SummaryLayout, InfographicLayout } from "../types";
+import { executeMindMintEngine } from "../lib/executionEngine";
 
 // Server-side only OpenAI client
 // This service should only be used in server actions or API routes
@@ -316,13 +317,26 @@ ${keyPoints.slice(0, 2).join('. ')}`;
 export const generateContent = async (
   mode: AppMode,
   inputText: string,
-  layout: MindmapLayout | FlashcardLayout | QuizLayout | SummaryLayout | InfographicLayout = 'classic'
+  layout: MindmapLayout | FlashcardLayout | QuizLayout | SummaryLayout | InfographicLayout = 'classic',
+  useExecutionEngine: boolean = true
 ): Promise<any> => {
   
   // Ensure inputText is valid
   if (!inputText || typeof inputText !== 'string') {
     console.warn("Invalid input text provided");
     return getFallbackContent(mode, layout);
+  }
+  
+  // Use Execution Engine for strict grounding (default behavior)
+  if (useExecutionEngine) {
+    try {
+      console.log("Using MindMint Execution Engine for strict grounding");
+      return executeMindMintEngine(inputText, mode, layout);
+    } catch (error) {
+      console.error("Execution Engine error:", error);
+      // Fall back to traditional method if execution engine fails
+      console.log("Falling back to traditional generation method");
+    }
   }
   
   // Use mock data if no valid API key or no OpenAI client
