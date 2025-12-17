@@ -75,14 +75,42 @@ const generateMermaidFallback = (text: string, layout: string = 'classic'): stri
       return `graph TD\n${chainNodes}\n${chainLinks}`;
       
     case 'cluster':
-      // Hierarchical top-to-bottom structure
-      const vertIds = parts.map((_, i) => `V${i}`);
-      const vertNodes = vertIds.map((id, i) => `${id}["${parts[i].slice(0, 40)}"]`).join("\n");
-      const vertLinks = vertIds.slice(0, -1).map((id, i) => `${id} --> ${vertIds[i + 1]}`).join("\n");
-      return `graph TD\n${vertNodes}\n${vertLinks}`;
+    case 'layered':
+      // ENFORCED MULTI-LEVEL HIERARCHY - must always have 3 levels
+      // Level 0: Root (1 node)
+      // Level 1: 3 children minimum
+      // Level 2: At least 1 child per Level 1 node
+      const clusterCenter = parts[0]?.slice(0, 30) || 'Main Topic';
+      const clusterL1A = parts[1]?.slice(0, 25) || 'Category A';
+      const clusterL1B = parts[2]?.slice(0, 25) || 'Category B';
+      const clusterL1C = parts[3]?.slice(0, 25) || 'Category C';
+      const clusterL2A1 = parts[4]?.slice(0, 20) || 'Detail A.1';
+      const clusterL2A2 = 'Sub-point A.2';
+      const clusterL2B1 = parts[5]?.slice(0, 20) || 'Detail B.1';
+      const clusterL2C1 = 'Detail C.1';
+      const clusterL2C2 = 'Detail C.2';
       
-    default: // classic, flow, radial
-      // Hub-and-spoke structure
+      return `graph TD
+Root["${clusterCenter}"]
+L1A["${clusterL1A}"]
+L1B["${clusterL1B}"]
+L1C["${clusterL1C}"]
+L2A1["${clusterL2A1}"]
+L2A2["${clusterL2A2}"]
+L2B1["${clusterL2B1}"]
+L2C1["${clusterL2C1}"]
+L2C2["${clusterL2C2}"]
+Root --> L1A
+Root --> L1B
+Root --> L1C
+L1A --> L2A1
+L1A --> L2A2
+L1B --> L2B1
+L1C --> L2C1
+L1C --> L2C2`;
+      
+    default: // classic, flow
+      // Hub-and-spoke structure - FLAT ONLY
       const classicIds = parts.map((_, i) => `N${i}`);
       const centerId = classicIds[0] || "N0";
       const branchIds = classicIds.slice(1);
@@ -115,19 +143,29 @@ const generateMockMindmap = (text: string, layout: string): string => {
     E --> F`;
     
     case 'cluster':
-      // Explicit top-to-bottom hierarchy with clear levels
+    case 'layered':
+      // ENFORCED MULTI-LEVEL HIERARCHY - must always have 3 levels minimum
+      // Level 0: Root (1 node)
+      // Level 1: At least 3 children of root
+      // Level 2: At least 1 child per Level 1 node
       return `graph TD
-    A[${center}]
-    B[${topics[1]?.slice(0, 25) || 'Level 1'}]
-    C[${topics[2]?.slice(0, 25) || 'Level 1'}]
-    D[${topics[3]?.slice(0, 25) || 'Level 2'}]
-    E[${topics[4]?.slice(0, 25) || 'Level 2'}]
-    F[${topics[5]?.slice(0, 25) || 'Level 2'}]
-    A --> B
-    A --> C
-    B --> D
-    B --> E
-    C --> F`;
+    Root["${center}"]
+    L1A["${topics[1]?.slice(0, 22) || 'Category A'}"]
+    L1B["${topics[2]?.slice(0, 22) || 'Category B'}"]
+    L1C["${topics[3]?.slice(0, 22) || 'Category C'}"]
+    L2A1["${topics[4]?.slice(0, 20) || 'Detail A.1'}"]
+    L2A2["Sub-point A.2"]
+    L2B1["${topics[5]?.slice(0, 20) || 'Detail B.1'}"]
+    L2C1["Detail C.1"]
+    L2C2["Detail C.2"]
+    Root --> L1A
+    Root --> L1B
+    Root --> L1C
+    L1A --> L2A1
+    L1A --> L2A2
+    L1B --> L2B1
+    L1C --> L2C1
+    L1C --> L2C2`;
     
     case 'flow':
       // Left-to-right flow layout
@@ -269,15 +307,16 @@ STRUCTURE REQUIREMENTS:
 - Single directional chain: Step1 --> Step2 --> Step3 --> Step4
 - Pure linear progression, no connections between non-consecutive nodes
 - Example structure: A[Start] --> B[Step1] --> C[Step2] --> D[Step3]`;
-        } else if (layout === 'cluster') {
-          mindmapInstructions = `LAYOUT: CLUSTER (graph TD)
-STRUCTURE REQUIREMENTS:
-- Explicit top-to-bottom hierarchy
-- Clear parent-child relationships in vertical stacks
-- Parent node above, child nodes below
-- Multi-level hierarchy: Level1 --> Level2 --> Level3
-- Structured like an organizational chart
-- Example structure: A[Top] --> B[Level1], A --> C[Level1], B --> D[Level2], B --> E[Level2]`;
+        } else if (layout === 'cluster' || layout === 'layered') {
+          mindmapInstructions = `LAYOUT: LAYERED/CLUSTER (graph TD)
+ENFORCED STRUCTURE REQUIREMENTS:
+- MUST have 3 levels minimum: Root -> Level1 -> Level2
+- 1 root node at the top
+- At least 3 Level-1 children branching from root
+- Each Level-1 node MUST have at least 1 Level-2 child
+- Explicit vertical hierarchy with clear parent-child relationships
+- NO hub-and-spoke, NO flat structure
+- Example structure: Root[Topic] --> L1A[Category] --> L2A1[Detail], Root --> L1B[Category] --> L2B1[Detail]`;
         } else if (layout === 'flow') {
           mindmapInstructions = `LAYOUT: FLOW (graph LR)
 STRUCTURE REQUIREMENTS:
@@ -286,14 +325,6 @@ STRUCTURE REQUIREMENTS:
 - Linear or slightly branched flow
 - Use graph LR (left-to-right direction)
 - Example structure: A[Start] --> B[Step1] --> C[Step2] --> D[End]`;
-        } else if (layout === 'radial') {
-          mindmapInstructions = `LAYOUT: RADIAL (graph TD)
-STRUCTURE REQUIREMENTS:
-- Central hub with radiating branches
-- Similar to classic but with emphasis on radial spread
-- Root node in center with branches extending outward
-- Hub-and-spoke pattern with radial emphasis
-- Example structure: A[Center] --> B[Branch1], A --> C[Branch2], A --> D[Branch3]`;
         } else {
           mindmapInstructions = "LAYOUT: CLASSIC (graph TD). Hub-and-spoke structure with central root and branching nodes.";
         }
