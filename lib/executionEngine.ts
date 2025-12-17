@@ -118,10 +118,28 @@ function removeSemanticDuplicates(ideas: ScoredIdea[], threshold: number): Score
 }
 
 /**
+ * Normalize text for similarity comparison by collapsing near-identical phrases
+ */
+function normalizeForSimilarity(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/takes time/g, "process_cost")
+    .replace(/you want to post/g, "creator_goal")
+    .replace(/you're the average creator/g, "creator_identity")
+    .replace(/before ai tools/g, "pre_ai")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Calculate semantic similarity between two text strings using Jaccard similarity
  * Tokenize, lowercase, remove stopwords, return value between 0 and 1
  */
 function semanticSimilarity(a: string, b: string): number {
+  // Normalize text first
+  const normalizedA = normalizeForSimilarity(a);
+  const normalizedB = normalizeForSimilarity(b);
+
   // Extract meaningful tokens (ignore common stop words)
   const stopWords = new Set([
     'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
@@ -131,11 +149,11 @@ function semanticSimilarity(a: string, b: string): number {
     'here', 'where', 'when', 'what', 'which', 'who', 'whom', 'whose', 'why', 'how'
   ]);
 
-  const tokens1 = a.toLowerCase()
+  const tokens1 = normalizedA
     .split(/\W+/)
     .filter(token => token.length > 2 && !stopWords.has(token));
-  
-  const tokens2 = b.toLowerCase()
+
+  const tokens2 = normalizedB
     .split(/\W+/)
     .filter(token => token.length > 2 && !stopWords.has(token));
 
@@ -271,7 +289,7 @@ function finalizeContentForMode(mode: AppMode, selectedIdeas: PerspectiveAwareCo
   ].filter(item => item.content && item.content.trim().length > 0);
   
   // Step 5: Apply FINAL SEMANTIC EXCLUSION as the ultimate quality gate
-  const threshold = getFinalExclusionThreshold(mode);
+  const threshold = getSimilarityThreshold(mode);
   const finalExcluded = finalSemanticExclusion(allContent, threshold);
   
   // Step 6: Convert back to FinalizedContent format for compatibility
@@ -412,18 +430,27 @@ function finalSemanticExclusion(
   items: { content: string; importance: number; role: string }[],
   similarityThreshold: number
 ): { content: string; role: string }[] {
+
   const result: { content: string; role: string }[] = [];
   
   // Sort by importance (descending) to keep higher-importance items
   const sortedItems = [...items].sort((a, b) => b.importance - a.importance);
   
   for (const item of sortedItems) {
+    // HARD ROLE GUARDS: Only ONE central_thesis allowed
+    if (
+      item.role === "central_thesis" &&
+      result.some(a => a.role === "central_thesis")
+    ) {
+      continue; // Skip this item, only one central_thesis allowed
+    }
+
     let isDuplicate = false;
-    
+
     // Compare against already accepted items
     for (const existing of result) {
       const similarity = semanticSimilarity(item.content, existing.content);
-      
+
       // ROLE SAFETY: Special rules for cross-role similarity
       if (isCrossRoleSimilar(item.role, existing.role)) {
         // If thesis appears in other roles, always drop the lower-importance one
@@ -444,14 +471,14 @@ function finalSemanticExclusion(
           break;
         }
       }
-      
+
       // Standard similarity check
       if (similarity >= similarityThreshold) {
         isDuplicate = true;
         break;
       }
     }
-    
+
     if (!isDuplicate) {
       result.push({
         content: item.content,
@@ -484,14 +511,14 @@ function isCrossRoleSimilar(role1: string, role2: string): boolean {
 /**
  * Get similarity threshold for final exclusion based on mode
  */
-function getFinalExclusionThreshold(mode: AppMode): number {
+function getSimilarityThreshold(mode: AppMode): number {
   switch (mode) {
-    case AppMode.MINDMAP: return 0.35;
-    case AppMode.FLASHCARDS: return 0.45;
-    case AppMode.QUIZ: return 0.50;
-    case AppMode.SUMMARY: return 0.40;
-    case AppMode.INFOGRAPHIC: return 0.45;
-    default: return 0.40;
+    case AppMode.MINDMAP: return 0.45;
+    case AppMode.FLASHCARDS: return 0.55;
+    case AppMode.QUIZ: return 0.6;
+    case AppMode.SUMMARY: return 0.5;
+    case AppMode.INFOGRAPHIC: return 0.5;
+    default: return 0.5;
   }
 }
 
@@ -1786,14 +1813,39 @@ function generateMindmapFromPlan(
   selectedContent: PerspectiveAwareContent
 ): string {
   // STEP 3.3: Apply final semantic compression and de-duplication gate
-  const finalizedContent = finalizeContentForMode(AppMode.MINDMAP, selectedContent);
+  const finalized = finalizeContentForMode(AppMode.MINDMAP, selectedContent);
+
+  // FORCE INTEGRATION: Apply semantic exclusion
+  const items = [
+    { content: finalized.thesis, importance: 100, role: 'central_thesis' },
+    ...finalized.primaryContent.map((content, i) => ({ content, importance: 90 - i, role: 'primary' })),
+    ...finalized.secondaryContent.map((content, i) => ({ content, importance: 80 - i, role: 'secondary' })),
+    ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
+  ].filter(item => item.content && item.content.trim().length > 0);
+
+  const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.MINDMAP));
+
+  // Reconstruct finalized content from cleaned items
+  const cleanedFinalized = {
+    thesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+    primaryContent: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+    secondaryContent: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+    tertiaryContent: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+    semanticRoles: {
+      centralThesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+      supportingEvidence: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+      mechanisms: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+      contrasts: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+      extras: []
+    }
+  };
   
   // Apply perspective-based ordering and framing to finalized content
   const perspectiveContent: PerspectiveAwareContent = {
-    thesis: finalizedContent.thesis,
-    primaryContent: finalizedContent.primaryContent,
-    secondaryContent: finalizedContent.secondaryContent,
-    tertiaryContent: finalizedContent.tertiaryContent,
+    thesis: cleanedFinalized.thesis,
+    primaryContent: cleanedFinalized.primaryContent,
+    secondaryContent: cleanedFinalized.secondaryContent,
+    tertiaryContent: cleanedFinalized.tertiaryContent,
     selectionReason: selectedContent.selectionReason,
     perspective: selectedContent.perspective,
     perspectiveReason: selectedContent.perspectiveReason
@@ -1896,7 +1948,32 @@ function generateFlashcardsFromPlan(
   selectedContent: PerspectiveAwareContent
 ): any[] {
   // STEP 3.3: Apply final semantic compression and de-duplication gate
-  const finalizedContent = finalizeContentForMode(AppMode.FLASHCARDS, selectedContent);
+  const finalized = finalizeContentForMode(AppMode.FLASHCARDS, selectedContent);
+
+  // FORCE INTEGRATION: Apply semantic exclusion
+  const items = [
+    { content: finalized.thesis, importance: 100, role: 'central_thesis' },
+    ...finalized.primaryContent.map((content, i) => ({ content, importance: 90 - i, role: 'primary' })),
+    ...finalized.secondaryContent.map((content, i) => ({ content, importance: 80 - i, role: 'secondary' })),
+    ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
+  ].filter(item => item.content && item.content.trim().length > 0);
+
+  const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.FLASHCARDS));
+
+  // Reconstruct finalized content from cleaned items
+  const cleanedFinalized = {
+    thesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+    primaryContent: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+    secondaryContent: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+    tertiaryContent: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+    semanticRoles: {
+      centralThesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+      supportingEvidence: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+      mechanisms: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+      contrasts: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+      extras: []
+    }
+  };
   
   const cards = [];
 
@@ -1908,11 +1985,11 @@ function generateFlashcardsFromPlan(
       // Create cards from thesis and primary content (why-focused arguments)
       cards.push({
         question: `What is the main thesis presented in the text?`,
-        answer: finalizedContent.thesis,
+        answer: cleanedFinalized.thesis,
         tag: 'thesis'
       });
-      
-      finalizedContent.primaryContent.slice(0, targetCount - 1).forEach((argument, i) => {
+
+      cleanedFinalized.primaryContent.slice(0, targetCount - 1).forEach((argument, i) => {
         cards.push({
           question: `What supporting evidence is provided for the main thesis?`,
           answer: argument,
@@ -1925,21 +2002,21 @@ function generateFlashcardsFromPlan(
       // Detailed Q&A from different content types
       cards.push({
         question: `Explain the central concept presented in this text.`,
-        answer: finalizedContent.thesis,
+        answer: cleanedFinalized.thesis,
         tag: 'main-concept'
       });
-      
+
       // How-focused: mechanisms become process questions
-      finalizedContent.secondaryContent.slice(0, Math.ceil((targetCount - 1) / 2)).forEach((mechanism, i) => {
+      cleanedFinalized.secondaryContent.slice(0, Math.ceil((targetCount - 1) / 2)).forEach((mechanism, i) => {
         cards.push({
           question: `How does the process described in the text work?`,
           answer: mechanism,
           tag: `process-${i + 1}`
         });
       });
-      
+
       // Why-focused: supporting arguments become evidence questions
-      finalizedContent.primaryContent.slice(0, Math.floor((targetCount - 1) / 2)).forEach((argument, i) => {
+      cleanedFinalized.primaryContent.slice(0, Math.floor((targetCount - 1) / 2)).forEach((argument, i) => {
         cards.push({
           question: `What evidence supports the main argument?`,
           answer: argument,
@@ -1951,15 +2028,15 @@ function generateFlashcardsFromPlan(
     case 'keyword':
       // Term-definition pairs from finalized content
       const allContent = [
-        finalizedContent.thesis,
-        ...finalizedContent.primaryContent,
-        ...finalizedContent.secondaryContent
+        cleanedFinalized.thesis,
+        ...cleanedFinalized.primaryContent,
+        ...cleanedFinalized.secondaryContent
       ];
       const keywords = extractKeywords(allContent.join(' '));
       keywords.slice(0, targetCount).forEach((keyword, i) => {
         cards.push({
           question: keyword,
-          answer: findKeywordInRenderableContent(keyword, finalizedContent) || 'Definition not explicitly provided in text',
+          answer: findKeywordInRenderableContent(keyword, cleanedFinalized) || 'Definition not explicitly provided in text',
           tag: 'keyword'
         });
       });
@@ -1968,11 +2045,11 @@ function generateFlashcardsFromPlan(
     case 'chunked':
       // Group related concepts from all content layers (finalized)
       const chunkedContent = [
-        ...finalizedContent.primaryContent,
-        ...finalizedContent.secondaryContent,
-        ...finalizedContent.tertiaryContent
+        ...cleanedFinalized.primaryContent,
+        ...cleanedFinalized.secondaryContent,
+        ...cleanedFinalized.tertiaryContent
       ].slice(0, targetCount);
-      
+
       chunkedContent.forEach((chunk, i) => {
         cards.push({
           question: `Related concepts: ${chunk.slice(0, 30)}...`,
@@ -1985,11 +2062,11 @@ function generateFlashcardsFromPlan(
     case 'scenario':
       // Situation-response cards from finalized content
       const scenarios = [
-        finalizedContent.thesis,
-        ...finalizedContent.primaryContent,
-        ...finalizedContent.secondaryContent
+        cleanedFinalized.thesis,
+        ...cleanedFinalized.primaryContent,
+        ...cleanedFinalized.secondaryContent
       ].slice(0, targetCount);
-      
+
       scenarios.forEach((scenario, i) => {
         cards.push({
           question: `Based on the information that "${scenario.slice(0, 50)}...", what conclusion can be drawn?`,
@@ -2012,7 +2089,32 @@ function generateQuizFromPlan(
   selectedContent: PerspectiveAwareContent
 ): any[] {
   // STEP 3.3: Apply final semantic compression and de-duplication gate
-  const finalizedContent = finalizeContentForMode(AppMode.QUIZ, selectedContent);
+  const finalized = finalizeContentForMode(AppMode.QUIZ, selectedContent);
+
+  // FORCE INTEGRATION: Apply semantic exclusion
+  const items = [
+    { content: finalized.thesis, importance: 100, role: 'central_thesis' },
+    ...finalized.primaryContent.map((content, i) => ({ content, importance: 90 - i, role: 'primary' })),
+    ...finalized.secondaryContent.map((content, i) => ({ content, importance: 80 - i, role: 'secondary' })),
+    ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
+  ].filter(item => item.content && item.content.trim().length > 0);
+
+  const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.QUIZ));
+
+  // Reconstruct finalized content from cleaned items
+  const cleanedFinalized = {
+    thesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+    primaryContent: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+    secondaryContent: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+    tertiaryContent: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+    semanticRoles: {
+      centralThesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+      supportingEvidence: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+      mechanisms: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+      contrasts: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+      extras: []
+    }
+  };
   
   const questions = [];
 
@@ -2021,10 +2123,10 @@ function generateQuizFromPlan(
 
   // Create questions from mode-specific content (mechanisms, contrasts, conclusions focus)
   const questionSources = [
-    { content: finalizedContent.thesis, type: 'thesis' },
-    ...finalizedContent.primaryContent.map(content => ({ content, type: 'primary' })),
-    ...finalizedContent.secondaryContent.map(content => ({ content, type: 'secondary' })),
-    ...finalizedContent.tertiaryContent.map(content => ({ content, type: 'tertiary' }))
+    { content: cleanedFinalized.thesis, type: 'thesis' },
+    ...cleanedFinalized.primaryContent.map(content => ({ content, type: 'primary' })),
+    ...cleanedFinalized.secondaryContent.map(content => ({ content, type: 'secondary' })),
+    ...cleanedFinalized.tertiaryContent.map(content => ({ content, type: 'tertiary' }))
   ].filter(item => item.content && item.content.length > 10);
 
   questionSources.slice(0, targetCount).forEach((source, i) => {
@@ -2081,15 +2183,40 @@ function generateSummaryFromPlan(
   selectedContent: PerspectiveAwareContent
 ): string {
   // STEP 3.3: Apply final semantic compression and de-duplication gate
-  const finalizedContent = finalizeContentForMode(AppMode.SUMMARY, selectedContent);
+  const finalized = finalizeContentForMode(AppMode.SUMMARY, selectedContent);
+
+  // FORCE INTEGRATION: Apply semantic exclusion
+  const items = [
+    { content: finalized.thesis, importance: 100, role: 'central_thesis' },
+    ...finalized.primaryContent.map((content, i) => ({ content, importance: 90 - i, role: 'primary' })),
+    ...finalized.secondaryContent.map((content, i) => ({ content, importance: 80 - i, role: 'secondary' })),
+    ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
+  ].filter(item => item.content && item.content.trim().length > 0);
+
+  const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.SUMMARY));
+
+  // Reconstruct finalized content from cleaned items
+  const cleanedFinalized = {
+    thesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+    primaryContent: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+    secondaryContent: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+    tertiaryContent: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+    semanticRoles: {
+      centralThesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+      supportingEvidence: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+      mechanisms: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+      contrasts: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+      extras: []
+    }
+  };
   
   switch (structure.layout) {
     case 'executive':
       // Use logical flow: thesis → primary content → conclusion
       const executivePoints = [
-        finalizedContent.thesis,
-        ...finalizedContent.primaryContent.slice(0, 2), // Key supporting points
-        ...finalizedContent.tertiaryContent.slice(0, 1)  // Final takeaway
+        cleanedFinalized.thesis,
+        ...cleanedFinalized.primaryContent.slice(0, 2), // Key supporting points
+        ...cleanedFinalized.tertiaryContent.slice(0, 1)  // Final takeaway
       ].filter(point => point && point.length > 10);
       
       return executivePoints.join('. ') + (executivePoints.length > 0 ? '.' : '');
@@ -2097,10 +2224,10 @@ function generateSummaryFromPlan(
     case 'bullet':
       // Create bullets from all content layers
       const bullets = [
-        `• Central thesis: ${finalizedContent.thesis.slice(0, 50)}...`,
-        ...finalizedContent.primaryContent.slice(0, 2).map(arg => `• Supporting evidence: ${arg.slice(0, 45)}...`),
-        ...finalizedContent.secondaryContent.slice(0, 2).map(mech => `• Process/mechanism: ${mech.slice(0, 45)}...`),
-        ...finalizedContent.tertiaryContent.slice(0, 1).map(contrast => `• Contrast: ${contrast.slice(0, 45)}...`)
+        `• Central thesis: ${cleanedFinalized.thesis.slice(0, 50)}...`,
+        ...cleanedFinalized.primaryContent.slice(0, 2).map(arg => `• Supporting evidence: ${arg.slice(0, 45)}...`),
+        ...cleanedFinalized.secondaryContent.slice(0, 2).map(mech => `• Process/mechanism: ${mech.slice(0, 45)}...`),
+        ...cleanedFinalized.tertiaryContent.slice(0, 1).map(contrast => `• Contrast: ${contrast.slice(0, 45)}...`)
       ].slice(0, constraints.length.bullets);
       
       return bullets.join('\n');
@@ -2108,36 +2235,36 @@ function generateSummaryFromPlan(
     case 'notes':
       // Create study notes with labeled sections
       const notes = [
-        `Central Thesis: ${finalizedContent.thesis || 'Main concept not clearly identified'}`,
-        `Supporting Arguments: ${finalizedContent.primaryContent.slice(0, 3).map(arg => arg.slice(0, 40)).join('; ') || 'No specific arguments identified'}`,
-        `Key Mechanisms: ${finalizedContent.secondaryContent.slice(0, 2).map(mech => mech.slice(0, 40)).join('; ') || 'No mechanisms identified'}`,
-        `Conclusions: ${finalizedContent.tertiaryContent.slice(0, 2).join('; ') || 'No explicit conclusions'}`,
+        `Central Thesis: ${cleanedFinalized.thesis || 'Main concept not clearly identified'}`,
+        `Supporting Arguments: ${cleanedFinalized.primaryContent.slice(0, 3).map(arg => arg.slice(0, 40)).join('; ') || 'No specific arguments identified'}`,
+        `Key Mechanisms: ${cleanedFinalized.secondaryContent.slice(0, 2).map(mech => mech.slice(0, 40)).join('; ') || 'No mechanisms identified'}`,
+        `Conclusions: ${cleanedFinalized.tertiaryContent.slice(0, 2).join('; ') || 'No explicit conclusions'}`,
         `Selection Logic: ${selectedContent.selectionReason}`
       ];
       return notes.join('\n');
 
     case 'infostructured':
       return `## Overview
-${finalizedContent.thesis || 'Main concept'}
+${cleanedFinalized.thesis || 'Main concept'}
 
 ## Key Elements
-• Thesis: ${finalizedContent.thesis.slice(0, 60) || 'Central idea'}
-• Evidence: ${finalizedContent.primaryContent[0]?.slice(0, 50) || 'Primary supporting point'}
-• Process: ${finalizedContent.secondaryContent[0]?.slice(0, 50) || 'Key mechanism'}
-• Contrast: ${finalizedContent.tertiaryContent[0]?.slice(0, 50) || 'Comparative element'}
+• Thesis: ${cleanedFinalized.thesis.slice(0, 60) || 'Central idea'}
+• Evidence: ${cleanedFinalized.primaryContent[0]?.slice(0, 50) || 'Primary supporting point'}
+• Process: ${cleanedFinalized.secondaryContent[0]?.slice(0, 50) || 'Key mechanism'}
+• Contrast: ${cleanedFinalized.tertiaryContent[0]?.slice(0, 50) || 'Comparative element'}
 
 ## Summary
 ${[
-  finalizedContent.thesis,
-  ...finalizedContent.primaryContent.slice(0, 1),
-  ...finalizedContent.tertiaryContent.slice(0, 1)
+  cleanedFinalized.thesis,
+  ...cleanedFinalized.primaryContent.slice(0, 1),
+  ...cleanedFinalized.tertiaryContent.slice(0, 1)
 ].filter(point => point && point.length > 10).join('. ')}`;
 
     default:
       // Fallback to thesis and primary content
       const defaultPoints = [
-        finalizedContent.thesis,
-        ...finalizedContent.primaryContent.slice(0, 2)
+        cleanedFinalized.thesis,
+        ...cleanedFinalized.primaryContent.slice(0, 2)
       ].filter(point => point && point.length > 10);
       return defaultPoints.join('. ');
   }
@@ -2159,20 +2286,45 @@ function generateInfographicFromPlan(
   selectedContent: PerspectiveAwareContent
 ): any {
   // STEP 3.3: Apply final semantic compression and de-duplication gate
-  const finalizedContent = finalizeContentForMode(AppMode.INFOGRAPHIC, selectedContent);
+  const finalized = finalizeContentForMode(AppMode.INFOGRAPHIC, selectedContent);
+
+  // FORCE INTEGRATION: Apply semantic exclusion
+  const items = [
+    { content: finalized.thesis, importance: 100, role: 'central_thesis' },
+    ...finalized.primaryContent.map((content, i) => ({ content, importance: 90 - i, role: 'primary' })),
+    ...finalized.secondaryContent.map((content, i) => ({ content, importance: 80 - i, role: 'secondary' })),
+    ...finalized.tertiaryContent.map((content, i) => ({ content, importance: 70 - i, role: 'tertiary' }))
+  ].filter(item => item.content && item.content.trim().length > 0);
+
+  const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.INFOGRAPHIC));
+
+  // Reconstruct finalized content from cleaned items
+  const cleanedFinalized = {
+    thesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+    primaryContent: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+    secondaryContent: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+    tertiaryContent: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+    semanticRoles: {
+      centralThesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
+      supportingEvidence: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
+      mechanisms: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
+      contrasts: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
+      extras: []
+    }
+  };
   
-  const title = finalizedContent.thesis || 'Generated Infographic';
-  
+  const title = cleanedFinalized.thesis || 'Generated Infographic';
+
   // Create sections from mode-specific content (mechanisms as steps, contrasts as comparisons)
   const sections = [
-    { title: 'Central Thesis', content: finalizedContent.thesis, icon: 'star' },
-    ...finalizedContent.primaryContent.map(content => ({
+    { title: 'Central Thesis', content: cleanedFinalized.thesis, icon: 'star' },
+    ...cleanedFinalized.primaryContent.map(content => ({
       title: 'Process Step', content, icon: 'arrow'
     })),
-    ...finalizedContent.secondaryContent.map(content => ({
+    ...cleanedFinalized.secondaryContent.map(content => ({
       title: 'Comparison', content, icon: 'dot'
     })),
-    ...finalizedContent.tertiaryContent.map(content => ({
+    ...cleanedFinalized.tertiaryContent.map(content => ({
       title: 'Supporting Detail', content, icon: 'check'
     }))
   ].filter(section => section.content && section.content.length > 10).slice(0, structure.minOutputCount);
