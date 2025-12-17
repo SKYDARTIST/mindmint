@@ -2262,80 +2262,17 @@ function generateSummaryFromPlan(
   // Fallback logic now handled in finalizeContentForMode()
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.SUMMARY));
 
+  // Convert to presentation-ready ideas
+  const presentationIdeas = cleanedItems.map(item => ({
+    content: item.content,
+    role: item.role === 'central_thesis' ? SemanticRole.THESIS :
+          item.role === 'primary' ? SemanticRole.EVIDENCE :
+          item.role === 'secondary' ? SemanticRole.MECHANISM :
+          SemanticRole.CONTRAST
+  }));
 
-  // Reconstruct finalized content from cleaned items
-  const cleanedFinalized = {
-    thesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
-    primaryContent: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
-    secondaryContent: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
-    tertiaryContent: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
-    semanticRoles: {
-      centralThesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
-      supportingEvidence: cleanedItems.filter(item => item.role === 'primary').map(item => item.content),
-      mechanisms: cleanedItems.filter(item => item.role === 'secondary').map(item => item.content),
-      contrasts: cleanedItems.filter(item => item.role === 'tertiary').map(item => item.content),
-      extras: []
-    }
-  };
-  
-  switch (structure.layout) {
-    case 'executive':
-      // Use logical flow: thesis → primary content → conclusion
-      const executivePoints = [
-        cleanedFinalized.thesis,
-        ...cleanedFinalized.primaryContent.slice(0, 2), // Key supporting points
-        ...cleanedFinalized.tertiaryContent.slice(0, 1)  // Final takeaway
-      ].filter(point => point && point.length > 10);
-      
-      return executivePoints.join('. ') + (executivePoints.length > 0 ? '.' : '');
-
-    case 'bullet':
-      // Create bullets from all content layers
-      const bullets = [
-        `• Central thesis: ${cleanedFinalized.thesis.slice(0, 50)}...`,
-        ...cleanedFinalized.primaryContent.slice(0, 2).map(arg => `• Supporting evidence: ${arg.slice(0, 45)}...`),
-        ...cleanedFinalized.secondaryContent.slice(0, 2).map(mech => `• Process/mechanism: ${mech.slice(0, 45)}...`),
-        ...cleanedFinalized.tertiaryContent.slice(0, 1).map(contrast => `• Contrast: ${contrast.slice(0, 45)}...`)
-      ].slice(0, constraints.length.bullets);
-      
-      return bullets.join('\n');
-
-    case 'notes':
-      // Create study notes with labeled sections
-      const notes = [
-        `Central Thesis: ${cleanedFinalized.thesis || 'Main concept not clearly identified'}`,
-        `Supporting Arguments: ${cleanedFinalized.primaryContent.slice(0, 3).map(arg => arg.slice(0, 40)).join('; ') || 'No specific arguments identified'}`,
-        `Key Mechanisms: ${cleanedFinalized.secondaryContent.slice(0, 2).map(mech => mech.slice(0, 40)).join('; ') || 'No mechanisms identified'}`,
-        `Conclusions: ${cleanedFinalized.tertiaryContent.slice(0, 2).join('; ') || 'No explicit conclusions'}`,
-        `Selection Logic: ${selectedContent.selectionReason}`
-      ];
-      return notes.join('\n');
-
-    case 'infostructured':
-      return `## Overview
-${cleanedFinalized.thesis || 'Main concept'}
-
-## Key Elements
-• Thesis: ${cleanedFinalized.thesis.slice(0, 60) || 'Central idea'}
-• Evidence: ${cleanedFinalized.primaryContent[0]?.slice(0, 50) || 'Primary supporting point'}
-• Process: ${cleanedFinalized.secondaryContent[0]?.slice(0, 50) || 'Key mechanism'}
-• Contrast: ${cleanedFinalized.tertiaryContent[0]?.slice(0, 50) || 'Comparative element'}
-
-## Summary
-${[
-  cleanedFinalized.thesis,
-  ...cleanedFinalized.primaryContent.slice(0, 1),
-  ...cleanedFinalized.tertiaryContent.slice(0, 1)
-].filter(point => point && point.length > 10).join('. ')}`;
-
-    default:
-      // Fallback to thesis and primary content
-      const defaultPoints = [
-        cleanedFinalized.thesis,
-        ...cleanedFinalized.primaryContent.slice(0, 2)
-      ].filter(point => point && point.length > 10);
-      return defaultPoints.join('. ');
-  }
+  // Apply presentation formatting to strip internal labels and create human-readable output
+  return formatSummaryForPresentation(structure.layout, presentationIdeas);
 }
 
 function paraphraseForBullet(idea: string): string {
@@ -2482,6 +2419,214 @@ function findKeywordContextInIdeaGraph(keyword: string, ideaGraph: IdeaGraph): s
 }
 
 /**
+ * PRESENTATION FORMATTER for summary outputs
+ * Transforms internal semantic structure into human-readable summaries
+ */
+function formatSummaryForPresentation(
+  layout: "bullet" | "notes" | "structured" | "executive",
+  ideas: { content: string; role: SemanticRole }[]
+): string {
+  // Strip internal labels and weak content
+  const cleanIdeas = ideas
+    .map(idea => ({
+      content: stripInternalLabels(idea.content),
+      role: idea.role
+    }))
+    .filter(idea => idea.content && idea.content.length > 10); // Omit weak content
+
+  if (cleanIdeas.length === 0) {
+    return "Summary could not be generated from the provided text.";
+  }
+
+  switch (layout) {
+    case "bullet":
+      return formatBulletSummary(cleanIdeas);
+
+    case "notes":
+      return formatNotesSummary(cleanIdeas);
+
+    case "structured":
+      return formatStructuredSummary(cleanIdeas);
+
+    case "executive":
+      return formatExecutiveSummary(cleanIdeas);
+
+    default:
+      return formatBulletSummary(cleanIdeas);
+  }
+}
+
+/**
+ * Strip internal reasoning labels from content
+ */
+function stripInternalLabels(content: string): string {
+  const internalLabels = [
+    "Central Thesis:",
+    "Supporting Evidence:",
+    "Key Mechanisms:",
+    "Conclusions:",
+    "Selection Logic:",
+    "No mechanisms identified",
+    "No specific arguments identified",
+    "Main concept not clearly identified",
+    "No explicit conclusions"
+  ];
+
+  let cleaned = content;
+  for (const label of internalLabels) {
+    cleaned = cleaned.replace(new RegExp(label, 'gi'), '').trim();
+  }
+
+  // Remove leading/trailing punctuation and extra whitespace
+  cleaned = cleaned.replace(/^[:;\s]+|[:;\s]+$/g, '');
+
+  return cleaned;
+}
+
+/**
+ * Format bullet summary - natural sentences only
+ */
+function formatBulletSummary(ideas: { content: string; role: SemanticRole }[]): string {
+  const bullets: string[] = [];
+
+  // Prioritize thesis, then evidence, then mechanisms
+  const thesisIdeas = ideas.filter(i => i.role === SemanticRole.THESIS);
+  const evidenceIdeas = ideas.filter(i => i.role === SemanticRole.EVIDENCE);
+  const mechanismIdeas = ideas.filter(i => i.role === SemanticRole.MECHANISM);
+  const contrastIdeas = ideas.filter(i => i.role === SemanticRole.CONTRAST);
+
+  // Convert to natural bullet points (4-6 max)
+  const allIdeas = [...thesisIdeas, ...evidenceIdeas, ...mechanismIdeas, ...contrastIdeas];
+
+  for (let i = 0; i < Math.min(allIdeas.length, 6); i++) {
+    const idea = allIdeas[i];
+    if (idea.content) {
+      // Ensure it reads as a complete sentence
+      let bullet = idea.content.trim();
+      if (!bullet.endsWith('.') && !bullet.endsWith('!') && !bullet.endsWith('?')) {
+        bullet += '.';
+      }
+      bullets.push(`• ${bullet}`);
+    }
+  }
+
+  return bullets.join('\n');
+}
+
+/**
+ * Format notes summary - human-friendly labeled sections
+ */
+function formatNotesSummary(ideas: { content: string; role: SemanticRole }[]): string {
+  const sections: string[] = [];
+
+  // Core Idea section
+  const thesisIdeas = ideas.filter(i => i.role === SemanticRole.THESIS);
+  if (thesisIdeas.length > 0) {
+    const coreContent = thesisIdeas.map(i => i.content).join(' ').substring(0, 200);
+    sections.push(`Core Idea: ${coreContent}`);
+  }
+
+  // Key Points section
+  const evidenceIdeas = ideas.filter(i => i.role === SemanticRole.EVIDENCE);
+  if (evidenceIdeas.length > 0) {
+    const keyPoints = evidenceIdeas.slice(0, 3).map(i => i.content.substring(0, 100)).join('; ');
+    sections.push(`Key Points: ${keyPoints}`);
+  }
+
+  // Direction/Process section
+  const mechanismIdeas = ideas.filter(i => i.role === SemanticRole.MECHANISM);
+  const contrastIdeas = ideas.filter(i => i.role === SemanticRole.CONTRAST);
+  const processIdeas = [...mechanismIdeas, ...contrastIdeas];
+
+  if (processIdeas.length > 0) {
+    const direction = processIdeas.slice(0, 2).map(i => i.content.substring(0, 80)).join('; ');
+    sections.push(`Direction: ${direction}`);
+  }
+
+  return sections.join('\n');
+}
+
+/**
+ * Format structured summary - clean section headers
+ */
+function formatStructuredSummary(ideas: { content: string; role: SemanticRole }[]): string {
+  const sections: string[] = [];
+
+  // Overview section
+  const thesisIdeas = ideas.filter(i => i.role === SemanticRole.THESIS);
+  if (thesisIdeas.length > 0) {
+    sections.push("## Overview");
+    sections.push(thesisIdeas[0].content);
+    sections.push("");
+  }
+
+  // Key Points section
+  const evidenceIdeas = ideas.filter(i => i.role === SemanticRole.EVIDENCE);
+  if (evidenceIdeas.length > 0) {
+    sections.push("## Key Points");
+    evidenceIdeas.slice(0, 3).forEach(idea => {
+      sections.push(`• ${idea.content}`);
+    });
+    sections.push("");
+  }
+
+  // Direction section
+  const mechanismIdeas = ideas.filter(i => i.role === SemanticRole.MECHANISM);
+  const contrastIdeas = ideas.filter(i => i.role === SemanticRole.CONTRAST);
+  const processIdeas = [...mechanismIdeas, ...contrastIdeas];
+
+  if (processIdeas.length > 0) {
+    sections.push("## Direction");
+    processIdeas.slice(0, 2).forEach(idea => {
+      sections.push(`• ${idea.content}`);
+    });
+  }
+
+  return sections.join('\n');
+}
+
+/**
+ * Format executive summary - natural paragraph style
+ */
+function formatExecutiveSummary(ideas: { content: string; role: SemanticRole }[]): string {
+  const sentences: string[] = [];
+
+  // Start with main idea
+  const thesisIdeas = ideas.filter(i => i.role === SemanticRole.THESIS);
+  if (thesisIdeas.length > 0) {
+    sentences.push(thesisIdeas[0].content);
+  }
+
+  // Add key supporting points
+  const evidenceIdeas = ideas.filter(i => i.role === SemanticRole.EVIDENCE);
+  if (evidenceIdeas.length > 0) {
+    const keyEvidence = evidenceIdeas[0].content;
+    sentences.push(keyEvidence);
+  }
+
+  // Add process/direction if available
+  const mechanismIdeas = ideas.filter(i => i.role === SemanticRole.MECHANISM);
+  if (mechanismIdeas.length > 0) {
+    const process = mechanismIdeas[0].content;
+    sentences.push(process);
+  }
+
+  // Limit to 3-4 sentences max
+  const finalSentences = sentences.slice(0, 4);
+
+  // Ensure proper sentence endings
+  const formatted = finalSentences.map(s => {
+    let sentence = s.trim();
+    if (!sentence.endsWith('.') && !sentence.endsWith('!') && !sentence.endsWith('?')) {
+      sentence += '.';
+    }
+    return sentence;
+  });
+
+  return formatted.join(' ');
+}
+
+/**
  * Main execution function that runs the complete 3-step process
  */
 export function executeMindMintEngine(
@@ -2491,12 +2636,12 @@ export function executeMindMintEngine(
 ): any {
   // Step 1: UNDERSTAND
   const analysis = analyzeInputText(inputText);
-  
-  // Step 2: STRUCTURE  
+
+  // Step 2: STRUCTURE
   const plan = createStructuredPlan(analysis, mode, layout);
-  
+
   // Step 3: GENERATE
   const result = executeStructuredPlan(plan, inputText);
-  
+
   return result;
 }
