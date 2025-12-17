@@ -523,6 +523,20 @@ function getSimilarityThreshold(mode: AppMode): number {
 }
 
 /**
+ * Get minimum output count per mode to prevent collapse
+ */
+function getMinimumCount(mode: AppMode): number {
+  switch (mode) {
+    case AppMode.MINDMAP: return 4;
+    case AppMode.FLASHCARDS: return 3;
+    case AppMode.QUIZ: return 3;
+    case AppMode.SUMMARY: return 3;
+    case AppMode.INFOGRAPHIC: return 3;
+    default: return 3;
+  }
+}
+
+/**
  * Get deduplication threshold for mode
  */
 function getDeduplicationThreshold(mode: AppMode): number {
@@ -1825,6 +1839,41 @@ function generateMindmapFromPlan(
 
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.MINDMAP));
 
+  // RECOVERY LOGIC: Prevent collapse below minimum count
+  if (cleanedItems.length < getMinimumCount(AppMode.MINDMAP)) {
+    const missing = getMinimumCount(AppMode.MINDMAP) - cleanedItems.length;
+
+    const recoveryPool = items
+      .filter(i => !cleanedItems.some(c => c.content === i.content))
+      .filter(i => i.role !== "central_thesis")
+      .sort((a, b) => b.importance - a.importance);
+
+    cleanedItems.push(...recoveryPool.slice(0, missing));
+  }
+
+  // MODE-SPECIFIC ROLE DISTRIBUTION: Mindmap needs 1 thesis + ≥2 supporting + ≥1 mechanism/contrast
+  const thesisCount = cleanedItems.filter(item => item.role === 'central_thesis').length;
+  const supportingCount = cleanedItems.filter(item => item.role === 'primary').length;
+  const mechanismCount = cleanedItems.filter(item => item.role === 'secondary').length;
+  const contrastCount = cleanedItems.filter(item => item.role === 'tertiary').length;
+
+  if (supportingCount < 2) {
+    const additionalSupporting = items
+      .filter(i => i.role === 'primary' && !cleanedItems.some(c => c.content === i.content))
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, 2 - supportingCount);
+    cleanedItems.push(...additionalSupporting);
+  }
+
+  if (mechanismCount + contrastCount < 1) {
+    const additionalMechContrast = items
+      .filter(i => (i.role === 'secondary' || i.role === 'tertiary') && !cleanedItems.some(c => c.content === i.content))
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, 1 - (mechanismCount + contrastCount));
+    cleanedItems.push(...additionalMechContrast);
+  }
+
+
   // Reconstruct finalized content from cleaned items
   const cleanedFinalized = {
     thesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
@@ -1959,6 +2008,39 @@ function generateFlashcardsFromPlan(
   ].filter(item => item.content && item.content.trim().length > 0);
 
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.FLASHCARDS));
+
+  // RECOVERY LOGIC: Prevent collapse below minimum count
+  if (cleanedItems.length < getMinimumCount(AppMode.FLASHCARDS)) {
+    const missing = getMinimumCount(AppMode.FLASHCARDS) - cleanedItems.length;
+
+    const recoveryPool = items
+      .filter(i => !cleanedItems.some(c => c.content === i.content))
+      .filter(i => i.role !== "central_thesis")
+      .sort((a, b) => b.importance - a.importance);
+
+    cleanedItems.push(...recoveryPool.slice(0, missing));
+  }
+
+  // MODE-SPECIFIC ROLE DISTRIBUTION: Flashcards need at least 1 WHY + 1 HOW
+  const whyCount = cleanedItems.filter(item => item.role === 'primary').length; // WHY questions
+  const howCount = cleanedItems.filter(item => item.role === 'secondary').length; // HOW questions
+
+  if (whyCount < 1) {
+    const additionalWhy = items
+      .filter(i => i.role === 'primary' && !cleanedItems.some(c => c.content === i.content))
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, 1 - whyCount);
+    cleanedItems.push(...additionalWhy);
+  }
+
+  if (howCount < 1) {
+    const additionalHow = items
+      .filter(i => i.role === 'secondary' && !cleanedItems.some(c => c.content === i.content))
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, 1 - howCount);
+    cleanedItems.push(...additionalHow);
+  }
+
 
   // Reconstruct finalized content from cleaned items
   const cleanedFinalized = {
@@ -2101,6 +2183,37 @@ function generateQuizFromPlan(
 
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.QUIZ));
 
+  // RECOVERY LOGIC: Prevent collapse below minimum count
+  if (cleanedItems.length < getMinimumCount(AppMode.QUIZ)) {
+    const missing = getMinimumCount(AppMode.QUIZ) - cleanedItems.length;
+
+    const recoveryPool = items
+      .filter(i => !cleanedItems.some(c => c.content === i.content))
+      .filter(i => i.role !== "central_thesis")
+      .sort((a, b) => b.importance - a.importance);
+
+    cleanedItems.push(...recoveryPool.slice(0, missing));
+  }
+
+  // MODE-SPECIFIC ROLE DISTRIBUTION: Quiz questions must be derived from DIFFERENT ideas
+  // Ensure we have questions from different semantic roles
+  const thesisCount = cleanedItems.filter(item => item.role === 'central_thesis').length;
+  const primaryCount = cleanedItems.filter(item => item.role === 'primary').length;
+  const secondaryCount = cleanedItems.filter(item => item.role === 'secondary').length;
+  const tertiaryCount = cleanedItems.filter(item => item.role === 'tertiary').length;
+
+  // Ensure diversity: at least 2 different role types
+  const roleTypes = [thesisCount > 0, primaryCount > 0, secondaryCount > 0, tertiaryCount > 0].filter(Boolean).length;
+  if (roleTypes < 2) {
+    const additionalDiverse = items
+      .filter(i => !cleanedItems.some(c => c.content === i.content))
+      .filter(i => i.role !== cleanedItems[0]?.role) // Different from first item
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, 1);
+    cleanedItems.push(...additionalDiverse);
+  }
+
+
   // Reconstruct finalized content from cleaned items
   const cleanedFinalized = {
     thesis: cleanedItems.find(item => item.role === 'central_thesis')?.content || '',
@@ -2194,6 +2307,39 @@ function generateSummaryFromPlan(
   ].filter(item => item.content && item.content.trim().length > 0);
 
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.SUMMARY));
+
+  // RECOVERY LOGIC: Prevent collapse below minimum count
+  if (cleanedItems.length < getMinimumCount(AppMode.SUMMARY)) {
+    const missing = getMinimumCount(AppMode.SUMMARY) - cleanedItems.length;
+
+    const recoveryPool = items
+      .filter(i => !cleanedItems.some(c => c.content === i.content))
+      .filter(i => i.role !== "central_thesis")
+      .sort((a, b) => b.importance - a.importance);
+
+    cleanedItems.push(...recoveryPool.slice(0, missing));
+  }
+
+  // MODE-SPECIFIC ROLE DISTRIBUTION: Summary needs no sentence reuse, each bullet from different idea
+  // Ensure bullets come from different semantic roles
+  const roleCounts = {
+    thesis: cleanedItems.filter(item => item.role === 'central_thesis').length,
+    primary: cleanedItems.filter(item => item.role === 'primary').length,
+    secondary: cleanedItems.filter(item => item.role === 'secondary').length,
+    tertiary: cleanedItems.filter(item => item.role === 'tertiary').length
+  };
+
+  // Ensure we have at least 2 different role types for bullets
+  const activeRoles = Object.entries(roleCounts).filter(([_, count]) => count > 0).length;
+  if (activeRoles < 2) {
+    const additionalRoles = items
+      .filter(i => !cleanedItems.some(c => c.content === i.content))
+      .filter(i => i.role !== 'central_thesis') // Thesis is separate
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, 1);
+    cleanedItems.push(...additionalRoles);
+  }
+
 
   // Reconstruct finalized content from cleaned items
   const cleanedFinalized = {
@@ -2297,6 +2443,36 @@ function generateInfographicFromPlan(
   ].filter(item => item.content && item.content.trim().length > 0);
 
   const cleanedItems = finalSemanticExclusion(items, getSimilarityThreshold(AppMode.INFOGRAPHIC));
+
+  // RECOVERY LOGIC: Prevent collapse below minimum count
+  if (cleanedItems.length < getMinimumCount(AppMode.INFOGRAPHIC)) {
+    const missing = getMinimumCount(AppMode.INFOGRAPHIC) - cleanedItems.length;
+
+    const recoveryPool = items
+      .filter(i => !cleanedItems.some(c => c.content === i.content))
+      .filter(i => i.role !== "central_thesis")
+      .sort((a, b) => b.importance - a.importance);
+
+    cleanedItems.push(...recoveryPool.slice(0, missing));
+  }
+
+  // MODE-SPECIFIC ROLE DISTRIBUTION: Infographic needs visual elements from different ideas
+  const thesisCount = cleanedItems.filter(item => item.role === 'central_thesis').length;
+  const primaryCount = cleanedItems.filter(item => item.role === 'primary').length;
+  const secondaryCount = cleanedItems.filter(item => item.role === 'secondary').length;
+  const tertiaryCount = cleanedItems.filter(item => item.role === 'tertiary').length;
+
+  // Ensure at least 2 different content types for visual variety
+  const contentTypes = [primaryCount > 0, secondaryCount > 0, tertiaryCount > 0].filter(Boolean).length;
+  if (contentTypes < 2) {
+    const additionalVisual = items
+      .filter(i => !cleanedItems.some(c => c.content === i.content))
+      .filter(i => i.role !== 'central_thesis')
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, 1);
+    cleanedItems.push(...additionalVisual);
+  }
+
 
   // Reconstruct finalized content from cleaned items
   const cleanedFinalized = {
