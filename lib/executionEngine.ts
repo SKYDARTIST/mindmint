@@ -2242,6 +2242,282 @@ function generateQuizFromPlan(
   return questions.slice(0, Math.min(questions.length, structure.maxOutputCount));
 }
 
+/**
+ * PRESENTATION FORMATTER
+ * Removes internal labels and formats summary output to sound human-written
+ */
+function formatHumanSummary(content: string, layout: SummaryLayout): string {
+  // HARD SAFETY GUARDS: Check for problematic content first
+  const problematicPatterns = [
+    /Original Text:/i,
+    /Key Points:/i,
+    /Core Concept:/i,
+    /What is stopping us/i,
+    /Key insight:/i,
+    /Important finding:/i,
+    /Selection Logic:/i,
+    /Related Concepts:/i,
+    /Process Steps:/i,
+    /Comparison:/i,
+    /Supporting Details:/i,
+    /Central Thesis:/i
+  ];
+
+  const hasProblematicContent = problematicPatterns.some(pattern => pattern.test(content));
+
+  if (hasProblematicContent) {
+    // Fallback to clean extractive summary
+    console.warn("Presentation formatter detected problematic content, falling back to extractive summary");
+    
+    // Extract clean sentences and merge into plain sentences
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const cleanSentences = sentences
+      .map(sentence => {
+        // Remove any remaining labels
+        let clean = sentence.replace(/^[••\-\*]\s*/g, '').trim();
+        problematicPatterns.forEach(pattern => {
+          clean = clean.replace(pattern, '').trim();
+        });
+        return clean;
+      })
+      .filter(sentence => sentence.length > 10);
+
+    // Merge into natural sentences
+    if (cleanSentences.length === 0) {
+      return "Summary could not be generated from the provided content.";
+    }
+
+    // Format based on layout even in fallback
+    switch (layout) {
+      case 'executive':
+        return cleanSentences.slice(0, 3).join(' ');
+      case 'bullet':
+        return cleanSentences.slice(0, 5).map(s => `• ${s}`).join('\n');
+      case 'notes':
+        return cleanSentences.slice(0, 4).join('\n');
+      case 'infostructured':
+        return cleanSentences.slice(0, 4).join('\n\n');
+      default:
+        return cleanSentences.slice(0, 3).join(' ');
+    }
+  }
+
+  // Normal formatting for clean content
+  switch (layout) {
+    case 'executive':
+      return formatExecutiveHumanSummary(content);
+
+    case 'bullet':
+      return formatBulletHumanSummary(content);
+
+    case 'notes':
+      return formatNotesHumanSummary(content);
+
+    case 'infostructured':
+      return formatStructuredHumanSummary(content);
+
+    default:
+      return formatExecutiveHumanSummary(content);
+  }
+}
+
+/**
+ * Format executive summary - 1 short paragraph, 2-3 sentences max
+ */
+function formatExecutiveHumanSummary(content: string): string {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  
+  // Take first 2-3 sentences and ensure they sound natural
+  const selectedSentences = sentences.slice(0, 3);
+  
+  const formatted = selectedSentences.map((sentence, index) => {
+    let clean = sentence
+      .replace(/^[••\-\*]\s*/g, '')
+      .replace(/##\s*/g, '')
+      .replace(/Key insight:/gi, '')
+      .replace(/Important finding:/gi, '')
+      .replace(/What is stopping us/gi, '')
+      .trim();
+
+    // Ensure proper capitalization and punctuation
+    if (!clean.match(/^[A-Z]/)) {
+      clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+    
+    if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) {
+      clean += '.';
+    }
+    
+    return clean;
+  });
+
+  return formatted.join(' ');
+}
+
+/**
+ * Format bullet summary - 3-5 bullets, each bullet = one complete human sentence
+ */
+function formatBulletHumanSummary(content: string): string {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  
+  // Take 3-5 sentences and format as bullets
+  const selectedSentences = sentences.slice(0, 5);
+  
+  const bullets = selectedSentences.map((sentence) => {
+    let clean = sentence
+      .replace(/^[••\-\*]\s*/g, '')
+      .replace(/##\s*/g, '')
+      .replace(/Key insight:/gi, '')
+      .replace(/Important finding:/gi, '')
+      .replace(/What is stopping us/gi, '')
+      .trim();
+
+    // Ensure it's a complete sentence
+    if (!clean.match(/^[A-Z]/)) {
+      clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+    
+    if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) {
+      clean += '.';
+    }
+    
+    return `• ${clean}`;
+  });
+
+  return bullets.join('\n');
+}
+
+/**
+ * Format notes summary - short paragraphs separated by line breaks
+ */
+function formatNotesHumanSummary(content: string): string {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  
+  // Group sentences into short paragraphs
+  const paragraphs: string[] = [];
+  let currentParagraph = '';
+  
+  sentences.forEach((sentence, index) => {
+    let clean = sentence
+      .replace(/^[••\-\*]\s*/g, '')
+      .replace(/##\s*/g, '')
+      .replace(/Key insight:/gi, '')
+      .replace(/Important finding:/gi, '')
+      .replace(/What is stopping us/gi, '')
+      .trim();
+
+    if (!clean.match(/^[A-Z]/)) {
+      clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+    
+    if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) {
+      clean += '.';
+    }
+    
+    if (currentParagraph.length + clean.length < 120) {
+      currentParagraph += (currentParagraph ? ' ' : '') + clean;
+    } else {
+      if (currentParagraph) {
+        paragraphs.push(currentParagraph);
+      }
+      currentParagraph = clean;
+    }
+  });
+  
+  if (currentParagraph) {
+    paragraphs.push(currentParagraph);
+  }
+  
+  return paragraphs.slice(0, 4).join('\n\n');
+}
+
+/**
+ * Format structured summary - use ONLY these headers: Overview, Key Points, Direction
+ */
+function formatStructuredHumanSummary(content: string): string {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  
+  // Distribute content across sections
+  const overviewSentences = sentences.slice(0, 2);
+  const keyPointsSentences = sentences.slice(2, 5);
+  const directionSentences = sentences.slice(5, 7);
+  
+  const sections: string[] = [];
+  
+  if (overviewSentences.length > 0) {
+    sections.push("## Overview");
+    sections.push(overviewSentences.map(s => {
+      let clean = s
+        .replace(/^[••\-\*]\s*/g, '')
+        .replace(/##\s*/g, '')
+        .replace(/Key insight:/gi, '')
+        .replace(/Important finding:/gi, '')
+        .replace(/What is stopping us/gi, '')
+        .trim();
+      
+      if (!clean.match(/^[A-Z]/)) {
+        clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+      }
+      
+      if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) {
+        clean += '.';
+      }
+      
+      return clean;
+    }).join(' '));
+    sections.push("");
+  }
+  
+  if (keyPointsSentences.length > 0) {
+    sections.push("## Key Points");
+    keyPointsSentences.forEach(s => {
+      let clean = s
+        .replace(/^[••\-\*]\s*/g, '')
+        .replace(/##\s*/g, '')
+        .replace(/Key insight:/gi, '')
+        .replace(/Important finding:/gi, '')
+        .replace(/What is stopping us/gi, '')
+        .trim();
+      
+      if (!clean.match(/^[A-Z]/)) {
+        clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+      }
+      
+      if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) {
+        clean += '.';
+      }
+      
+      sections.push(`• ${clean}`);
+    });
+    sections.push("");
+  }
+  
+  if (directionSentences.length > 0) {
+    sections.push("## Direction");
+    directionSentences.forEach(s => {
+      let clean = s
+        .replace(/^[••\-\*]\s*/g, '')
+        .replace(/##\s*/g, '')
+        .replace(/Key insight:/gi, '')
+        .replace(/Important finding:/gi, '')
+        .replace(/What is stopping us/gi, '')
+        .trim();
+      
+      if (!clean.match(/^[A-Z]/)) {
+        clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+      }
+      
+      if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) {
+        clean += '.';
+      }
+      
+      sections.push(`• ${clean}`);
+    });
+  }
+  
+  return sections.join('\n');
+}
+
 async function generateSummaryFromPlan(
   inputText: string,
   structure: any,
@@ -2277,21 +2553,26 @@ async function generateSummaryFromPlan(
   const summaryLayoutsForAbstraction: SummaryLayout[] = ['executive', 'bullet', 'notes', 'infostructured'];
   const currentLayout = layout as SummaryLayout;
   
+  let abstractedContent = "";
+  
   if (summaryLayoutsForAbstraction.includes(currentLayout)) {
     // Use AI abstraction for summaries
     try {
-      const abstractedContent = await abstractSummaryIdeas(inputText, presentationIdeas, currentLayout);
-      return formatAbstractedSummary(abstractedContent, currentLayout);
+      abstractedContent = await abstractSummaryIdeas(inputText, presentationIdeas, currentLayout);
     } catch (error) {
       // If AI abstraction fails, fall back to extractive summary
       console.warn("AI abstraction failed, using extractive summary fallback:", error);
-      return formatSummaryForPresentation(currentLayout === 'infostructured' ? 'structured' : currentLayout, presentationIdeas);
+      abstractedContent = formatSummaryForPresentation(currentLayout === 'infostructured' ? 'structured' : currentLayout, presentationIdeas);
     }
   } else {
     // For non-summary modes or unsupported layouts, use extractive summary
     const normalizedLayout = currentLayout === 'infostructured' ? 'structured' : currentLayout;
-    return formatSummaryForPresentation(normalizedLayout as "executive" | "bullet" | "notes" | "structured", presentationIdeas);
+    abstractedContent = formatSummaryForPresentation(normalizedLayout as "executive" | "bullet" | "notes" | "structured", presentationIdeas);
   }
+
+  // STEP 7: INTEGRATION POINT - Apply presentation formatter
+  // ALWAYS call formatHumanSummary before returning output
+  return formatHumanSummary(abstractedContent, currentLayout);
 }
 
 function paraphraseForBullet(idea: string): string {
