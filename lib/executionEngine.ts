@@ -1858,7 +1858,7 @@ export async function executeStructuredPlan(
     case AppMode.QUIZ:
       return generateQuizFromPlan(inputText, structure, outputConstraints, selectedContent);
     case AppMode.SUMMARY:
-      return await generateSummaryFromPlan(inputText, structure, outputConstraints, selectedContent);
+      return await generateSummaryFromPlan(inputText, structure, outputConstraints, selectedContent, layout);
     case AppMode.INFOGRAPHIC:
       return generateInfographicFromPlan(inputText, structure, outputConstraints, selectedContent);
     default:
@@ -2246,7 +2246,8 @@ async function generateSummaryFromPlan(
   inputText: string,
   structure: any,
   constraints: any,
-  selectedContent: PerspectiveAwareContent
+  selectedContent: PerspectiveAwareContent,
+  layout: string
 ): Promise<string> {
   // STEP 3.3: Apply final semantic compression and de-duplication gate
   const finalized = finalizeContentForMode(AppMode.SUMMARY, selectedContent);
@@ -2274,13 +2275,13 @@ async function generateSummaryFromPlan(
   // STEP 6: INTEGRATION POINT - Apply AI abstraction for summary modes only
   // Check if this is a summary mode that should use AI abstraction
   const summaryLayoutsForAbstraction: SummaryLayout[] = ['executive', 'bullet', 'notes', 'infostructured'];
-  const currentLayout = structure.layout as SummaryLayout;
+  const currentLayout = layout as SummaryLayout;
   
   if (summaryLayoutsForAbstraction.includes(currentLayout)) {
     // Use AI abstraction for summaries
     try {
-      const aiOutput = await abstractSummaryIdeas(inputText, presentationIdeas, currentLayout);
-      return await validateAndFallback(aiOutput, inputText, presentationIdeas, currentLayout);
+      const abstractedContent = await abstractSummaryIdeas(inputText, presentationIdeas, currentLayout);
+      return formatAbstractedSummary(abstractedContent, currentLayout);
     } catch (error) {
       // If AI abstraction fails, fall back to extractive summary
       console.warn("AI abstraction failed, using extractive summary fallback:", error);
@@ -2288,7 +2289,8 @@ async function generateSummaryFromPlan(
     }
   } else {
     // For non-summary modes or unsupported layouts, use extractive summary
-    return formatSummaryForPresentation(structure.layout, presentationIdeas);
+    const normalizedLayout = currentLayout === 'infostructured' ? 'structured' : currentLayout;
+    return formatSummaryForPresentation(normalizedLayout as "executive" | "bullet" | "notes" | "structured", presentationIdeas);
   }
 }
 
@@ -2490,14 +2492,10 @@ Generate an abstracted summary following the rules above.`;
 }
 
 /**
- * FINAL PRESENTATION FORMATTER
- * Runs AFTER controlled AI abstraction and BEFORE rendering to canvas
- * Removes all labels, merges ideas into natural sentences, ensures distinct layout styles
+ * Format abstracted summary for presentation
+ * This function takes the AI-generated abstracted content and formats it for the specific layout
  */
-function formatAbstractedSummary(
-  layout: SummaryLayout,
-  abstractedContent: string
-): string {
+function formatAbstractedSummary(abstractedContent: string, layout: SummaryLayout): string {
   // HARD RULES:
   // - REMOVE all labels, headings, metadata
   // - MERGE ideas into natural sentences
@@ -2897,7 +2895,7 @@ async function validateAndFallback(
 
   // STEP 5: Apply FINAL presentation formatter
   // This runs AFTER AI abstraction and BEFORE rendering to canvas
-  const formattedOutput = formatAbstractedSummary(layout, aiOutput);
+  const formattedOutput = formatAbstractedSummary(aiOutput, layout);
   
   // Apply safety check to ensure no labels or duplicates remain
   return checkPresentationSafety(formattedOutput);
