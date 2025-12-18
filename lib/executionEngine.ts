@@ -2246,6 +2246,293 @@ function generateQuizFromPlan(
  * PRESENTATION FORMATTER
  * Removes internal labels and formats summary output to sound human-written
  */
+function formatSummaryForLayout(
+  content: string,
+  layout: "executive" | "bullet" | "notes" | "structured"
+): string {
+  // Strip internal labels and normalize content
+  let cleanContent = content;
+  
+  // Remove internal labels
+  const internalLabels = [
+    /Original Text:/gi, /Key Points:/gi, /Core Concept:/gi, /Summary:/gi,
+    /Important:/gi, /Key Terms:/gi, /Main Points:/gi, /Essential element:/gi,
+    /Key insight:/gi, /Important finding:/gi, /Selection Logic:/gi,
+    /Related Concepts:/gi, /Process Steps:/gi, /Comparison:/gi,
+    /Supporting Details:/gi, /Central Thesis:/gi, /What is stopping us/gi
+  ];
+  
+  internalLabels.forEach(label => {
+    cleanContent = cleanContent.replace(label, '');
+  });
+  
+  // Remove bullet artifacts
+  cleanContent = cleanContent.replace(/^[••\-\*]\s*/gm, '');
+  
+  // Split into sentences and remove duplicates
+  const sentences = cleanContent.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const uniqueSentences: string[] = [];
+  
+  sentences.forEach(sentence => {
+    const cleanSentence = sentence.trim();
+    if (cleanSentence.length > 10) {
+      // Check for near-duplicates (70% similarity)
+      const isDuplicate = uniqueSentences.some(existing => {
+        const similarity = semanticSimilarity(cleanSentence.toLowerCase(), existing.toLowerCase());
+        return similarity > 0.7;
+      });
+      
+      if (!isDuplicate) {
+        uniqueSentences.push(cleanSentence);
+      }
+    }
+  });
+  
+  // Remove empty or placeholder content
+  const validSentences = uniqueSentences.filter(s =>
+    s.length > 10 &&
+    !/^\s*[••\-\*]\s*$/.test(s) &&
+    !/^\s*$/.test(s)
+  );
+  
+  if (validSentences.length === 0) {
+    return "Summary could not be generated from the provided content.";
+  }
+  
+  // Format based on layout
+  switch (layout) {
+    case "executive":
+      return formatExecutiveLayout(validSentences);
+      
+    case "bullet":
+      return formatBulletLayout(validSentences);
+      
+    case "notes":
+      return formatNotesLayout(validSentences);
+      
+    case "structured":
+      return formatStructuredLayout(validSentences);
+      
+    default:
+      return formatExecutiveLayout(validSentences);
+  }
+}
+
+/**
+ * Format executive layout - 1 paragraph, 2-4 sentences max
+ */
+function formatExecutiveLayout(sentences: string[]): string {
+  // Take first 2-4 sentences and ensure they sound natural
+  const selectedSentences = sentences.slice(0, 4);
+  
+  const formatted = selectedSentences.map((sentence, index) => {
+    let clean = sentence.trim();
+    
+    // Ensure proper capitalization
+    if (!clean.match(/^[A-Z]/)) {
+      clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+    
+    // Ensure proper punctuation
+    if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) {
+      clean += '.';
+    }
+    
+    return clean;
+  });
+
+  return formatted.join(' ');
+}
+
+/**
+ * Format bullet layout - 3-5 bullets, each bullet = one distinct idea
+ */
+function formatBulletLayout(sentences: string[]): string {
+  // Take 3-5 sentences and format as bullets
+  const selectedSentences = sentences.slice(0, 5);
+  
+  // Ensure no repeated sentence starters
+  const uniqueBullets: string[] = [];
+  const usedStarters = new Set<string>();
+  
+  selectedSentences.forEach(sentence => {
+    let clean = sentence.trim();
+    
+    // Get first word for starter check
+    const firstWord = clean.split(/\s+/)[0]?.toLowerCase() || '';
+    
+    // Skip if this starter is already used
+    if (usedStarters.has(firstWord)) {
+      return;
+    }
+    
+    // Ensure proper capitalization and punctuation
+    if (!clean.match(/^[A-Z]/)) {
+      clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+    
+    if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) {
+      clean += '.';
+    }
+    
+    uniqueBullets.push(clean);
+    usedStarters.add(firstWord);
+  });
+  
+  // Ensure we have 3-5 bullets
+  const finalBullets = uniqueBullets.slice(0, 5);
+  
+  if (finalBullets.length === 0) {
+    return "No key points identified.";
+  }
+  
+  return finalBullets.map(bullet => `• ${bullet}`).join('\n');
+}
+
+/**
+ * Format notes layout - 3 short paragraphs
+ */
+function formatNotesLayout(sentences: string[]): string {
+  // Group sentences into 3 paragraphs
+  const paragraph1 = sentences.slice(0, Math.ceil(sentences.length / 3));
+  const paragraph2 = sentences.slice(Math.ceil(sentences.length / 3), Math.ceil(sentences.length * 2 / 3));
+  const paragraph3 = sentences.slice(Math.ceil(sentences.length * 2 / 3));
+  
+  const formatParagraph = (paragraphSentences: string[]): string => {
+    if (paragraphSentences.length === 0) return "";
+    
+    return paragraphSentences.map(sentence => {
+      let clean = sentence.trim();
+      
+      if (!clean.match(/^[A-Z]/)) {
+        clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+      }
+      
+      if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) {
+        clean += '.';
+      }
+      
+      return clean;
+    }).join(' ');
+  };
+  
+  const para1 = formatParagraph(paragraph1);
+  const para2 = formatParagraph(paragraph2);
+  const para3 = formatParagraph(paragraph3);
+  
+  // Create 3 paragraphs with specific focus
+  const paragraphs = [];
+  
+  if (para1) {
+    paragraphs.push(`Core situation: ${para1}`);
+  }
+  
+  if (para2) {
+    paragraphs.push(`What is blocking progress: ${para2}`);
+  }
+  
+  if (para3) {
+    paragraphs.push(`Direction and intent: ${para3}`);
+  }
+  
+  return paragraphs.join('\n\n');
+}
+
+/**
+ * Format structured layout - Overview, Key Points, Direction
+ */
+function formatStructuredLayout(sentences: string[]): string {
+  const sections: string[] = [];
+  
+  // Overview: 1-2 sentences
+  const overviewSentences = sentences.slice(0, 2);
+  if (overviewSentences.length > 0) {
+    sections.push("## Overview");
+    sections.push(overviewSentences.map(s => {
+      let clean = s.trim();
+      if (!clean.match(/^[A-Z]/)) clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+      if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) clean += '.';
+      return clean;
+    }).join(' '));
+    sections.push("");
+  }
+  
+  // Key Points: 3-4 bullets
+  const keyPointSentences = sentences.slice(2, 6);
+  if (keyPointSentences.length > 0) {
+    sections.push("## Key Points");
+    keyPointSentences.forEach(sentence => {
+      let clean = sentence.trim();
+      if (!clean.match(/^[A-Z]/)) clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+      if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) clean += '.';
+      sections.push(`• ${clean}`);
+    });
+    sections.push("");
+  }
+  
+  // Direction: 1-2 sentences
+  const directionSentences = sentences.slice(6, 8);
+  if (directionSentences.length > 0) {
+    sections.push("## Direction");
+    sections.push(directionSentences.map(s => {
+      let clean = s.trim();
+      if (!clean.match(/^[A-Z]/)) clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+      if (!clean.endsWith('.') && !clean.endsWith('!') && !clean.endsWith('?')) clean += '.';
+      return clean;
+    }).join(' '));
+  }
+  
+  return sections.join('\n');
+}
+
+/**
+ * CONTROLLED AI ABSTRACTION GUARD
+ * Validates AI output and applies safety checks
+ */
+function validateAbstractionOutput(
+  aiOutput: string,
+  inputText: string
+): string {
+  // Check for sentence overlap
+  const originalSentences = inputText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const aiSentences = aiOutput.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  
+  let overlapCount = 0;
+  aiSentences.forEach(aiSentence => {
+    const isOverlap = originalSentences.some(originalSentence => {
+      const similarity = semanticSimilarity(aiSentence.toLowerCase(), originalSentence.toLowerCase());
+      return similarity > 0.8; // 80% similarity threshold for overlap
+    });
+    
+    if (isOverlap) overlapCount++;
+  });
+  
+  const overlapPercentage = aiSentences.length > 0 ? overlapCount / aiSentences.length : 0;
+  
+  // Check for internal labels
+  const hasInternalLabels = /Original Text:|Key Points:|Core Concept:|Summary:|Important:|Key Terms:|Main Points:|Essential element:|Key insight:|Important finding:|Selection Logic:|Related Concepts:|Process Steps:|Comparison:|Supporting Details:|Central Thesis:|What is stopping us/i.test(aiOutput);
+  
+  // Check for repeated sentences
+  const uniqueAiSentences = aiSentences.filter((sentence, index, arr) =>
+    arr.findIndex(s => semanticSimilarity(s.toLowerCase(), sentence.toLowerCase()) > 0.9) === index
+  );
+  const repetitionPercentage = aiSentences.length > 0 ? (aiSentences.length - uniqueAiSentences.length) / aiSentences.length : 0;
+  
+  // Apply safety checks
+  if (overlapPercentage > 0.4 || hasInternalLabels || repetitionPercentage > 0.2) {
+    console.warn("AI abstraction validation failed, falling back to extractive summary");
+    // Return extractive summary (simplified version)
+    const extractive = originalSentences.slice(0, 4).join(' ');
+    return extractive || "Summary could not be generated from the provided content.";
+  }
+  
+  return aiOutput;
+}
+
+/**
+ * PRESENTATION FORMATTER
+ * Removes internal labels and formats summary output to sound human-written
+ */
 function formatHumanSummary(content: string, layout: SummaryLayout): string {
   // HARD SAFETY GUARDS: Check for problematic content first
   const problematicPatterns = [
