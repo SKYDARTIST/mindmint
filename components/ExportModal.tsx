@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { AppMode, Flashcard, QuizItem } from '@/types';
 import MermaidRenderer from './MermaidRenderer';
+import QuizViewer from './QuizViewer';
+import InfographicViewer from './InfographicViewer';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -119,6 +121,26 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
                 <div className="opacity-90">A: {c.answer}</div>
               </div>
             ))}
+          </div>
+        </PreviewContainer>
+      );
+    }
+
+    if (mode === "quiz") {
+      return (
+        <PreviewContainer theme={exportTheme}>
+          <div className="p-8">
+            <QuizViewer quizItems={content} />
+          </div>
+        </PreviewContainer>
+      );
+    }
+
+    if (mode === "infographic") {
+      return (
+        <PreviewContainer theme={exportTheme}>
+          <div className="p-4 scale-[0.85] origin-top">
+            <InfographicViewer data={content} />
           </div>
         </PreviewContainer>
       );

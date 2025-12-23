@@ -1324,6 +1324,10 @@
     scale: .6;
   }
 
+  .scale-\[0\.85\] {
+    scale: .85;
+  }
+
   .-rotate-45 {
     rotate: -45deg;
   }
