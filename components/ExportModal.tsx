@@ -24,15 +24,15 @@ interface PreviewContainerProps {
 }
 
 const PreviewContainer: React.FC<PreviewContainerProps> = ({ children, theme }) => {
-  const scaleClass = "origin-top transform scale-[0.6] w-[140%] h-[140%]";
   return (
-    <div className={`w-full h-full overflow-hidden ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-      <div className={scaleClass}>
+    <div className={`w-full h-full overflow-hidden flex justify-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+      <div className="origin-top transform scale-[0.6] w-[166.6%] shrink-0">
         {children}
       </div>
     </div>
   );
 };
+
 
 const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, content, isPro }) => {
   const [format, setFormat] = useState<'pdf' | 'png'>('pdf');
