@@ -15,11 +15,11 @@ import SummaryViewer from "./SummaryViewer";
 interface EditorShellProps {
   mode: AppMode;
   layout:
-    | MindmapLayout
-    | SummaryLayout
-    | FlashcardLayout
-    | QuizLayout
-    | InfographicLayout;
+  | MindmapLayout
+  | SummaryLayout
+  | FlashcardLayout
+  | QuizLayout
+  | InfographicLayout;
 }
 
 const MAX_CHARS = 5000;
@@ -61,7 +61,7 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
     if (saved) {
       try {
         setHistory(JSON.parse(saved));
-      } catch {}
+      } catch { }
     }
   }, []);
 
@@ -108,17 +108,10 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
 
   /* ===== MAP LAYOUT ===== */
   useEffect(() => {
-    if (mode !== "summary") return;
-
-    const map: Record<MindmapLayout, SummaryLayout> = {
-      classic: "executive",
-      flow: "bullet",
-      layered: "notes",
-      chain: "infostructured",
-    };
-
-    setSummaryLayout(map[layout as MindmapLayout] ?? "executive");
-    setResult(null);
+    if (mode === "summary") {
+      setSummaryLayout(layout as SummaryLayout);
+      setResult(null);
+    }
   }, [layout, mode]);
 
   const handleTemplateSelect = (nextPlaceholder: string) => {
@@ -253,8 +246,7 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
             >
               <option value="executive">Executive</option>
               <option value="bullet">Bullet</option>
-              <option value="notes">Notes</option>
-              <option value="infostructured">Structured</option>
+              <option value="study_notes">Study Notes</option>
             </select>
           </div>
 
@@ -429,7 +421,7 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
         {/* RIGHT CANVAS */}
         <div className="flex-1 bg-[#0f0f0f] flex items-center justify-center relative overflow-hidden">
           {/* Subtle grid */}
-          <div 
+          <div
             className="absolute inset-0 opacity-5"
             style={{
               backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)',
@@ -444,7 +436,7 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
           ) : result ? (
             <div className="w-full max-w-4xl p-8">
               <SummaryViewer data={result} />
-              
+
               <div className="flex gap-6 mt-8 text-sm text-neutral-400">
                 <button onClick={copyPlain} className="hover:text-white transition">
                   {copied ? "Copied!" : "Copy text"}
@@ -468,7 +460,7 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
               <p className="text-neutral-400 max-w-md mx-auto mb-8">
                 Paste your notes to build a structured summary
               </p>
-              
+
               <div className="bg-neutral-900/50 border border-neutral-800 rounded-full px-6 py-3 inline-flex items-center gap-3">
                 <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
                 <span className="text-sm text-neutral-400">WAITING FOR INPUT</span>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Flashcard, FlashcardLayout } from '../types';
+import { Flashcard, FlashcardLayout } from '@/types';
 
 interface FlashcardViewerProps {
   cards: Flashcard[];

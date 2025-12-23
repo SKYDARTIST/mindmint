@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { QuizItem, QuizLayout } from '../types';
+import { QuizItem, QuizLayout } from '@/types';
 
 interface QuizViewerProps {
    quizItems: QuizItem[];
