@@ -1,14 +1,26 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { AppMode, SummaryLayout, MindmapLayout } from "@/types";
+import type {
+  AppMode,
+  MindmapLayout,
+  SummaryLayout,
+  FlashcardLayout,
+  QuizLayout,
+  InfographicLayout,
+} from "@/types";
+
 import SummaryViewer from "./SummaryViewer";
 
 interface EditorShellProps {
   mode: AppMode;
-  layout: SummaryLayout | MindmapLayout;
+  layout:
+    | MindmapLayout
+    | SummaryLayout
+    | FlashcardLayout
+    | QuizLayout
+    | InfographicLayout;
 }
-
 
 const MAX_CHARS = 5000;
 
@@ -64,13 +76,11 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
   /* ===== KEYBOARD SHORTCUTS ===== */
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      // ESC → back to templates
       if (e.key === "Escape" && isInputMode && !loading && !showHelp) {
         e.preventDefault();
         handleReset();
       }
 
-      // CMD / CTRL + ENTER → generate
       if (
         (e.metaKey || e.ctrlKey) &&
         e.key === "Enter" &&
@@ -83,7 +93,6 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
         handleGenerate();
       }
 
-      // ? or CMD/CTRL + / → toggle help
       if (
         (e.key === "?" && !e.metaKey && !e.ctrlKey) ||
         ((e.metaKey || e.ctrlKey) && e.key === "/")
@@ -97,22 +106,20 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [isInputMode, loading, input, showHelp]);
 
-/* ===== MAP LAYOUT ===== */
-useEffect(() => {
-  if (mode !== "summary") return;
+  /* ===== MAP LAYOUT ===== */
+  useEffect(() => {
+    if (mode !== "summary") return;
 
-  const map: Record<MindmapLayout, SummaryLayout> = {
-    classic: "executive",
-    flow: "bullet",
-    layered: "notes",
-    chain: "infostructured",
-  };
+    const map: Record<MindmapLayout, SummaryLayout> = {
+      classic: "executive",
+      flow: "bullet",
+      layered: "notes",
+      chain: "infostructured",
+    };
 
-  setSummaryLayout(map[layout as MindmapLayout] ?? "executive");
-  setResult(null);
-}, [layout, mode]);
-
-
+    setSummaryLayout(map[layout as MindmapLayout] ?? "executive");
+    setResult(null);
+  }, [layout, mode]);
 
   const handleTemplateSelect = (nextPlaceholder: string) => {
     setIsInputMode(true);
@@ -130,23 +137,22 @@ useEffect(() => {
   };
 
   const handleGenerate = async () => {
-  if (mode !== "summary") return;
-  if (!input.trim() || loading || input.length > MAX_CHARS) return;
+    if (mode !== "summary") return;
+    if (!input.trim() || loading || input.length > MAX_CHARS) return;
 
-  setLoading(true);
-  setResult(null);
-  setCopied(false);
+    setLoading(true);
+    setResult(null);
+    setCopied(false);
 
-  try {
-    const res = await fetch("/api/summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        input,
-        layout: summaryLayout,
-      }),
-    });
-
+    try {
+      const res = await fetch("/api/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          input,
+          layout: summaryLayout,
+        }),
+      });
 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to generate summary");
@@ -213,13 +219,12 @@ useEffect(() => {
   const isGenerateDisabled = loading || !input.trim() || isOverLimit;
 
   if (mode === "mindmap") {
-  return (
-    <div className="flex h-screen items-center justify-center text-neutral-500">
-      Mindmap mode coming soon
-    </div>
-  );
-}
-
+    return (
+      <div className="flex h-screen items-center justify-center text-neutral-500">
+        Mindmap mode coming soon
+      </div>
+    );
+  }
 
   return (
     <>
@@ -284,48 +289,106 @@ useEffect(() => {
                 </div>
               )}
 
-              <div className="space-y-3 pt-4">
-                <div className="text-xs uppercase tracking-wide text-neutral-400">
-                  Start with a template
+              {/* Starter Templates - calm dark cards with icons */}
+              <div className="space-y-6 pt-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-2">
+                    Start with a template
+                  </h3>
+                  <p className="text-sm text-gray-400">
+                    Choose a starter to auto-focus your content.
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <TemplateCard
-                    title="Study Notes"
-                    desc="Turn class notes into structured understanding."
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Study Notes */}
+                  <button
                     onClick={() =>
                       handleTemplateSelect(
                         "Paste your study notes, textbook content, or lecture material here…"
                       )
                     }
-                  />
-                  <TemplateCard
-                    title="YouTube Summary"
-                    desc="Summarize long videos into key ideas."
+                    className="group flex items-start gap-4 p-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-left"
+                  >
+                    <div className="p-3 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
+                      <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-1">Study Notes</h4>
+                      <p className="text-sm text-gray-400">
+                        Turn class notes or textbook content into clear, structured understanding.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* YouTube Summary */}
+                  <button
                     onClick={() =>
                       handleTemplateSelect(
                         "Paste the YouTube transcript or notes here…"
                       )
                     }
-                  />
-                  <TemplateCard
-                    title="Exam Revision"
-                    desc="Generate revision-ready summaries."
+                    className="group flex items-start gap-4 p-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-left"
+                  >
+                    <div className="p-3 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
+                      <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-1">YouTube Summary</h4>
+                      <p className="text-sm text-gray-400">
+                        Summarize long videos into key ideas, takeaways, and visuals.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Exam Revision */}
+                  <button
                     onClick={() =>
                       handleTemplateSelect(
                         "Paste topics or syllabus points here…"
                       )
                     }
-                  />
-                  <TemplateCard
-                    title="Meeting Notes"
-                    desc="Convert meetings into clear action items."
+                    className="group flex items-start gap-4 p-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-left"
+                  >
+                    <div className="p-3 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
+                      <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-1">Exam Revision</h4>
+                      <p className="text-sm text-gray-400">
+                        Generate mindmaps, flashcards, and quizzes for fast revision.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Meeting Notes */}
+                  <button
                     onClick={() =>
                       handleTemplateSelect(
                         "Paste meeting notes here…"
                       )
                     }
-                  />
+                    className="group flex items-start gap-4 p-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-left"
+                  >
+                    <div className="p-3 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
+                      <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-1">Meeting Notes</h4>
+                      <p className="text-sm text-gray-400">
+                        Convert messy notes into clean summaries and action points.
+                      </p>
+                    </div>
+                  </button>
                 </div>
               </div>
             </>
@@ -364,64 +427,55 @@ useEffect(() => {
         </div>
 
         {/* RIGHT CANVAS */}
-{mode === "summary" && (
-  <div className="flex-1 flex flex-col items-center justify-center gap-3">
-    {loading ? (
-      <div className="text-neutral-400 animate-pulse">
-        Generating summary…
-      </div>
-    ) : result ? (
-      <div className="w-full max-w-3xl space-y-6">
-    {/* Result title */}
-    <h2 className="text-lg font-semibold text-white">
-      Summary
-    </h2>
+        <div className="flex-1 bg-[#0f0f0f] flex items-center justify-center relative overflow-hidden">
+          {/* Subtle grid */}
+          <div 
+            className="absolute inset-0 opacity-5"
+            style={{
+              backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)',
+              backgroundSize: '40px 40px'
+            }}
+          />
 
-    {/* Generated content */}
-    {mode === "summary" && <SummaryViewer data={result} />}
-
-    {/* Action buttons */}
-    <div className="flex gap-4 text-xs text-neutral-400">
-      <button
-        onClick={copyPlain}
-        className="hover:text-white transition"
-      >
-        {copied ? "Copied!" : "Copy text"}
-      </button>
-
-      <button
-        onClick={copyMarkdown}
-        className="hover:text-white transition"
-      >
-        Copy Markdown
-      </button>
-
-      <button
-        onClick={downloadTxt}
-        className="hover:text-white transition"
-      >
-        Download .txt
-      </button>
-
-      <button
-        onClick={downloadMd}
-        className="hover:text-white transition"
-      >
-        Download .md
-      </button>
-    </div>
-  </div>
-) : (
-  <div className="text-neutral-500 text-sm">
-  {isInputMode
-    ? "Paste your text and generate a summary"
-    : "Select a template to begin"}
-</div>
-
-)}
-  </div>
-)}
-
+          {loading ? (
+            <div className="text-neutral-400 animate-pulse text-lg">
+              Generating…
+            </div>
+          ) : result ? (
+            <div className="w-full max-w-4xl p-8">
+              <SummaryViewer data={result} />
+              
+              <div className="flex gap-6 mt-8 text-sm text-neutral-400">
+                <button onClick={copyPlain} className="hover:text-white transition">
+                  {copied ? "Copied!" : "Copy text"}
+                </button>
+                <button onClick={copyMarkdown} className="hover:text-white transition">
+                  Copy Markdown
+                </button>
+                <button onClick={downloadTxt} className="hover:text-white transition">
+                  Download .txt
+                </button>
+                <button onClick={downloadMd} className="hover:text-white transition">
+                  Download .md
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center">
+              <h3 className="text-2xl font-medium text-white mb-4">
+                Visualize your thoughts
+              </h3>
+              <p className="text-neutral-400 max-w-md mx-auto mb-8">
+                Paste your notes to build a structured summary
+              </p>
+              
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-full px-6 py-3 inline-flex items-center gap-3">
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                <span className="text-sm text-neutral-400">WAITING FOR INPUT</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* SHORTCUT HELP OVERLAY */}
@@ -461,25 +515,5 @@ useEffect(() => {
         </div>
       )}
     </>
-  );
-}
-
-function TemplateCard({
-  title,
-  desc,
-  onClick,
-}: {
-  title: string;
-  desc: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="bg-neutral-900 border border-neutral-700 rounded p-4 text-left hover:border-indigo-500 transition"
-    >
-      <div className="font-medium text-sm">{title}</div>
-      <div className="text-xs text-neutral-400 mt-1">{desc}</div>
-    </button>
   );
 }

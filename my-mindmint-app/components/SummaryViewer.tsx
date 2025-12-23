@@ -6,11 +6,12 @@ interface Props {
 
 export default function SummaryViewer({ data }: Props) {
   return (
-    <div className="p-8 max-w-3xl space-y-4">
-      <h2 className="text-2xl font-bold">Summary</h2>
-      <pre className="whitespace-pre-wrap text-gray-600 text-sm">
-        {data}
-      </pre>
+    <div className="p-8 w-full animate-in">
+      <div className="prose prose-lg dark:prose-invert max-w-none">
+        <div className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-medium">
+          {data}
+        </div>
+      </div>
     </div>
   );
 }

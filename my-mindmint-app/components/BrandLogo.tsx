@@ -7,7 +7,7 @@ interface BrandLogoProps {
 }
 
 const BrandLogo: React.FC<BrandLogoProps> = ({ variant = 'full', className = '', size = 'md' }) => {
-  
+
   // Size mappings
   const dimensions = {
     sm: { w: 24, h: 24, text: 'text-base' },
@@ -20,26 +20,26 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ variant = 'full', className = '',
 
   // The Abstract "MindMint" Symbol (Node M)
   const LogoIcon = () => (
-    <svg 
-      width={w} 
-      height={h} 
-      viewBox="0 0 32 32" 
-      fill="none" 
+    <svg
+      width={w}
+      height={h}
+      viewBox="0 0 32 32"
+      fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="flex-shrink-0"
+      className="shrink-0"
     >
       {/* Background shape */}
       <rect x="2" y="2" width="28" height="28" rx="8" className="fill-[#6E56CF] dark:fill-[#7C66DC]" />
-      
+
       {/* The "M" Node Construction */}
-      <path 
-        d="M10 22V12C10 11 11 10 12 10H13L16 16L19 10H20C21 10 22 11 22 12V22" 
-        stroke="white" 
-        strokeWidth="2.5" 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
+      <path
+        d="M10 22V12C10 11 11 10 12 10H13L16 16L19 10H20C21 10 22 11 22 12V22"
+        stroke="white"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      
+
       {/* The "Mint" Spark/Dot */}
       <circle cx="24" cy="8" r="3" className="fill-[#10B981] dark:fill-[#34D399]" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
     </svg>
@@ -53,7 +53,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ variant = 'full', className = '',
     return (
       <div className={`flex flex-col items-center gap-3 ${className}`}>
         <LogoIcon />
-        <span className={`${text} font-bold tracking-tight text-gray-900 dark:text-white font-satoshi`}>
+        <span className={`${text} font-bold tracking-tight text-current`}>
           MindMint
         </span>
       </div>
@@ -64,7 +64,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ variant = 'full', className = '',
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
       <LogoIcon />
-      <span className={`${text} font-bold tracking-tight text-gray-900 dark:text-white font-satoshi`}>
+      <span className={`${text} font-bold tracking-tight text-current`}>
         MindMint
       </span>
     </div>

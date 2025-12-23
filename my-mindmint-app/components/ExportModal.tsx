@@ -55,7 +55,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
   // -- Preview Renderers --
   const renderPreviewContent = () => {
-    if (mode === AppMode.MINDMAP) {
+    if (mode === "mindmap") {
       return (
         <PreviewContainer theme={exportTheme}>
            <div className="p-8">
@@ -68,7 +68,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
       );
     }
 
-    if (mode === AppMode.SUMMARY) {
+    if (mode === "summary") {
       return (
         <PreviewContainer theme={exportTheme}>
           <div className="p-12 prose dark:prose-invert max-w-none">
@@ -78,7 +78,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
       );
     }
 
-    if (mode === AppMode.FLASHCARDS) {
+    if (mode === "flashcards") {
       const cards = content as Flashcard[];
       return (
         <PreviewContainer theme={exportTheme}>

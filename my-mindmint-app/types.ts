@@ -2,13 +2,12 @@
    App Modes
 ========================= */
 
-export enum AppMode {
-  MINDMAP = "mindmap",
-  FLASHCARDS = "flashcards",
-  QUIZ = "quiz",
-  SUMMARY = "summary",
-  INFOGRAPHIC = "infographic",
-}
+export type AppMode =
+  | "mindmap"
+  | "flashcards"
+  | "quiz"
+  | "summary"
+  | "infographic";
 
 /* =========================
    Theme
@@ -22,35 +21,27 @@ export type ThemeMode = "light" | "dark";
 
 export type MindmapLayout =
   | "classic"
-  | "flow"
-  | "layered"
-  | "chain";
+  | "categorized"
+  | "flow";
 
 export type FlashcardLayout =
-  | "minimal"
-  | "qa"
-  | "keyword"
-  | "chunked"
-  | "scenario";
+  | "classic"
+  | "concept"
+  | "cloze";
 
 export type QuizLayout =
   | "classic"
-  | "mcq-heavy"
-  | "tf-speed"
-  | "scenario"
-  | "mixed";
+  | "speed"
+  | "scenario";
 
 export type SummaryLayout =
   | "executive"
   | "bullet"
-  | "notes"
-  | "infostructured";
+  | "study_notes";
 
 export type InfographicLayout =
-  | "three_column"
-  | "timeline"
-  | "pillars"
-  | "flow"
+  | "step_by_step"
+  | "process_flow"
   | "comparison";
 
 /* =========================
@@ -69,10 +60,10 @@ export interface Flashcard {
 
 export interface QuizItem {
   type:
-    | "multiple-choice"
-    | "true-false"
-    | "short-answer"
-    | "fill-gap";
+  | "multiple-choice"
+  | "true-false"
+  | "short-answer"
+  | "fill-gap";
   question: string;
   options: string[];
   correctAnswer: string;
@@ -94,16 +85,16 @@ export interface InfographicStep {
   title: string;
   description: string;
   icon?:
-    | "star"
-    | "number"
-    | "check"
-    | "cross"
-    | "arrow"
-    | "dot"
-    | "bulb"
-    | "target"
-    | "list"
-    | "chart";
+  | "star"
+  | "number"
+  | "check"
+  | "cross"
+  | "arrow"
+  | "dot"
+  | "bulb"
+  | "target"
+  | "list"
+  | "chart";
   accent?: "blue" | "green" | "red" | "purple" | "gray";
 }
 
