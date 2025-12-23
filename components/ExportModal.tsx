@@ -43,14 +43,44 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
   if (!isOpen) return null;
 
-  const handleExport = () => {
-    if (!isPro) return;
+  const handleExport = async () => {
+    if (!isPro || isExporting) return;
     setIsExporting(true);
-    // Simulate export delay
-    setTimeout(() => {
+
+    try {
+      const response = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content,
+          mode: format === 'pdf' ? 'PDF' : 'IMAGE',
+          appMode: mode
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.ok) {
+        // Create a blob from the structured content
+        const blob = new Blob([result.data], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `mindmint-export-${mode}-${new Date().getTime()}.${format === 'pdf' ? 'txt' : 'txt'}`; // Using .txt for structured text
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        onClose();
+      } else {
+        alert(result.error || "Export failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("Export Error:", err);
+      alert("An unexpected error occurred during export.");
+    } finally {
       setIsExporting(false);
-      onClose();
-    }, 1500);
+    }
   };
 
   // -- Preview Renderers --
@@ -130,8 +160,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
                 <button
                   onClick={() => setFormat('pdf')}
                   className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${format === 'pdf'
-                      ? 'bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-500 dark:text-indigo-300'
-                      : 'bg-white dark:bg-[#202023] border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
+                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-500 dark:text-indigo-300'
+                    : 'bg-white dark:bg-[#202023] border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
                     }`}
                 >
                   <Icons.PDF />
@@ -140,8 +170,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
                 <button
                   onClick={() => setFormat('png')}
                   className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${format === 'png'
-                      ? 'bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-500 dark:text-indigo-300'
-                      : 'bg-white dark:bg-[#202023] border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
+                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-500 dark:text-indigo-300'
+                    : 'bg-white dark:bg-[#202023] border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
                     }`}
                 >
                   <Icons.Image />
@@ -162,8 +192,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
                       key={size}
                       onClick={() => setPageSize(size as any)}
                       className={`flex-1 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${pageSize === size
-                          ? 'bg-white dark:bg-[#27272A] text-gray-900 dark:text-white shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                        ? 'bg-white dark:bg-[#27272A] text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                         }`}
                     >
                       {size}
@@ -181,8 +211,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
                       key={m}
                       onClick={() => setMargin(m as any)}
                       className={`flex-1 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${margin === m
-                          ? 'bg-white dark:bg-[#27272A] text-gray-900 dark:text-white shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                        ? 'bg-white dark:bg-[#27272A] text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                         }`}
                     >
                       {m}

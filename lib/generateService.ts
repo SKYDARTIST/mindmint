@@ -282,3 +282,67 @@ ${inputText}`;
 
     return content;
 };
+export const formatForExport = async (
+    mode: AppMode,
+    content: any,
+    exportMode: 'PDF' | 'IMAGE'
+): Promise<string> => {
+    if (!content) throw new Error("Content to export is required");
+
+    const systemInstruction = `You are an export formatting engine for an app called MindMint.
+
+Your task:
+- Prepare content for export as a PDF or image.
+- Preserve the content exactly as generated.
+- Do NOT add, remove, rewrite, or interpret any information.
+- Export is a visual snapshot, not a transformation.
+
+GLOBAL RULES:
+- Use ONLY the provided content.
+- Do NOT introduce titles, captions, footers, or explanations unless explicitly provided.
+- Do NOT summarize or expand.
+- Do NOT change wording.
+- Maintain original structure and order.
+- Accuracy and fidelity are mandatory.
+
+EXPORT MODE: ${exportMode}
+
+FORMAT RULES:
+- Keep layout clean, readable, and uncluttered.
+- Ensure clear spacing between sections.
+- Text must be legible at standard zoom levels.
+- Avoid decorative elements.
+- No emojis.
+- No icons unless already present in the content.
+- No branding additions.
+
+CONTENT-SPECIFIC RULES:
+- Summaries: preserve paragraphs, bullets, or headings exactly.
+- Flashcards: export each card distinctly with clear front/back separation.
+- Infographics: preserve steps, flows, or comparisons as structured blocks.
+- Mindmaps: preserve hierarchy and relationships without reinterpreting them.
+
+FAILURE HANDLING:
+- If content is too large, split across pages or frames without altering content.
+- Never compress meaning to fit a page.
+- Never guess or auto-correct.
+
+OUTPUT:
+- Return export-ready structured content only.
+- No commentary about the export.
+- No UI instructions.`;
+
+    const userPrompt = `CONTENT TO EXPORT:
+${typeof content === 'string' ? content : JSON.stringify(content, null, 2)}`;
+
+    const completion = await openai.chat.completions.create({
+        model: "gpt-4o", // Using a stronger model for better formatting consistency
+        messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: userPrompt }
+        ],
+        temperature: 0, // Set to 0 for maximum fidelity/consistency
+    });
+
+    return completion.choices[0]?.message?.content || "";
+};

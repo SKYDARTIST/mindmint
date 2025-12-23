@@ -9,6 +9,7 @@ import MermaidRenderer from "./MermaidRenderer";
 import FlashcardViewer from "./FlashcardViewer";
 import QuizViewer from "./QuizViewer";
 import InfographicViewer from "./InfographicViewer";
+import ExportModal from "./ExportModal";
 
 // Icons
 const Icons = {
@@ -56,8 +57,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [quizLayout, setQuizLayout] = useState<QuizLayout>("classic");
   const [summaryLayout, setSummaryLayout] = useState<SummaryLayout>("executive");
   const [infographicLayout, setInfographicLayout] = useState<InfographicLayout>("step_by_step");
-  const [isPro, setIsPro] = useState(false);
+  const [isPro, setIsPro] = useState(true);
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
 
   const handleTemplateSelect = (tpl: typeof STARTER_TEMPLATES[0]) => {
@@ -189,11 +191,12 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Pro Tools</div>
               <nav className="space-y-1">
                 {[
-                  { id: 'export', label: 'Export PDF', icon: <Icons.Export /> },
-                  { id: 'save', label: 'Save Project', icon: <Icons.Save /> },
+                  { id: 'export', label: 'Export PDF', icon: <Icons.Export />, onClick: () => setShowExportModal(true) },
+                  { id: 'save', label: 'Save Project', icon: <Icons.Save />, onClick: () => { } },
                 ].map((item) => (
                   <button
                     key={item.id}
+                    onClick={item.onClick}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isPro
                       ? "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
                       : "text-gray-400 dark:text-gray-500 cursor-not-allowed hover:bg-gray-100 dark:hover:bg-white/5"
@@ -407,6 +410,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
       </main >
 
       <TemplatesModal isOpen={showTemplates} onClose={() => setShowTemplates(false)} mode={mode} onSelect={() => { }} />
+      <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} mode={mode} content={output} isPro={isPro} />
     </div >
   );
 }
