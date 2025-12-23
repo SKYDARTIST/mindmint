@@ -1,6 +1,5 @@
 import React from 'react';
-import { AppMode } from '../types';
-
+import type { AppMode } from "@/types";
 // --- Icons & Illustrations ---
 
 const Icons = {
@@ -53,35 +52,35 @@ const Icons = {
 export const EmptyState = ({ mode }: { mode: AppMode }) => {
   const getContent = () => {
     switch (mode) {
-      case AppMode.MINDMAP:
+      case "mindmap":
         return {
           Icon: Icons.Mindmap,
           title: "Visualize your thoughts",
           desc: "Paste your notes to build a structured map",
           tag: "Structure"
         };
-      case AppMode.FLASHCARDS:
+      case "flashcards":
         return {
           Icon: Icons.Flashcards,
           title: "Create study decks",
           desc: "Generate study cards instantly",
           tag: "Memorize"
         };
-      case AppMode.QUIZ:
+      case "quiz":
         return {
           Icon: Icons.Quiz,
           title: "Test your knowledge",
           desc: "Create interactive questions",
           tag: "Assess"
         };
-      case AppMode.SUMMARY:
+      case "summary":
         return {
           Icon: Icons.Summary,
           title: "Summarize instantly",
           desc: "Turn long text into clear summaries",
           tag: "Simplify"
         };
-      case AppMode.INFOGRAPHIC:
+      case "infographic":
         return {
           Icon: Icons.Infographic,
           title: "Visual takeaways",
@@ -155,7 +154,7 @@ export const LoadingState = ({ mode }: { mode: AppMode }) => {
 
   const renderSkeleton = () => {
     switch (mode) {
-      case AppMode.MINDMAP:
+      case "mindmap":
         return (
           <div className="relative w-full h-full max-w-lg aspect-square mx-auto flex items-center justify-center opacity-50">
             {/* Central Node */}
@@ -175,7 +174,7 @@ export const LoadingState = ({ mode }: { mode: AppMode }) => {
           </div>
         );
 
-      case AppMode.FLASHCARDS:
+      case "flashcards":
         return (
           <div className="w-full max-w-md mx-auto aspect-[3/2] bg-white dark:bg-[#1C1C1F] rounded-2xl border border-gray-100 dark:border-gray-800 p-8 shadow-sm flex flex-col items-center justify-center space-y-4">
              <ShimmerLine className="w-16 h-3 mb-4" />
@@ -187,7 +186,7 @@ export const LoadingState = ({ mode }: { mode: AppMode }) => {
           </div>
         );
 
-      case AppMode.QUIZ:
+      case "quiz":
         return (
           <div className="w-full max-w-lg mx-auto space-y-6">
              <div className="bg-white dark:bg-[#1C1C1F] p-6 rounded-xl border border-gray-100 dark:border-gray-800 space-y-4">
@@ -207,7 +206,7 @@ export const LoadingState = ({ mode }: { mode: AppMode }) => {
           </div>
         );
 
-      case AppMode.INFOGRAPHIC:
+      case "infographic":
          return (
             <div className="w-full max-w-2xl mx-auto grid grid-cols-2 gap-6">
                {[1, 2].map(i => (
@@ -226,7 +225,7 @@ export const LoadingState = ({ mode }: { mode: AppMode }) => {
             </div>
          );
 
-      case AppMode.SUMMARY:
+      case "summary":
       default:
         return (
           <div className="w-full max-w-2xl mx-auto space-y-6 p-4">

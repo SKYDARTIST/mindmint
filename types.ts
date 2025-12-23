@@ -1,17 +1,52 @@
+/* =========================
+   App Modes
+========================= */
 
-export enum AppMode {
-  MINDMAP = 'mindmap',
-  FLASHCARDS = 'flashcards',
-  QUIZ = 'quiz',
-  SUMMARY = 'summary',
-  INFOGRAPHIC = 'infographic',
-}
+export type AppMode =
+  | "mindmap"
+  | "flashcards"
+  | "quiz"
+  | "summary"
+  | "infographic";
 
-export type MindmapLayout = 'classic' | 'flow' | 'layered' | 'chain';
-export type FlashcardLayout = 'minimal' | 'qa' | 'keyword' | 'chunked' | 'scenario';
-export type QuizLayout = 'classic' | 'mcq-heavy' | 'tf-speed' | 'scenario' | 'mixed';
-export type SummaryLayout = 'executive' | 'bullet' | 'notes' | 'infostructured';
-export type InfographicLayout = 'three_column' | 'timeline' | 'pillars' | 'flow' | 'comparison';
+/* =========================
+   Theme
+========================= */
+
+export type ThemeMode = "light" | "dark";
+
+/* =========================
+   Layout Types
+========================= */
+
+export type MindmapLayout =
+  | "classic"
+  | "categorized"
+  | "flow";
+
+export type FlashcardLayout =
+  | "classic"
+  | "concept"
+  | "cloze";
+
+export type QuizLayout =
+  | "classic"
+  | "speed"
+  | "scenario";
+
+export type SummaryLayout =
+  | "executive"
+  | "bullet"
+  | "study_notes";
+
+export type InfographicLayout =
+  | "step_by_step"
+  | "process_flow"
+  | "comparison";
+
+/* =========================
+   Flashcards
+========================= */
 
 export interface Flashcard {
   question: string;
@@ -19,8 +54,16 @@ export interface Flashcard {
   tag?: string;
 }
 
+/* =========================
+   Quiz
+========================= */
+
 export interface QuizItem {
-  type: 'multiple-choice' | 'true-false' | 'short-answer' | 'fill-gap';
+  type:
+  | "multiple-choice"
+  | "true-false"
+  | "short-answer"
+  | "fill-gap";
   question: string;
   options: string[];
   correctAnswer: string;
@@ -34,11 +77,25 @@ export interface QuizItem {
   };
 }
 
+/* =========================
+   Infographic
+========================= */
+
 export interface InfographicStep {
   title: string;
   description: string;
-  icon?: 'star' | 'number' | 'check' | 'cross' | 'arrow' | 'dot' | 'bulb' | 'target' | 'list' | 'chart';
-  accent?: 'blue' | 'green' | 'red' | 'purple' | 'gray'; 
+  icon?:
+  | "star"
+  | "number"
+  | "check"
+  | "cross"
+  | "arrow"
+  | "dot"
+  | "bulb"
+  | "target"
+  | "list"
+  | "chart";
+  accent?: "blue" | "green" | "red" | "purple" | "gray";
 }
 
 export interface InfographicContent {
@@ -48,8 +105,12 @@ export interface InfographicContent {
   steps: InfographicStep[];
 }
 
-export type GenerationResult = 
-  | { type: 'text'; content: string }
-  | { type: 'json_flashcards'; content: Flashcard[] }
-  | { type: 'json_quiz'; content: QuizItem[] }
-  | { type: 'json_infographic'; content: InfographicContent };
+/* =========================
+   AI Generation Results
+========================= */
+
+export type GenerationResult =
+  | { type: "text"; content: string }
+  | { type: "json_flashcards"; content: Flashcard[] }
+  | { type: "json_quiz"; content: QuizItem[] }
+  | { type: "json_infographic"; content: InfographicContent };
