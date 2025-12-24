@@ -74,7 +74,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
           </button>
 
           <button
-            onClick={onExample}
+            onClick={() => onExample()} // We'll repurpose onExample to show pricing or we can pass a new prop
             className="px-10 py-5 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10 rounded-full transition-all flex items-center gap-4 min-w-[300px] shadow-sm active:scale-95"
           >
             <span className="flex-1 font-bold">Get Pro Version</span>
@@ -83,9 +83,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
         </div>
 
         {/* Footer text */}
-        <p className="text-xs text-gray-400 dark:text-gray-600 font-bold uppercase tracking-widest opacity-60">
-          Unlimited generations. No signup required.
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400 dark:text-gray-600 font-bold uppercase tracking-widest opacity-60">
+            3 free generations per day. No signup required.
+          </p>
+          <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-[0.2em] opacity-80">
+            Upgrade for unlimited access & pro tools
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
 import { generateContent } from "@/lib/generateService";
+import { validateInputLength } from "@/lib/validation";
 
 export async function POST(req: Request) {
     try {
-        const { input, mode, layout } = await req.json();
+        const { input, mode, layout, plan } = await req.json();
 
         if (!input || !mode) {
             return NextResponse.json(
                 { ok: false, error: "Input and mode are required." },
+                { status: 400 }
+            );
+        }
+
+        // Validate input length based on plan
+        const validation = validateInputLength(input, plan || 'free');
+        if (!validation.valid) {
+            return NextResponse.json(
+                { ok: false, error: validation.message },
                 { status: 400 }
             );
         }

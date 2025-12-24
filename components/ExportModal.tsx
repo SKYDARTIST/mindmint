@@ -17,18 +17,30 @@ const Icons = {
   Image: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
   Check: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
   Lock: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>,
-  Close: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+  Close: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+  Minus: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>,
+  Plus: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
 };
 
 interface PreviewContainerProps {
   children: React.ReactNode;
   theme: 'light' | 'dark';
+  zoom: number;
 }
 
-const PreviewContainer: React.FC<PreviewContainerProps> = ({ children, theme }) => {
+const PreviewContainer: React.FC<PreviewContainerProps> = ({ children, theme, zoom }) => {
+  const scale = zoom / 100;
+  const widthPercentage = (100 / scale).toFixed(2);
+
   return (
-    <div className={`w-full h-full overflow-hidden flex justify-center ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-      <div className="origin-top transform scale-[0.6] w-[166.6%] shrink-0">
+    <div className={`w-full min-h-full overflow-y-auto flex justify-center py-12 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+      <div
+        className="origin-top transition-transform duration-200 ease-out shrink-0 pb-32"
+        style={{
+          transform: `scale(${scale})`,
+          width: `${widthPercentage}%`
+        }}
+      >
         {children}
       </div>
     </div>
@@ -42,8 +54,13 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
   const [margin, setMargin] = useState<'normal' | 'narrow'>('normal');
   const [exportTheme, setExportTheme] = useState<'light' | 'dark'>('light');
   const [isExporting, setIsExporting] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(60);
 
   if (!isOpen) return null;
+
+  const handleZoom = (delta: number) => {
+    setZoomLevel(prev => Math.min(Math.max(30, prev + delta), 200));
+  };
 
   const handleExport = async () => {
     if (!isPro || isExporting) return;
@@ -89,7 +106,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
   const renderPreviewContent = () => {
     if (mode === "mindmap") {
       return (
-        <PreviewContainer theme={exportTheme}>
+        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
           <div className="p-8">
             <h1 className="text-2xl font-bold mb-4">Mindmap Export</h1>
             <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 h-[600px]">
@@ -102,7 +119,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
     if (mode === "summary") {
       return (
-        <PreviewContainer theme={exportTheme}>
+        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
           <div className="p-12 prose dark:prose-invert max-w-none">
             <div className="whitespace-pre-wrap font-sans text-sm">{content}</div>
           </div>
@@ -113,7 +130,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
     if (mode === "flashcards") {
       const cards = content as Flashcard[];
       return (
-        <PreviewContainer theme={exportTheme}>
+        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
           <div className="p-12 grid grid-cols-2 gap-4">
             {cards.slice(0, 6).map((c, i) => (
               <div key={i} className={`p-4 rounded-lg border text-xs ${exportTheme === 'dark' ? 'bg-[#27272A] border-gray-700' : 'bg-white border-gray-200'}`}>
@@ -128,7 +145,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
     if (mode === "quiz") {
       return (
-        <PreviewContainer theme={exportTheme}>
+        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
           <div className="p-8">
             <QuizViewer quizItems={content} />
           </div>
@@ -138,8 +155,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
     if (mode === "infographic") {
       return (
-        <PreviewContainer theme={exportTheme}>
-          <div className="p-4 scale-[0.85] origin-top">
+        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
+          <div className="p-4 origin-top">
             <InfographicViewer data={content} />
           </div>
         </PreviewContainer>
@@ -148,7 +165,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
     // Fallback
     return (
-      <PreviewContainer theme={exportTheme}>
+      <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
         <div className="p-12 text-center text-gray-400 mt-20">
           Preview unavailable for this format.
         </div>
@@ -317,17 +334,17 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
           {/* Paper Mockup */}
           <div
-            className={`relative transition-all duration-500 ease-spring shadow-2xl ${pageSize === 'a4' ? 'aspect-[210/297]' : 'aspect-[8.5/11]'
+            className={`relative transition-all duration-500 ease-spring shadow-2xl overflow-hidden shrink-0 ${pageSize === 'a4' ? 'aspect-[210/297]' : 'aspect-[8.5/11]'
               } ${exportTheme === 'dark' ? 'bg-[#1C1C1F]' : 'bg-white'}`}
             style={{
-              height: '100%',
-              maxHeight: '100%',
+              height: 'auto',
+              minHeight: '100%',
               width: 'auto',
               boxShadow: '0 20px 50px -12px rgba(0,0,0,0.25)'
             }}
           >
             {/* Content Rendering */}
-            <div className={`absolute inset-0 ${margin === 'normal' ? 'p-8' : 'p-4'}`}>
+            <div className={`w-full h-full ${margin === 'normal' ? 'p-8' : 'p-4'}`}>
               {renderPreviewContent()}
             </div>
 
@@ -341,9 +358,34 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
             )}
           </div>
 
-          {/* Zoom controls (Visual only) */}
-          <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white dark:bg-[#18181B] p-1.5 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm opacity-50 hover:opacity-100 transition-opacity">
-            <div className="px-2 text-xs font-mono text-gray-500">60%</div>
+          {/* Zoom controls */}
+          <div className="absolute bottom-6 right-6 flex items-center gap-3 bg-white dark:bg-[#1C1C1F] p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl z-30 group animate-in-slide-up">
+            <button
+              onClick={() => handleZoom(-10)}
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+            >
+              <Icons.Minus />
+            </button>
+            <div className="relative flex items-center gap-2 group/slider">
+              <input
+                type="range"
+                min="30"
+                max="200"
+                step="5"
+                value={zoomLevel}
+                onChange={(e) => setZoomLevel(parseInt(e.target.value))}
+                className="w-24 accent-indigo-500 cursor-pointer"
+              />
+              <div className="w-10 text-[10px] font-mono font-bold text-gray-500 dark:text-gray-400 tabular-nums">
+                {zoomLevel}%
+              </div>
+            </div>
+            <button
+              onClick={() => handleZoom(10)}
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+            >
+              <Icons.Plus />
+            </button>
           </div>
         </div>
       </div>

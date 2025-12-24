@@ -1,123 +1,152 @@
+"use client";
+
 import React, { useState } from 'react';
 
 interface PricingModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUpgrade: () => void;
 }
 
-const CheckIcon = () => (
-  <svg className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-  </svg>
-);
+const Icons = {
+  Check: () => <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
+  Close: () => <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+  Bolt: () => <svg className="w-6 h-6 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>,
+};
 
-const CrossIcon = () => (
-  <svg className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-
-const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade }) => {
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   if (!isOpen) return null;
 
+  const plans = [
+    {
+      name: "Free Plan",
+      price: "$0",
+      limit: "3 generations per day",
+      desc: "Perfect for casual learners and quick study sessions.",
+      features: [
+        "3 generations per day",
+        "Standard templates",
+        "Light & Dark mode",
+        "Basic exports"
+      ],
+      buttonText: "Current Plan",
+      isPro: false
+    },
+    {
+      name: "Pro Plan",
+      price: billingCycle === 'monthly' ? "$4.99" : "$29.99",
+      period: billingCycle === 'monthly' ? "/mo" : "/yr",
+      limit: "Unlimited generations",
+      desc: "Maximum productivity for power users and students.",
+      features: [
+        "Unlimited generations",
+        "Advanced infographics",
+        "High-fidelity PDF/PNG exports",
+        "Exclusive premium layouts",
+        "Priority AI generation"
+      ],
+      buttonText: "Upgrade to Pro",
+      isPro: true
+    }
+  ];
+
   return (
-    <div className="pricing-overlay animate-in-fade" onClick={onClose}>
-      <div className="pricing-modal animate-in-zoom" onClick={(e) => e.stopPropagation()}>
-        
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">Simple, transparent pricing</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Choose the plan that fits your workflow.</p>
-        </div>
-
-        {/* Toggle */}
-        <div className="flex justify-center items-center gap-3 mb-10">
-          <span className={`text-sm font-medium transition-colors cursor-pointer ${billing === 'monthly' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'}`} onClick={() => setBilling('monthly')}>Monthly</span>
-          <button 
-            className="relative w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors focus:outline-none"
-            onClick={() => setBilling(billing === 'monthly' ? 'yearly' : 'monthly')}
-            style={{ backgroundColor: billing === 'yearly' ? '#6E56CF' : undefined }}
-          >
-            <div 
-              className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ease-spring"
-              style={{ transform: billing === 'yearly' ? 'translateX(24px)' : 'translateX(0)' }}
-            />
-          </button>
-          <span className={`text-sm font-medium transition-colors cursor-pointer ${billing === 'yearly' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'}`} onClick={() => setBilling('yearly')}>
-            Yearly <span className="text-indigo-600 dark:text-indigo-400 text-xs bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-md ml-1 font-semibold">Save 20%</span>
-          </span>
-        </div>
-
-        {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* Free Plan */}
-          <div className="pricing-card">
-            <div className="mb-4">
-              <h3 className="font-semibold text-lg text-gray-900 dark:text-white">Free</h3>
-              <div className="mt-2 flex items-baseline">
-                <span className="text-3xl font-bold text-gray-900 dark:text-white">$0</span>
-                <span className="text-gray-500 dark:text-gray-500 ml-1 text-sm">/forever</span>
-              </div>
-              <p className="text-xs text-transparent mt-1 select-none">Spacer</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">Great for quick schoolwork or testing the tool.</p>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in-fade" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-[#18181B] w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800 animate-in-zoom"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-8 md:p-12">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-12">
+            <div>
+              <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Simple, Factual Pricing.</h2>
+              <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">Choose the plan that fits your study needs.</p>
             </div>
-            
-            <button className="w-full py-2 px-4 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-colors mb-6">
-              Current Plan
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors">
+              <Icons.Close />
             </button>
-
-            <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
-              <li className="flex items-center gap-3"><CheckIcon /> 3 free generations</li>
-              <li className="flex items-center gap-3"><CheckIcon /> Mindmap, flashcards, quiz</li>
-              <li className="flex items-center gap-3"><CheckIcon /> Summary mode</li>
-              <li className="flex items-center gap-3 opacity-50"><CrossIcon /> No export (PDF/PNG)</li>
-              <li className="flex items-center gap-3 opacity-50"><CrossIcon /> No saved drafts</li>
-            </ul>
           </div>
 
-          {/* Pro Plan */}
-          <div className="pricing-card pro">
-            <div className="mb-4">
-              <h3 className="font-semibold text-lg text-indigo-700 dark:text-indigo-300 flex items-center justify-between">
-                Pro
-                <span className="text-[10px] uppercase tracking-wider font-bold bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-full">Recommended</span>
-              </h3>
-              <div className="mt-2 flex items-baseline">
-                <span className="text-3xl font-bold text-gray-900 dark:text-white">${billing === 'monthly' ? '4.99' : '49'}</span>
-                <span className="text-gray-500 dark:text-gray-400 ml-1 text-sm">/{billing === 'monthly' ? 'month' : 'year'}</span>
-              </div>
-              <p className="text-[10px] text-gray-400 font-medium mt-1">
-                {billing === 'yearly' ? 'Billed annually ($4.08/mo)' : 'Billed monthly'}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">Perfect for students, creators, and researchers.</p>
+          {/* Billing Toggle */}
+          <div className="flex justify-center mb-12">
+            <div className="bg-gray-100 dark:bg-[#202023] p-1 rounded-2xl flex relative">
+              <button
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-8 py-2.5 text-sm font-bold rounded-xl transition-all relative z-10 ${billingCycle === 'monthly' ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingCycle('yearly')}
+                className={`px-8 py-2.5 text-sm font-bold rounded-xl transition-all relative z-10 ${billingCycle === 'yearly' ? 'text-gray-900 dark:text-white shadow-xl shadow-amber-500/10' : 'text-gray-500'}`}
+              >
+                Yearly
+                <span className="absolute -top-3 -right-6 bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-bounce shadow-lg shadow-amber-500/20">Best Value</span>
+              </button>
+              <div
+                className={`absolute inset-y-1 bg-white dark:bg-[#27272A] rounded-xl shadow-sm transition-all duration-300 ease-spring ${billingCycle === 'monthly' ? 'left-1 w-[48%]' : 'left-[51%] w-[48%]'}`}
+              />
             </div>
-
-            <button className="w-full py-2 px-4 rounded-lg bg-[#6E56CF] dark:bg-[#7C66DC] text-white font-medium text-sm hover:bg-[#5e4ab5] dark:hover:bg-[#6c55cc] shadow-md shadow-indigo-200 dark:shadow-none transition-all transform active:scale-95 mb-6">
-              Upgrade to Pro
-            </button>
-
-            <ul className="space-y-3 text-sm text-gray-700 dark:text-gray-300 font-medium">
-              <li className="flex items-center gap-3"><CheckIcon /> Unlimited generations</li>
-              <li className="flex items-center gap-3"><CheckIcon /> Export PDF / PNG</li>
-              <li className="flex items-center gap-3"><CheckIcon /> Saved drafts</li>
-              <li className="flex items-center gap-3"><CheckIcon /> Priority processing</li>
-              <li className="flex items-center gap-3"><CheckIcon /> Early access to new tools</li>
-            </ul>
           </div>
 
-        </div>
+          {/* Plans Grid */}
+          <div className="grid md:grid-cols-2 gap-8">
+            {plans.map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative p-8 rounded-3xl border transition-all ${plan.isPro
+                  ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-900/10 shadow-xl dark:shadow-indigo-500/5'
+                  : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1C1C1F]'}`}
+              >
+                {plan.isPro && (
+                  <div className="absolute top-0 right-12 transform -translate-y-1/2 bg-indigo-600 text-white text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-[0.2em] shadow-lg shadow-indigo-600/30">
+                    Recommended
+                  </div>
+                )}
 
-        <div className="mt-10 text-center border-t border-gray-100 dark:border-gray-800 pt-6">
-          <p className="text-xs text-gray-400 font-medium flex items-center justify-center gap-1">
-             Built by Cryptobulla <span className="text-red-400">❤️</span>
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold mb-1 text-gray-900 dark:text-white">{plan.name}</h3>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-black text-gray-900 dark:text-white">{plan.price}</span>
+                    {plan.period && <span className="text-gray-500 dark:text-gray-400 font-medium">{plan.period}</span>}
+                  </div>
+                  <p className="text-sm text-indigo-500 font-bold mt-2 uppercase tracking-widest">{plan.limit}</p>
+                </div>
+
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 font-medium leading-relaxed">
+                  {plan.desc}
+                </p>
+
+                <ul className="space-y-4 mb-10">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <Icons.Check />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => { if (plan.isPro) onUpgrade(); }}
+                  disabled={!plan.isPro}
+                  className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${plan.isPro
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl shadow-indigo-600/20 active:scale-[0.98]'
+                    : 'bg-gray-100 dark:bg-white/5 text-gray-400 cursor-default'}`}
+                >
+                  {plan.isPro && <Icons.Bolt />}
+                  {plan.buttonText}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-xs text-gray-400 mt-8 font-medium">
+            No long-term commitment. Cancel anytime. Secure payments.
           </p>
         </div>
-
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
       </div>
     </div>
   );

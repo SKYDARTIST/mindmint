@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import type { AppMode, MindmapLayout, FlashcardLayout, QuizLayout, SummaryLayout, InfographicLayout } from "@/types";
+import { getWordCount, LIMITS } from "@/lib/validation";
 import BrandLogo from "./BrandLogo";
 import TemplatesModal from "./TemplatesModal";
 import SummaryViewer from "./SummaryViewer";
@@ -10,6 +11,7 @@ import FlashcardViewer from "./FlashcardViewer";
 import QuizViewer from "./QuizViewer";
 import InfographicViewer from "./InfographicViewer";
 import ExportModal from "./ExportModal";
+import PricingModal from "./PricingModal";
 
 // Icons
 const Icons = {
@@ -57,9 +59,11 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [quizLayout, setQuizLayout] = useState<QuizLayout>("classic");
   const [summaryLayout, setSummaryLayout] = useState<SummaryLayout>("executive");
   const [infographicLayout, setInfographicLayout] = useState<InfographicLayout>("step_by_step");
-  const [isPro, setIsPro] = useState(true);
+  const [isPro, setIsPro] = useState(false);
+  const [generationsLeft, setGenerationsLeft] = useState(3);
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
 
 
   const handleTemplateSelect = (tpl: typeof STARTER_TEMPLATES[0]) => {
@@ -83,12 +87,18 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
     setOutput(null);
 
     try {
+      if (!isPro && generationsLeft <= 0) {
+        setShowPricingModal(true);
+        return;
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           input: inputText,
           mode,
+          plan: isPro ? 'pro' : 'free',
           layout: mode === "mindmap" ? mindmapLayout : mode === "flashcards" ? flashcardLayout : mode === "quiz" ? quizLayout : mode === "summary" ? summaryLayout : mode === "infographic" ? infographicLayout : "classic"
         }),
       });
@@ -96,6 +106,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
       const result = await res.json();
       if (result.ok) {
         setOutput(result.data);
+        if (!isPro) setGenerationsLeft(prev => Math.max(0, prev - 1));
       } else {
         setError(result.error || "Failed to generate content");
       }
@@ -133,15 +144,18 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               {theme === "light" ? <Icons.Moon /> : <Icons.Sun />}
             </button>
             <button
-              onClick={() => setIsPro(true)}
+              onClick={() => {
+                if (isPro) setIsPro(false);
+                else setShowPricingModal(true);
+              }}
               className={`hidden md:flex items-center gap-2 px-3 py-1.5 transition-all rounded-lg border ${isPro
-                ? "bg-amber-500/10 border-amber-500/20"
+                ? "bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20"
                 : "bg-indigo-500/10 border-indigo-500/20 hover:bg-indigo-500/20 cursor-pointer"
                 }`}
             >
               <Icons.Bolt />
               <span className={`text-xs font-bold ${isPro ? "text-amber-500" : "text-indigo-400"}`}>
-                {isPro ? "PRO" : "3 Free runs left"}
+                {isPro ? "PRO" : `${generationsLeft} Free runs left`}
               </span>
             </button>
 
@@ -304,6 +318,15 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                     placeholder={activePlaceholder}
                     className="flex-1 w-full bg-transparent text-sm resize-none focus:outline-none leading-relaxed text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
+                  <div className="flex items-center justify-between">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      <span className={getWordCount(inputText) > (isPro ? LIMITS.pro : LIMITS.free) ? "text-red-500" : ""}>
+                        {getWordCount(inputText)}
+                      </span>
+                      <span className="mx-1">/</span>
+                      <span>{isPro ? LIMITS.pro : LIMITS.free} words</span>
+                    </div>
+                  </div>
                   <button
                     onClick={handleGenerate}
                     disabled={isLoading}
@@ -411,6 +434,14 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
       <TemplatesModal isOpen={showTemplates} onClose={() => setShowTemplates(false)} mode={mode} onSelect={() => { }} />
       <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} mode={mode} content={output} isPro={isPro} />
+      <PricingModal
+        isOpen={showPricingModal}
+        onClose={() => setShowPricingModal(false)}
+        onUpgrade={() => {
+          setIsPro(true);
+          setShowPricingModal(false);
+        }}
+      />
     </div >
   );
 }
