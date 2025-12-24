@@ -28,8 +28,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade 
       features: [
         "3 generations per day",
         "Standard templates",
-        "Light & Dark mode",
-        "Basic exports"
+        "Light & Dark mode"
       ],
       buttonText: "Current Plan",
       isPro: false
@@ -53,12 +52,12 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade 
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in-fade" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-2 sm:p-4 animate-in-fade" onClick={onClose}>
       <div
-        className="bg-white dark:bg-[#18181B] w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800 animate-in-zoom"
+        className="bg-white dark:bg-[#18181B] w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 animate-in-zoom"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-8 md:p-12">
+        <div className="p-6 sm:p-8 md:p-12">
           {/* Header */}
           <div className="flex justify-between items-start mb-12">
             <div>

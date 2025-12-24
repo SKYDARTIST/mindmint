@@ -64,6 +64,8 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [lastGenerationTimestamp, setLastGenerationTimestamp] = useState<number | null>(null);
 
 
   const handleTemplateSelect = (tpl: typeof STARTER_TEMPLATES[0]) => {
@@ -87,8 +89,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
     setOutput(null);
 
     try {
-      if (!isPro && generationsLeft <= 0) {
+      if (!isPro && (generationsLeft <= 0 || mode === "infographic")) {
         setShowPricingModal(true);
+        setIsLoading(false);
         return;
       }
 
@@ -99,16 +102,22 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
           input: inputText,
           mode,
           plan: isPro ? 'pro' : 'free',
-          layout: mode === "mindmap" ? mindmapLayout : mode === "flashcards" ? flashcardLayout : mode === "quiz" ? quizLayout : mode === "summary" ? summaryLayout : mode === "infographic" ? infographicLayout : "classic"
+          layout: mode === "mindmap" ? mindmapLayout : mode === "flashcards" ? flashcardLayout : mode === "quiz" ? quizLayout : mode === "summary" ? summaryLayout : mode === "infographic" ? infographicLayout : "classic",
+          lastTimestamp: lastGenerationTimestamp,
+          currentTimestamp: Date.now()
         }),
       });
 
       const result = await res.json();
       if (result.ok) {
         setOutput(result.data);
+        setLastGenerationTimestamp(Date.now());
         if (!isPro) setGenerationsLeft(prev => Math.max(0, prev - 1));
       } else {
         setError(result.error || "Failed to generate content");
+        if (res.status === 429) {
+          // Special handling for rate limiting if needed, e.g. local vibration/shake
+        }
       }
     } catch (err) {
       setError("An error occurred during generation");
@@ -140,8 +149,14 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            <button onClick={toggleTheme} className="p-2.5 rounded-xl hover:bg-white/5 transition-all text-gray-400 hover:text-white">
+            <button onClick={toggleTheme} className="p-2 sm:p-2.5 rounded-xl hover:bg-white/5 transition-all text-gray-400 hover:text-white">
               {theme === "light" ? <Icons.Moon /> : <Icons.Sun />}
+            </button>
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden p-2 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-all"
+            >
+              <Icons.Templates />
             </button>
             <button
               onClick={() => {
@@ -159,12 +174,12 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               </span>
             </button>
 
-            <button className="flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-xl text-sm transition text-gray-400 hover:text-white">
+            <button className="hidden sm:flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-xl text-sm transition text-gray-400 hover:text-white">
               <Icons.Google />
               <span>Sign in</span>
             </button>
 
-            <button className={`px-5 py-2.5 rounded-xl text-sm font-bold transition flex items-center gap-2 ${theme === "dark" ? "bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-gray-800"
+            <button className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 ${theme === "dark" ? "bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-gray-800"
               }`}>
               Sign Up
             </button>
@@ -173,31 +188,51 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
       </div>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex max-w-[1700px] mx-auto w-full gap-8 p-6 overflow-hidden">
+      <main className="flex-1 flex flex-col md:flex-row max-w-[1700px] mx-auto w-full gap-4 md:gap-8 p-4 md:p-6 overflow-hidden">
 
-        {/* SIDEBAR */}
-        <aside className="w-56 shrink-0 flex flex-col justify-between py-4">
+        {/* SIDEBAR - Desktop and Mobile */}
+        <aside className={`${showMobileMenu ? 'flex' : 'hidden'} md:flex absolute md:relative inset-0 md:inset-auto z-[20] md:z-auto bg-white dark:bg-[#09090b] md:bg-transparent w-full md:w-56 shrink-0 flex-col justify-between py-8 md:py-4 px-6 md:px-0 scrollbar-hide overflow-y-auto`}>
           <div className="space-y-8">
+            <div className="md:hidden flex justify-end">
+              <button onClick={() => setShowMobileMenu(false)} className="p-2 text-gray-400 hover:text-white">
+                <Icons.Save /> {/* Reusing an icon for close or similar */}
+              </button>
+            </div>
             <div>
               <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Generate</div>
               <nav className="space-y-1">
-                {(["mindmap", "flashcards", "quiz", "summary", "infographic"] as AppMode[]).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => { setMode(m); setOutput(null); setError(null); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${mode === m
-                      ? "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
-                      : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
-                      }`}
-                  >
-                    {m === "mindmap" && <Icons.Mindmap />}
-                    {m === "flashcards" && <Icons.Flashcards />}
-                    {m === "quiz" && <Icons.Quiz />}
-                    {m === "summary" && <Icons.Summary />}
-                    {m === "infographic" && <Icons.Infographic />}
-                    <span className="capitalize text-sm font-medium">{m}</span>
-                  </button>
-                ))}
+                {(["mindmap", "flashcards", "quiz", "summary", "infographic"] as AppMode[]).map((m) => {
+                  const isLocked = m === "infographic" && !isPro;
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => {
+                        if (isLocked) {
+                          setShowPricingModal(true);
+                          return;
+                        }
+                        setMode(m);
+                        setOutput(null);
+                        setError(null);
+                        setShowMobileMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${mode === m
+                        ? "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {m === "mindmap" && <Icons.Mindmap />}
+                        {m === "flashcards" && <Icons.Flashcards />}
+                        {m === "quiz" && <Icons.Quiz />}
+                        {m === "summary" && <Icons.Summary />}
+                        {m === "infographic" && <Icons.Infographic />}
+                        <span className="capitalize text-sm font-medium">{m}</span>
+                      </div>
+                      {isLocked && <Icons.Lock />}
+                    </button>
+                  );
+                })}
               </nav>
             </div>
 
@@ -205,7 +240,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Pro Tools</div>
               <nav className="space-y-1">
                 {[
-                  { id: 'export', label: 'Export PDF', icon: <Icons.Export />, onClick: () => setShowExportModal(true) },
+                  { id: 'export', label: 'Export PDF', icon: <Icons.Export />, onClick: () => { setShowExportModal(true); setShowMobileMenu(false); } },
                   { id: 'save', label: 'Save Project', icon: <Icons.Save />, onClick: () => { } },
                 ].map((item) => (
                   <button
@@ -229,22 +264,22 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             </div>
           </div>
 
-          <div className="px-4">
+          <div className="px-4 pb-8">
             <div className="text-[10px] text-gray-500 dark:text-gray-600 font-medium tracking-tight">Built by <span className="text-gray-900 dark:text-gray-400 font-bold">Cryptobulla</span></div>
           </div>
         </aside>
 
         {/* CARDS CONTAINER */}
-        <div className="flex-1 flex gap-6 overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 overflow-hidden">
 
           {/* INPUT CARD */}
-          <div className="w-[480px] shrink-0 flex flex-col premium-card overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+          <div className="w-full md:w-[480px] shrink-0 flex flex-col premium-card overflow-hidden">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
               <div className="flex items-center gap-3">
                 <div className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
-                <span className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">{mode}</span>
+                <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">{mode}</span>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 {mode === "mindmap" || mode === "flashcards" || mode === "quiz" || mode === "summary" || mode === "infographic" ? (
                   <div className="relative">
                     <button
@@ -298,14 +333,14 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                 )}
                 <button
                   onClick={() => setShowTemplates(true)}
-                  className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                  className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
                 >
                   <Icons.Templates />
-                  <span>Templates</span>
+                  <span className="hidden sm:inline">Templates</span>
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-6 scrollbar-hide">
+            <div className="flex-1 overflow-auto p-4 sm:p-6 scrollbar-hide min-h-[300px] md:min-h-0">
               {isInputMode ? (
                 <div className="h-full flex flex-col space-y-6">
                   <button onClick={handleReset} className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white flex items-center gap-2 group">

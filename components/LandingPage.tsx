@@ -40,7 +40,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
         <BrandLogo variant="stacked" size="xl" />
 
         {/* Headline */}
-        <h1 className="text-6xl md:text-8xl font-black text-gray-900 dark:text-white tracking-tighter leading-[0.85] animate-in">
+        <h1 className="text-4xl sm:text-6xl md:text-8xl font-black text-gray-900 dark:text-white tracking-tighter leading-[0.85] animate-in">
           Turn any text into
           <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
@@ -67,7 +67,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
         <div className="flex flex-col md:flex-row items-center justify-center gap-6">
           <button
             onClick={onStart}
-            className="px-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-full transition-all flex items-center gap-3 min-w-[300px] shadow-2xl shadow-indigo-600/30 active:scale-95 group"
+            className="px-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-full transition-all flex items-center gap-3 w-full md:min-w-[300px] md:w-auto shadow-2xl shadow-indigo-600/30 active:scale-95 group"
           >
             <span className="flex-1">Start Generating Free</span>
             <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
@@ -75,7 +75,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
 
           <button
             onClick={() => onExample()} // We'll repurpose onExample to show pricing or we can pass a new prop
-            className="px-10 py-5 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10 rounded-full transition-all flex items-center gap-4 min-w-[300px] shadow-sm active:scale-95"
+            className="px-10 py-5 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10 rounded-full transition-all flex items-center gap-4 w-full md:min-w-[300px] md:w-auto shadow-sm active:scale-95"
           >
             <span className="flex-1 font-bold">Get Pro Version</span>
             <span className="text-[10px] bg-amber-500 text-white px-3 py-1.5 rounded-full font-black tracking-widest leading-none shadow-lg shadow-amber-500/20">PRO</span>

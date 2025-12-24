@@ -25,24 +25,12 @@ const Icons = {
 interface PreviewContainerProps {
   children: React.ReactNode;
   theme: 'light' | 'dark';
-  zoom: number;
 }
 
-const PreviewContainer: React.FC<PreviewContainerProps> = ({ children, theme, zoom }) => {
-  const scale = zoom / 100;
-  const widthPercentage = (100 / scale).toFixed(2);
-
+const PreviewContainer: React.FC<PreviewContainerProps> = ({ children, theme }) => {
   return (
-    <div className={`w-full min-h-full overflow-y-auto flex justify-center py-12 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-      <div
-        className="origin-top transition-transform duration-200 ease-out shrink-0 pb-32"
-        style={{
-          transform: `scale(${scale})`,
-          width: `${widthPercentage}%`
-        }}
-      >
-        {children}
-      </div>
+    <div className={`w-full ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+      {children}
     </div>
   );
 };
@@ -106,7 +94,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
   const renderPreviewContent = () => {
     if (mode === "mindmap") {
       return (
-        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
+        <PreviewContainer theme={exportTheme}>
           <div className="p-8">
             <h1 className="text-2xl font-bold mb-4">Mindmap Export</h1>
             <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 h-[600px]">
@@ -119,7 +107,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
     if (mode === "summary") {
       return (
-        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
+        <PreviewContainer theme={exportTheme}>
           <div className="p-12 prose dark:prose-invert max-w-none">
             <div className="whitespace-pre-wrap font-sans text-sm">{content}</div>
           </div>
@@ -130,7 +118,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
     if (mode === "flashcards") {
       const cards = content as Flashcard[];
       return (
-        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
+        <PreviewContainer theme={exportTheme}>
           <div className="p-12 grid grid-cols-2 gap-4">
             {cards.slice(0, 6).map((c, i) => (
               <div key={i} className={`p-4 rounded-lg border text-xs ${exportTheme === 'dark' ? 'bg-[#27272A] border-gray-700' : 'bg-white border-gray-200'}`}>
@@ -145,7 +133,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
     if (mode === "quiz") {
       return (
-        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
+        <PreviewContainer theme={exportTheme}>
           <div className="p-8">
             <QuizViewer quizItems={content} />
           </div>
@@ -155,7 +143,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
     if (mode === "infographic") {
       return (
-        <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
+        <PreviewContainer theme={exportTheme}>
           <div className="p-4 origin-top">
             <InfographicViewer data={content} />
           </div>
@@ -165,7 +153,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
     // Fallback
     return (
-      <PreviewContainer theme={exportTheme} zoom={zoomLevel}>
+      <PreviewContainer theme={exportTheme}>
         <div className="p-12 text-center text-gray-400 mt-20">
           Preview unavailable for this format.
         </div>
@@ -174,9 +162,9 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in-fade">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-2 sm:p-4 animate-in-fade">
       <div
-        className="bg-white dark:bg-[#18181B] w-full max-w-5xl h-[85vh] max-h-[700px] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in-zoom border border-gray-200 dark:border-gray-800"
+        className="bg-white dark:bg-[#18181B] w-full max-w-5xl h-[90vh] md:h-[85vh] max-h-[800px] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in-zoom border border-gray-200 dark:border-gray-800"
         onClick={e => e.stopPropagation()}
       >
 
@@ -321,7 +309,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
         </div>
 
         {/* RIGHT PANEL: Preview */}
-        <div className="flex-1 bg-gray-50 dark:bg-[#09090b] relative overflow-hidden flex flex-col items-center justify-center p-8">
+        <div className="flex-1 bg-gray-50 dark:bg-[#09090b] relative overflow-y-auto flex flex-col items-center p-8 custom-scrollbar">
 
           {/* Background Grid Pattern */}
           <div
@@ -334,18 +322,19 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
 
           {/* Paper Mockup */}
           <div
-            className={`relative transition-all duration-500 ease-spring shadow-2xl overflow-hidden shrink-0 ${pageSize === 'a4' ? 'aspect-[210/297]' : 'aspect-[8.5/11]'
-              } ${exportTheme === 'dark' ? 'bg-[#1C1C1F]' : 'bg-white'}`}
+            className={`relative transition-all duration-500 ease-spring shadow-2xl shrink-0 ${pageSize === 'a4' ? 'w-[794px]' : 'w-[816px]'
+              } ${exportTheme === 'dark' ? 'bg-[#1C1C1F]' : 'bg-white'} min-h-full`}
             style={{
-              height: 'auto',
-              minHeight: '100%',
-              width: 'auto',
+              transformOrigin: 'top center',
+              transform: `scale(${zoomLevel / 100})`,
+              marginBottom: `${(zoomLevel / 100) * 100}px`, // Add space at bottom based on zoom
               boxShadow: '0 20px 50px -12px rgba(0,0,0,0.25)'
             }}
           >
             {/* Content Rendering */}
-            <div className={`w-full h-full ${margin === 'normal' ? 'p-8' : 'p-4'}`}>
-              {renderPreviewContent()}
+            <div className={`w-full ${margin === 'normal' ? 'p-12' : 'p-6'}`}>
+              {/* Internal Content without PreviewContainer if we want full scroll */}
+              {renderPreviewContent() /* Wait, renderPreviewContent uses PreviewContainer */}
             </div>
 
             {/* Watermark for Free users */}

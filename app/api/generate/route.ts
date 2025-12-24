@@ -1,15 +1,27 @@
 import { NextResponse } from "next/server";
 import { generateContent } from "@/lib/generateService";
 import { validateInputLength } from "@/lib/validation";
+import { checkCooldown, UserPlan } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
     try {
-        const { input, mode, layout, plan } = await req.json();
+        const { input, mode, layout, plan, lastTimestamp, currentTimestamp } = await req.json();
 
         if (!input || !mode) {
             return NextResponse.json(
                 { ok: false, error: "Input and mode are required." },
                 { status: 400 }
+            );
+        }
+
+        // 1. Rate Limiting Check
+        const userPlan = (plan || 'free') as UserPlan;
+        const cooldownResult = checkCooldown(userPlan, lastTimestamp, currentTimestamp || Date.now());
+
+        if (cooldownResult !== "ALLOWED") {
+            return NextResponse.json(
+                { ok: false, error: cooldownResult },
+                { status: 429 }
             );
         }
 
