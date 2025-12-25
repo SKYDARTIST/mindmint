@@ -34,9 +34,8 @@ const Icons = {
 
 const STARTER_TEMPLATES = [
   { id: "study", title: "Study Notes", desc: "Turn class notes or textbook content into clear, structured understanding.", placeholder: "Paste your study notes, textbook content, or lecture material here…" },
-  { id: "youtube", title: "YouTube Summary", desc: "Summarize long videos into key ideas, takeaways, and visuals.", placeholder: "Paste the YouTube transcript or notes here…" },
   { id: "exam", title: "Exam Revision", desc: "Generate revision-ready summaries.", placeholder: "Paste topics or syllabus points here…" },
-  { id: "meeting", title: "Meeting Notes", desc: "Convert meetings into clear action items.", placeholder: "Paste meeting notes here…" },
+  { id: "concept", title: "Concept Explainer", desc: "Understand any topic with clear, step-by-step explanations.", placeholder: "Paste the concept or complex topic you want explained simply here…" },
 ];
 
 interface MindMintAppProps {
@@ -57,7 +56,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [mindmapLayout, setMindmapLayout] = useState<MindmapLayout>("classic");
   const [flashcardLayout, setFlashcardLayout] = useState<FlashcardLayout>("classic");
   const [quizLayout, setQuizLayout] = useState<QuizLayout>("classic");
-  const [summaryLayout, setSummaryLayout] = useState<SummaryLayout>("executive");
+  const [summaryLayout, setSummaryLayout] = useState<SummaryLayout>("concept_overview");
   const [infographicLayout, setInfographicLayout] = useState<InfographicLayout>("step_by_step");
   const [isPro, setIsPro] = useState(false);
   const [generationsLeft, setGenerationsLeft] = useState(3);
@@ -119,8 +118,8 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
           // Special handling for rate limiting if needed, e.g. local vibration/shake
         }
       }
-    } catch (err) {
-      setError("An error occurred during generation");
+    } catch (err: any) {
+      setError(err.message || "An error occurred during generation");
     } finally {
       setIsLoading(false);
     }
@@ -287,7 +286,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                       className="flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-white/5 rounded-md border border-gray-200 dark:border-white/5 hover:border-indigo-500/50 transition-colors"
                     >
                       <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {mode === "mindmap" ? mindmapLayout : mode === "flashcards" ? flashcardLayout : mode === "quiz" ? quizLayout : mode === "summary" ? summaryLayout : infographicLayout}
+                        {(mode === "mindmap" ? mindmapLayout : mode === "flashcards" ? flashcardLayout : mode === "quiz" ? quizLayout : mode === "summary" ? summaryLayout : infographicLayout).replace("_", " ")}
                       </span>
                       <Icons.ChevronDown />
                     </button>
@@ -301,7 +300,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                             : mode === "quiz"
                               ? ["classic", "speed", "scenario"]
                               : mode === "summary"
-                                ? ["executive", "bullet", "study_notes"]
+                                ? ["concept_overview", "bullet", "study_notes"]
                                 : ["step_by_step", "process_flow", "comparison"]
                         ).map((l) => (
                           <button
@@ -319,7 +318,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                               : "text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5"
                               }`}
                           >
-                            {l}
+                            {l.replace("_", " ")}
                           </button>
                         ))}
                       </div>
@@ -390,9 +389,8 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                         <div className="flex items-start gap-4">
                           <div className="mt-1 p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:scale-110 transition-transform">
                             {tpl.id === 'study' && <Icons.Summary />}
-                            {tpl.id === 'youtube' && <Icons.Infographic />}
                             {tpl.id === 'exam' && <Icons.Quiz />}
-                            {tpl.id === 'meeting' && <Icons.Flashcards />}
+                            {tpl.id === 'concept' && <Icons.Flashcards />}
                           </div>
                           <div>
                             <h4 className="font-bold text-sm mb-1 text-gray-900 dark:text-white">{tpl.title}</h4>
@@ -416,7 +414,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               </div>
               <div className="px-3 py-1 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-lg flex items-center gap-2">
                 <span className={`h-1.5 w-1.5 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`} />
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{isLoading ? 'Processing' : 'Waiting'}</span>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                  {isLoading ? 'Processing' : 'Waiting'}
+                </span>
               </div>
             </div>
 

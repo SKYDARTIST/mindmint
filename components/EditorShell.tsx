@@ -45,7 +45,7 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
   const [input, setInput] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [summaryLayout, setSummaryLayout] =
-    useState<SummaryLayout>("executive");
+    useState<SummaryLayout>("concept_overview");
   const [loading, setLoading] = useState(false);
   const [isInputMode, setIsInputMode] = useState(false);
   const [placeholder, setPlaceholder] = useState("Paste your text here…");
@@ -244,7 +244,7 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
               }
               className="bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-sm"
             >
-              <option value="executive">Executive</option>
+              <option value="concept_overview">Concept Overview</option>
               <option value="bullet">Bullet</option>
               <option value="study_notes">Study Notes</option>
             </select>
@@ -315,25 +315,24 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
                     </div>
                   </button>
 
-                  {/* YouTube Summary */}
+                  {/* Concept Explainer */}
                   <button
                     onClick={() =>
                       handleTemplateSelect(
-                        "Paste the YouTube transcript or notes here…"
+                        "Paste the concept or complex topic you want explained simply here…"
                       )
                     }
                     className="group flex items-start gap-4 p-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-left"
                   >
                     <div className="p-3 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
                       <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-white mb-1">YouTube Summary</h4>
+                      <h4 className="font-semibold text-white mb-1">Concept Explainer</h4>
                       <p className="text-sm text-gray-400">
-                        Summarize long videos into key ideas, takeaways, and visuals.
+                        Understand any topic with clear, step-by-step explanations.
                       </p>
                     </div>
                   </button>
@@ -360,27 +359,6 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
                     </div>
                   </button>
 
-                  {/* Meeting Notes */}
-                  <button
-                    onClick={() =>
-                      handleTemplateSelect(
-                        "Paste meeting notes here…"
-                      )
-                    }
-                    className="group flex items-start gap-4 p-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-left"
-                  >
-                    <div className="p-3 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
-                      <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white mb-1">Meeting Notes</h4>
-                      <p className="text-sm text-gray-400">
-                        Convert messy notes into clean summaries and action points.
-                      </p>
-                    </div>
-                  </button>
                 </div>
               </div>
             </>

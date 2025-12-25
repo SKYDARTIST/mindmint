@@ -35,7 +35,7 @@ export type QuizLayout =
   | "scenario";
 
 export type SummaryLayout =
-  | "executive"
+  | "concept_overview"
   | "bullet"
   | "study_notes";
 

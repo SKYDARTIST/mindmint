@@ -34,7 +34,7 @@ export async function POST(req: Request) {
             );
         }
 
-        const data = await generateContent(mode, input, layout);
+        const data = await generateContent(mode, input, layout, userPlan);
 
         return NextResponse.json({
             ok: true,

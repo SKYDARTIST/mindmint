@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { UserPlan } from "./rateLimit";
 import {
     AppMode,
     MindmapLayout,
@@ -42,224 +43,152 @@ const sanitizeMermaid = (raw: string): string => {
 export const generateContent = async (
     mode: AppMode,
     inputText: string,
-    layout: any = 'classic'
+    layout: any = 'classic',
+    userPlan: UserPlan = 'free'
 ): Promise<any> => {
     if (!inputText || typeof inputText !== 'string') throw new Error("Input text is required");
     if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
-    let systemInstruction = "You are a helpful AI assistant.";
+    const isPro = userPlan === 'pro';
+
+    let systemInstruction = `You are MindMint AI, an educational assistant designed to convert content into structured learning materials.
+
+RULES:
+1. Do NOT mention advertising, sponsors, likes, comments, or unrelated chatter.
+2. Focus only on the educational or informational core of the content.
+3. Remove filler speech, repetition, greetings, and tangents.
+4. Use clear, student-friendly language.
+5. Structure content for learning, not entertainment.
+
+WORD LIMIT HANDLING:
+- If user plan is FREE:
+  - Generate output using ONLY the most important concepts.
+  - Final output must NOT exceed 600 words.
+  - Prioritize: Core ideas, Key explanations, Main conclusions.
+  - Intelligently compress long content without losing meaning.
+
+- If user plan is PRO:
+  - No word limit.
+  - Provide full depth and complete coverage.
+  - Include examples, breakdowns, and structured expansion.`;
+
     let userPrompt = "";
     let isJson = false;
 
     switch (mode) {
         case "summary":
-            systemInstruction = `You are a summarization engine for an educational app called MindMint.
-
-Your goal:
-- Produce summaries that are accurate, concise, and strictly grounded in the input text.
-
-Global rules:
-- Use ONLY information present in the input.
-- Do NOT add new ideas, interpretations, or external knowledge.
-- Do NOT change the meaning of the original text.
-- If something is unclear or weakly stated, exclude it.
-- Accuracy is more important than completeness.
-
-Summary behavior:
-- Focus on ideas, not individual actions.
-- Merge repetitive or closely related points into a single summary item.
-- Preserve the original tone where possible (informative, reflective, or explanatory).
-- Avoid academic filler words (e.g., “consequently,” “moreover,” “individuals”).
-- Keep language simple and creator-friendly.`;
-
             const summaryPrompts: Record<string, string> = {
-                executive: `Write 2–3 concise sentences.
-- Present the core idea and key message.
-- Tone should be clear, neutral, and professional.
-- No bullet points.
-- No extra explanations.`,
-
-                bullet: `Write 5–8 bullet points.
-- Each bullet = one distinct idea from the input.
-- Each bullet should be short and factual.
-- No repetition.
-- No added context beyond the input.`,
-
-                study_notes: `Organize content using short headings.
-- Under each heading, add 2–4 concise sub-points.
-- Structure must reflect the input text's structure.
-- Do not invent headings not supported by the input.`
+                concept_overview: `Requested output type: SUMMARY (CONCEPT OVERVIEW)
+- Explain the core idea clearly and intuitively for a beginner.
+- Start with a short paragraph explaining WHAT the concept is and WHY it matters.
+- Focus on big-picture understanding, not details.
+- Length: 2–4 short paragraphs.
+- Output Format: Title, then clear paragraphs.`,
+                bullet: `Requested output type: SUMMARY (BULLET)
+- Help students revise or skim content quickly.
+- Extract 6-12 most important factual points.
+- Use concise bullet points only. No long explanations.
+- Use bold keywords where helpful.
+- Output Format: Title, then bullet list only.`,
+                study_notes: `Requested output type: SUMMARY (STUDY NOTES)
+- Create structured, detailed notes for long-term understanding.
+- Organize content into clear sections with headings.
+- Explain concepts step by step.
+- Use bullet points within sections where appropriate.
+- Include definitions, processes, and key distinctions.
+- Maintain an academic but simple tone.
+- Output Format: Title, Section headings, then bullets and short explanations.`
             };
 
-            userPrompt = `${summaryPrompts[layout] || summaryPrompts.executive}
+            userPrompt = `${summaryPrompts[layout] || summaryPrompts.concept_overview}
 
-Text:
+Content:
 ${inputText}`;
             break;
 
         case "mindmap":
-            systemInstruction = "You are an expert at Mermaid.js diagrams. You create clean, academic diagrams for study. Focus on hierarchy and clarity.";
+            systemInstruction += `\n\nIf output type = MINDMAP:
+- Return a hierarchical structure: Central topic -> Main branches -> Sub-branches.
+- Keep labels short and scannable.
+- Use ONLY Mermaid.js syntax. For 'classic' use 'mindmap' keyword. For others use 'graph TD'.`;
+
             const mindmapPrompts: Record<string, string> = {
-                classic: "mindmap (Radial). Use the 'mindmap' keyword. Best for central concepts with balanced branches.",
-                categorized: "graph TD (Categorized). Use subgraphs to group related nodes into vertical blocks. This keeps the diagram compact and avoids horizontal overflow.",
-                flow: "graph LR (Linear Flow). Left-to-right progression. Ideal for step-by-step processes or timelines."
+                classic: "mindmap (Radial layout). Use the 'mindmap' keyword.",
+                categorized: "graph TD. Use subgraphs to group related nodes.",
+                flow: "graph LR. Left-to-right progression."
             };
-            userPrompt = `Generate a valid Mermaid.js diagram for the following layout: ${mindmapPrompts[layout] || mindmapPrompts.classic}.
-      RULES:
-      1. For classic, use 'mindmap' root. Use indentations for branches.
-      2. For tree/flow, use 'graph TD' or 'graph LR'. Use id["Label"] for nodes. Keep labels concise.
-      3. Use clear, logical connections (-->).
-      4. Output ONLY the code block.
-      
-      Text:\n${inputText}`;
+
+            userPrompt = `Generate a valid Mermaid.js diagram for the following: ${mindmapPrompts[layout] || mindmapPrompts.classic}
+Content:\n${inputText}`;
             break;
 
         case "flashcards":
             isJson = true;
-            systemInstruction = `You are a flashcard generation expert focused on extracting key learnings from text.
-
-Your goal: Help users understand and remember the MOST IMPORTANT points from the input.
-
-Core Rules:
-- Extract only information explicitly stated in the input text
-- Break down complex ideas into simple, digestible flashcards
-- Focus on key insights, main concepts, and important details
-- Each flashcard should test ONE specific piece of knowledge
-- Use clear, concise language
-- DO NOT add external knowledge or examples not in the text
-- DO NOT copy entire paragraphs - extract the essence
-
-Quality Guidelines:
-- Front: A focused prompt, question, or concept (keep it short and clear)
-- Back: The key information or answer (concise but complete)
-- Aim for 6-10 high-quality cards that capture the core message`;
-
-            const flashcardPrompts: Record<string, string> = {
-                classic: `Create flashcards that extract the main ideas and important details.
-Format: 
-- Front: Clear question or prompt about a key concept
-- Back: Concise answer with the essential information
-Focus on what someone needs to understand and remember from this text.`,
-
-                concept: `Extract the key terms, concepts, and their meanings.
-Format:
-- Front: The important term, phrase, or concept
-- Back: Its definition, explanation, or significance from the text
-Perfect for vocabulary, terminology, and core ideas.`,
-
-                cloze: `Create fill-in-the-blank cards from important statements.
-Format:
-- Front: A key sentence with [...] replacing a critical term or phrase
-- Back: Just the missing word(s)
-Use complete sentences from the text that contain important information.`
-            };
-
-            userPrompt = `${flashcardPrompts[layout] || flashcardPrompts.classic}
+            userPrompt = `Requested output type: FLASHCARDS
+- Generate question–answer pairs.
+- Questions should test understanding, not memorization.
+- Aim for 6-10 high-quality cards.
 
 Output Format (JSON array):
 [
   {
     "question": "Front of card",
     "answer": "Back of card", 
-    "tag": "Brief topic keyword from the text"
+    "tag": "Brief topic keyword"
   }
 ]
 
-Input text:
+Content:
 ${inputText}`;
             break;
 
         case "quiz":
             isJson = true;
-            systemInstruction = `You are a professional assessment creator.
-Your goal is to generate 6-10 high-quality quiz items that help users master the input material.
-Output MUST be a valid JSON array of objects.`;
+            userPrompt = `Requested output type: QUIZ
+- Generate 5–10 items.
+- Mix of multiple-choice and true-false or short-answer based on layout.
+- Include correct answers and explanations.
 
-            const quizPrompts: Record<string, string> = {
-                classic: `Create standard Multiple Choice Questions (MCQs).
-Each item must have:
-- "type": "multiple-choice"
-- "question": A clear, informative question
-- "options": Exactly 4 plausible options
-- "correctAnswer": The exact string from "options" that is correct
-- "explanation": A helpful sentence explaining why it's correct and why others are wrong.`,
+Layout Preference: ${layout} (classic: MCQ, speed: T/F, scenario: applied)
 
-                speed: `Create True/False questions for rapid knowledge verification.
-Each item must have:
-- "type": "true-false"
-- "question": A decisive statement that is either Factually True or False
-- "options": ["True", "False"]
-- "correctAnswer": Either "True" or "False"
-- "explanation": A brief confirmation of the fact.`,
+Output Format (JSON array):
+[
+  {
+    "type": "multiple-choice" | "true-false" | "short-answer",
+    "question": "...",
+    "options": ["..."],
+    "correctAnswer": "...",
+    "explanation": "..."
+  }
+]
 
-                scenario: `Create thought-provoking scenario-based questions or short-answer insights.
-Each item must have:
-- "type": "short-answer" or "multiple-choice"
-- "question": An applied scenario or a deeper conceptual question
-- "options": 4 options if multiple-choice, or empty array if short-answer
-- "correctAnswer": The best response
-- "explanation": A detailed breakdown of the logic/reasoning.
-- "meta": { "skill": "Analysis" or "Application" }`
-            };
-
-            userPrompt = `${quizPrompts[layout] || quizPrompts.classic}
-
-Text:
+Content:
 ${inputText}`;
             break;
 
         case "infographic":
             isJson = true;
-            systemInstruction = `You are an infographic content engine for an educational app called MindMint.
+            userPrompt = `Requested output type: INFOGRAPHIC
+- Output a numbered or step-based visual outline.
+- Each step should be short, bold, and visually clear.
 
-GLOBAL RULES:
-- Use ONLY information present in the input text.
-- Do NOT add new facts, explanations, examples, or external knowledge.
-- Do NOT infer missing steps or relationships.
-- Accuracy is more important than completeness.
-- Infographics must simplify structure, not expand content.
-- Keep text short, visual, and scannable. No full paragraphs.
-- No emojis. No commentary.
-
-Output MUST be a valid JSON object matching:
+Output Format (JSON object):
 {
-  "title": "Short catchy title",
-  "tagline": "Brief secondary line",
+  "title": "...",
+  "tagline": "...",
   "layout": "step_by_step" | "process_flow" | "comparison",
   "steps": [
-    { "title": "...", "description": "1 concise supporting line (optional)" }
+    { "title": "...", "description": "..." }
   ]
-}`;
+}
 
-            const infographicPrompts: Record<string, string> = {
-                step_by_step: `MODE: STEP_BY_STEP
-- Extract a linear sequence of steps explicitly stated or clearly ordered in the input.
-- Each item represents one concrete action or stage.
-- Maintain original order from the input text.
-- Do NOT invent steps. Do NOT merge unrelated actions.`,
-
-                process_flow: `MODE: PROCESS_FLOW
-- Identify inputs, transformations, and outcomes described in the input.
-- Represent relationships as cause → effect or flow stages.
-- Each stage describes what changes or happens.
-- Do NOT assume hidden processes.`,
-
-                comparison: `MODE: COMPARE_BREAKDOWN
-- Identify explicit comparisons, contrasts, or components in the input.
-- Output either side-by-side differences or a breakdown of parts.
-- Each section must be supported by the input text.
-- Do NOT add pros/cons unless explicitly stated.`
-            };
-
-            userPrompt = `${infographicPrompts[layout] || infographicPrompts.step_by_step}
-
-INPUT TEXT:
+Content:
 ${inputText}`;
             break;
     }
 
     const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: isPro ? "gpt-4o" : "gpt-4o-mini",
         messages: [
             { role: "system", content: systemInstruction },
             { role: "user", content: userPrompt }
