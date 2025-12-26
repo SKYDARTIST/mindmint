@@ -34,12 +34,12 @@ body {
 }
 
 .bg-dot-pattern {
-  background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.07) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 .dark .bg-dot-pattern {
-  background-image: radial-gradient(#27272a 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
 }
 
 .premium-card {

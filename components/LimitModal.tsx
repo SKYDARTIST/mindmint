@@ -16,28 +16,28 @@ const LimitModal: React.FC<LimitModalProps> = ({ isOpen, onClose, onUpgrade }) =
   if (!isOpen) return null;
 
   return (
-    <div className="pricing-overlay animate-in-fade" onClick={onClose}>
-      <div 
-        className="bg-white w-full max-w-[360px] rounded-2xl p-8 shadow-2xl relative animate-in-zoom text-center" 
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in-fade" onClick={onClose}>
+      <div
+        className="bg-white w-full max-w-[360px] rounded-2xl p-8 shadow-2xl relative animate-in-zoom text-center"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5">
-           <LockIcon />
+          <LockIcon />
         </div>
-        
+
         <h2 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">You’ve used your free runs</h2>
         <p className="text-gray-500 text-sm leading-relaxed mb-8 px-2">
           Upgrade to continue generating unlimited mindmaps, flashcards, and summaries.
         </p>
 
-        <button 
+        <button
           onClick={onUpgrade}
           className="w-full bg-gradient-to-r from-[#6E56CF] to-[#8B5CF6] text-white font-medium py-2.5 px-4 rounded-lg hover:opacity-90 transition-all shadow-md shadow-indigo-100 transform active:scale-[0.98] mb-3"
         >
           Upgrade to Pro
         </button>
 
-        <button 
+        <button
           onClick={onClose}
           className="text-sm text-gray-400 hover:text-gray-600 font-medium transition-colors"
         >

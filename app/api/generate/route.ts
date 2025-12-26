@@ -25,6 +25,14 @@ export async function POST(req: Request) {
             );
         }
 
+        // 2. Feature Gating Check
+        if (userPlan === 'free' && mode === 'infographic') {
+            return NextResponse.json(
+                { ok: false, error: "Infographics are a Pro feature! Please upgrade to access this tool." },
+                { status: 403 }
+            );
+        }
+
         // Validate input length based on plan
         const validation = validateInputLength(input, plan || 'free');
         if (!validation.valid) {

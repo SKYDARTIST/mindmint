@@ -13,6 +13,13 @@ import QuizViewer from "./QuizViewer";
 import InfographicViewer from "./InfographicViewer";
 import ExportModal from "./ExportModal";
 import PricingModal from "./PricingModal";
+import AuthModal from "./AuthModal";
+import Toast from "./Toast";
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { createClient } from "@/lib/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { MAX_SAVED_ITEMS_FREE } from "@/lib/validation";
 
 // Icons
 const Icons = {
@@ -31,6 +38,7 @@ const Icons = {
   ChevronDown: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>,
   Templates: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="m9 15 2 2 4-4" /></svg>,
   Bolt: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>,
+  Folder: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>,
 };
 
 const STARTER_TEMPLATES = [
@@ -64,8 +72,67 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [lastGenerationTimestamp, setLastGenerationTimestamp] = useState<number | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const supabase = createClient();
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Handle loading note from URL
+  useEffect(() => {
+    const noteId = searchParams.get('noteId');
+    if (!noteId || !user) return;
+
+    const fetchNote = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('user_content')
+        .select('*')
+        .eq('id', noteId)
+        .single();
+
+      if (error) {
+        console.error("Error fetching note:", error.message);
+        setToast({ message: "Failed to load note.", type: "error" });
+        return;
+      }
+
+      if (data) {
+        setMode(data.type as AppMode);
+        setOutput(data.content);
+        // Clear the URL to avoid reloading the note on every render
+        const url = new URL(window.location.href);
+        url.searchParams.delete('noteId');
+        window.history.replaceState({}, '', url);
+
+        setToast({ message: `Loaded: ${data.title}`, type: "info" });
+      }
+    };
+
+    fetchNote();
+  }, [searchParams, user]);
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.reload(); // Simplest way to reset everything
+  };
 
 
   const handleTemplateSelect = (tpl: typeof STARTER_TEMPLATES[0]) => {
@@ -92,6 +159,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
       if (!isPro && (generationsLeft <= 0 || mode === "infographic")) {
         setShowPricingModal(true);
         setIsLoading(false);
+        if (mode === "infographic") {
+          setToast({ message: "Infographics are a Pro feature!", type: "info" });
+        }
         return;
       }
 
@@ -113,6 +183,11 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         setOutput(result.data);
         setLastGenerationTimestamp(Date.now());
         if (!isPro) setGenerationsLeft(prev => Math.max(0, prev - 1));
+
+        // Auto-save to Supabase if user is logged in
+        if (user) {
+          await saveToSupabase(result.data, mode, inputText);
+        }
       } else {
         setError(result.error || "Failed to generate content");
         if (res.status === 429) {
@@ -123,6 +198,63 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
       setError(err.message || "An error occurred during generation");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const saveToSupabase = async (generatedContent: any, contentType: string, originalInput: string, isManual = false) => {
+    if (!generatedContent || !user) return;
+
+    try {
+      const supabase = createClient();
+
+      if (!isPro) {
+        // Count existing rows for free user
+        const { count, error: countError } = await supabase
+          .from('user_content')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+
+        if (countError) {
+          console.error("Error checking limits:", countError.message);
+        } else if (count !== null && count >= MAX_SAVED_ITEMS_FREE) {
+          setToast({ message: `Free limit reached (${MAX_SAVED_ITEMS_FREE} items). Upgrade to save more!`, type: "info" });
+          setShowPricingModal(true);
+          return;
+        }
+      }
+
+      // Derive a title: Use title from content if available, otherwise first few words of input
+      let title = "Untitled Generation";
+
+      if (generatedContent?.title) {
+        title = generatedContent.title;
+      } else if (Array.isArray(generatedContent)) {
+        // For Flashcards or Quiz (which are arrays)
+        const prefix = contentType === 'flashcards' ? 'Flashcards' : 'Quiz';
+        title = `${prefix}: ${originalInput.split('\n')[0].substring(0, 30).trim() || "Untitled"}`;
+      } else if (originalInput) {
+        title = originalInput.split('\n')[0].substring(0, 50).trim() || "Untitled Generation";
+      }
+
+      const { error } = await supabase
+        .from('user_content')
+        .insert({
+          user_id: user.id,
+          title: title,
+          content: generatedContent,
+          type: contentType
+        });
+
+      if (error) {
+        console.error("Error auto-saving to Supabase:", error.message);
+        if (isManual) setToast({ message: "Failed to save: " + error.message, type: 'error' });
+      } else {
+        console.log("Successfully auto-saved content to Supabase");
+        if (isManual) setToast({ message: "Project saved successfully!", type: 'success' });
+      }
+    } catch (err) {
+      console.error("Unexpected error during auto-save:", err);
+      if (isManual) setToast({ message: "An unexpected error occurred while saving.", type: 'error' });
     }
   };
 
@@ -174,15 +306,32 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               </span>
             </button>
 
-            <button className="hidden sm:flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-xl text-sm transition text-gray-400 hover:text-white">
-              <Icons.Google />
-              <span>Sign in</span>
-            </button>
+            {user ? (
+              <button
+                onClick={handleSignOut}
+                className="hidden sm:flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-xl text-sm transition text-gray-400 hover:text-white"
+              >
+                <div className="rotate-180"><Icons.Save /></div> {/* Logout icon approximation */}
+                <span>Sign Out</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-xl text-sm transition text-gray-400 hover:text-white"
+                >
+                  <Icons.Google />
+                  <span>Sign in</span>
+                </button>
 
-            <button className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 ${theme === "dark" ? "bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-gray-800"
-              }`}>
-              Sign Up
-            </button>
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 ${theme === "dark" ? "bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-gray-800"
+                    }`}>
+                  Sign Up
+                </button>
+              </>
+            )}
           </div>
         </nav>
       </div>
@@ -240,26 +389,30 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Pro Tools</div>
               <nav className="space-y-1">
                 {[
-                  { id: 'export', label: 'Export PDF', icon: <Icons.Export />, onClick: () => { setShowExportModal(true); setShowMobileMenu(false); } },
-                  { id: 'save', label: 'Save Project', icon: <Icons.Save />, onClick: () => { } },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={item.onClick}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isPro
-                      ? "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
-                      : "text-gray-400 dark:text-gray-500 cursor-not-allowed hover:bg-gray-100 dark:hover:bg-white/5"
-                      }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {item.icon}
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </div>
-                    {isPro ? (
-                      <div className="text-[10px] text-amber-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">Open</div>
-                    ) : <Icons.Lock />}
-                  </button>
-                ))}
+                  { id: 'notes', label: 'My Notes', icon: <Icons.Folder />, onClick: () => { window.location.href = '/notes'; }, visible: !!user, pro: false },
+                  { id: 'export', label: 'Export PDF', icon: <Icons.Export />, onClick: () => { setShowExportModal(true); setShowMobileMenu(false); }, visible: true, pro: true },
+                  { id: 'save', label: 'Save Project', icon: <Icons.Save />, onClick: () => { saveToSupabase(output, mode, inputText, true); setShowMobileMenu(false); }, visible: true, pro: true },
+                ].filter(i => i.visible).map((item) => {
+                  const isLocked = item.pro && !isPro;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={isLocked ? () => setShowPricingModal(true) : item.onClick}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${!isLocked
+                        ? "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
+                        : "text-gray-400 dark:text-gray-500 cursor-not-allowed hover:bg-gray-100 dark:hover:bg-white/5"
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {item.icon}
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      {!isLocked ? (
+                        <div className="text-[10px] text-amber-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">Open</div>
+                      ) : <Icons.Lock />}
+                    </button>
+                  );
+                })}
               </nav>
             </div>
           </div>
@@ -479,6 +632,16 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
           setShowPricingModal(false);
         }}
       />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      {
+        toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )
+      }
     </div >
   );
 }

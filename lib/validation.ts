@@ -10,6 +10,8 @@ export const LIMITS: Record<UserPlan, number> = {
     pro: 2500,
 };
 
+export const MAX_SAVED_ITEMS_FREE = 3;
+
 /**
  * Counts words in a string by splitting on whitespace.
  */
