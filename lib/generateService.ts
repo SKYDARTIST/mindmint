@@ -21,7 +21,7 @@ const cleanJsonOutput = (text: string): string => {
     return text.replace(/```json\s*/g, "").replace(/```/g, "").trim();
 };
 
-const sanitizeMermaid = (raw: string): string => {
+export const sanitizeMermaid = (raw: string): string => {
     if (!raw) return "";
     const codeBlock = raw.match(/```(?:mermaid|graph)?\s*([\s\S]*?)```/i);
     let inner = codeBlock ? codeBlock[1].trim() : raw.trim();
@@ -30,6 +30,54 @@ const sanitizeMermaid = (raw: string): string => {
     inner = inner.replace(/<!--[\s\S]*?-->/g, "");
     inner = inner.replace(/^\s*```+/gm, "");
     inner = inner.replace(/\[\[\[(.*?)\]\]\]/g, '["$1"]');
+
+    // Handle 'mindmap' specific sanitization
+    if (/^mindmap/i.test(inner)) {
+        const lines = inner.split('\n');
+        const sanitizedLines: string[] = [];
+        let hasRoot = false;
+
+        for (let line of lines) {
+            let processed = line;
+
+            // Ensure child nodes are indented if they aren't already
+            if (hasRoot && !/^\s+/.test(processed) && processed.trim() !== "" && !processed.trim().startsWith('mindmap')) {
+                processed = "    " + processed;
+            }
+
+            const trimmed = processed.trim();
+            if (trimmed.startsWith('root') || (trimmed !== "" && !trimmed.startsWith('mindmap') && !hasRoot)) {
+                hasRoot = true;
+            }
+
+            // Ensure labels are correctly quoted/wrapped within shapes if they contain special characters
+            const specialChars = /[:()!=]/;
+            const shapes = [
+                { id: 'double_round', open: '((', close: '))' },
+                { id: 'round', open: '(', close: ')' },
+                { id: 'square', open: '[', close: ']' },
+                { id: 'curly', open: '{{', close: '}}' }
+            ];
+
+            for (const shape of shapes) {
+                const openIdx = processed.indexOf(shape.open);
+                const closeIdx = processed.lastIndexOf(shape.close);
+
+                if (openIdx !== -1 && closeIdx !== -1 && closeIdx > openIdx + shape.open.length) {
+                    const content = processed.substring(openIdx + shape.open.length, closeIdx).trim();
+                    if (specialChars.test(content) && !content.startsWith('"')) {
+                        processed = processed.substring(0, openIdx) +
+                            shape.open + `"${content}"` + shape.close +
+                            processed.substring(closeIdx + shape.close.length);
+                    }
+                    break; // STOP after identifying the PRIMARY shape for this line
+                }
+            }
+
+            sanitizedLines.push(processed);
+        }
+        inner = sanitizedLines.join('\n');
+    }
 
     // Allow 'mindmap' keyword for classic radial layouts if specifically requested
     // but default to graph TD for others if missing structure.
@@ -110,6 +158,10 @@ ${inputText}`;
             systemInstruction += `\n\nIf output type = MINDMAP:
 - Return a hierarchical structure: Central topic -> Main branches -> Sub-branches.
 - Keep labels short and scannable.
+- IMPORTANT: ALWAYS wrap labels in double quotes inside shapes, e.g., node["Label Text"] or node(("Root Text")).
+- Use shapes like [ ] for rectangles, ( ) for rounded, (( )) for circles.
+- INDENTATION MATTERS: All child nodes MUST be indented at least 2 or 4 spaces relative to their parent.
+- There must be ONLY ONE root node.
 - Use ONLY Mermaid.js syntax. For 'classic' use 'mindmap' keyword. For others use 'graph TD'.`;
 
             const mindmapPrompts: Record<string, string> = {

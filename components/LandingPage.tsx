@@ -2,6 +2,7 @@
 
 import React from "react";
 import BrandLogo from "@/components/BrandLogo";
+import LegalFooter from "@/components/LegalFooter";
 
 interface LandingPageProps {
   onStart: () => void;
@@ -91,6 +92,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
             Upgrade for unlimited access & pro tools
           </p>
         </div>
+
+        <LegalFooter />
       </div>
     </div>
   );

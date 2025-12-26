@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import LegalFooter from "./LegalFooter";
 import type { AppMode, MindmapLayout, FlashcardLayout, QuizLayout, SummaryLayout, InfographicLayout } from "@/types";
 import { getWordCount, LIMITS } from "@/lib/validation";
 import BrandLogo from "./BrandLogo";
@@ -263,8 +264,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             </div>
           </div>
 
-          <div className="px-4 pb-8">
+          <div className="px-4 pb-8 space-y-6">
             <div className="text-[10px] text-gray-500 dark:text-gray-600 font-medium tracking-tight">Built by <span className="text-gray-900 dark:text-gray-400 font-bold">Cryptobulla</span></div>
+            <LegalFooter variant="compact" />
           </div>
         </aside>
 
