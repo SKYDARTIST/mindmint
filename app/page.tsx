@@ -40,6 +40,7 @@ function PageContent({ theme, setTheme, showPricingModal, setShowPricingModal, t
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       if (session) {
         setShowApp(true);
+        setShowAuthModal(false); // Close modal on login
       } else {
         setShowApp(false);
       }

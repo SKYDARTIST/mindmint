@@ -3,7 +3,11 @@
 import React, { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export default function EmailSignIn() {
+interface EmailSignInProps {
+    onSuccess?: () => void;
+}
+
+export default function EmailSignIn({ onSuccess }: EmailSignInProps) {
     const [email, setEmail] = useState('');
     const [otpCode, setOtpCode] = useState('');
     const [step, setStep] = useState<'email' | 'code'>('email');
@@ -29,14 +33,14 @@ export default function EmailSignIn() {
             setMessage({ type: 'error', text: error.message });
         } else {
             setStep('code');
-            setMessage({ type: 'success', text: 'Check your email for the 6-digit code!' });
+            setMessage({ type: 'success', text: 'Check your email for the code!' });
         }
         setLoading(false);
     };
 
     const handleVerifyOtp = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!otpCode || otpCode.length < 6) return; // Allow 6-8 digits
+        if (!otpCode || otpCode.length < 6) return;
 
         setLoading(true);
         setMessage(null);
@@ -50,11 +54,26 @@ export default function EmailSignIn() {
 
         if (error) {
             setMessage({ type: 'error', text: error.message });
+            setLoading(false);
         } else {
             setMessage({ type: 'success', text: 'Logged in successfully!' });
+            // Close the modal after a short delay to let the user see the success message
+            setTimeout(() => {
+                onSuccess?.();
+            }, 800);
         }
-        setLoading(false);
     };
+
+    if (message?.type === 'success' && step === 'code' && !loading && message.text === 'Logged in successfully!') {
+        return (
+            <div className="w-full py-8 flex flex-col items-center justify-center space-y-4 animate-in-zoom">
+                <div className="w-12 h-12 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <p className="text-green-500 font-bold">Logged in!</p>
+            </div>
+        );
+    }
 
     if (step === 'code') {
         return (

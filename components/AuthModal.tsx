@@ -88,7 +88,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               </button>
             </>
           ) : (
-            <EmailSignIn />
+            <EmailSignIn onSuccess={handleClose} />
           )}
         </div>
 

@@ -110,6 +110,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
       setUser(currentUser);
       if (currentUser) {
         fetchUserPlan(currentUser.id);
+        setShowAuthModal(false); // Auto-close modal if we detect user
       } else {
         setIsPro(false);
         setGenerationsLeft(3);
