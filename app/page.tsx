@@ -19,8 +19,9 @@ function PageContent({ theme, setTheme, showPricingModal, setShowPricingModal, t
 
     // Check for error in URL
     const error = searchParams.get('error');
+    const message = searchParams.get('message');
     if (error === 'auth_failed') {
-      alert('Authentication failed. Please try again.');
+      alert(`Authentication failed: ${message || 'Unknown error'}. Please try again.`);
     }
 
     // Check for existing session
