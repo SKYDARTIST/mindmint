@@ -15,9 +15,16 @@ function PageContent({ theme, setTheme, showPricingModal, setShowPricingModal, t
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Check for existing session on mount
+    const supabase = createClient();
+
+    // Check for error in URL
+    const error = searchParams.get('error');
+    if (error === 'auth_failed') {
+      alert('Authentication failed. Please try again.');
+    }
+
+    // Check for existing session
     const checkUser = async () => {
-      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setShowApp(true);
@@ -27,6 +34,19 @@ function PageContent({ theme, setTheme, showPricingModal, setShowPricingModal, t
       setLoading(false);
     };
     checkUser();
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+      if (session) {
+        setShowApp(true);
+      } else {
+        setShowApp(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [searchParams]);
 
   useEffect(() => {
