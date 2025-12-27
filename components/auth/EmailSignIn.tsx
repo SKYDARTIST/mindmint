@@ -36,7 +36,7 @@ export default function EmailSignIn() {
 
     const handleVerifyOtp = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!otpCode || otpCode.length < 6) return;
+        if (!otpCode || otpCode.length < 6) return; // Allow 6-8 digits
 
         setLoading(true);
         setMessage(null);
@@ -45,13 +45,12 @@ export default function EmailSignIn() {
         const { error } = await supabase.auth.verifyOtp({
             email,
             token: otpCode,
-            type: 'magiclink', // 'magiclink' works for both new and existing users with signInWithOtp
+            type: 'magiclink',
         });
 
         if (error) {
             setMessage({ type: 'error', text: error.message });
         } else {
-            // Success! The onAuthStateChange in app/page.tsx will handle the UI switch
             setMessage({ type: 'success', text: 'Logged in successfully!' });
         }
         setLoading(false);
@@ -67,13 +66,13 @@ export default function EmailSignIn() {
                         </p>
                         <input
                             type="text"
-                            placeholder="Enter 6-digit code"
+                            placeholder="Enter code"
                             value={otpCode}
                             onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                            maxLength={6}
+                            maxLength={8}
                             required
                             disabled={loading}
-                            className="w-full bg-transparent border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-xl text-center text-2xl tracking-[0.5em] font-mono placeholder:text-gray-400 placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all disabled:opacity-50"
+                            className="w-full bg-transparent border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-xl text-center text-2xl tracking-[0.2em] font-mono placeholder:text-gray-400 placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all disabled:opacity-50"
                         />
                     </div>
                     <button
