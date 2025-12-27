@@ -9,14 +9,7 @@ export async function GET(request: Request) {
     const next = searchParams.get('next') ?? '/'
 
     const redirectTo = (path: string) => {
-        const forwardHost = request.headers.get('x-forwarded-host')
-        const isLocalEnv = process.env.NODE_ENV === 'development'
-        if (isLocalEnv) {
-            return NextResponse.redirect(`${origin}${path}`)
-        } else if (forwardHost) {
-            return NextResponse.redirect(`https://${forwardHost}${path}`)
-        }
-        return NextResponse.redirect(`${origin}${path}`)
+        return NextResponse.redirect(new URL(path, request.url))
     }
 
     const supabase = await createClient()
