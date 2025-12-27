@@ -5,7 +5,6 @@ import LegalFooter from "./LegalFooter";
 import type { AppMode, MindmapLayout, FlashcardLayout, QuizLayout, SummaryLayout, InfographicLayout } from "@/types";
 import { getWordCount, LIMITS } from "@/lib/validation";
 import BrandLogo from "./BrandLogo";
-import TemplatesModal from "./TemplatesModal";
 import SummaryViewer from "./SummaryViewer";
 import MermaidRenderer from "./MermaidRenderer";
 import FlashcardViewer from "./FlashcardViewer";
@@ -58,7 +57,6 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [inputText, setInputText] = useState("");
   const [activePlaceholder, setActivePlaceholder] = useState("Paste your notes here…");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [showTemplates, setShowTemplates] = useState(false);
   const [output, setOutput] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,14 +79,41 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
   useEffect(() => {
     const supabase = createClient();
+
+    const fetchUserPlan = async (userId: string) => {
+      const { data, error } = await supabase
+        .from('user_plans')
+        .select('plan')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error("Error fetching user plan:", error.message);
+        // If row doesn't exist, we stay as 'free' (default state)
+        return;
+      }
+
+      if (data) {
+        setIsPro(data.plan === 'pro');
+      }
+    };
+
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      if (user) fetchUserPlan(user.id);
     };
     getUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        fetchUserPlan(currentUser.id);
+      } else {
+        setIsPro(false);
+        setGenerationsLeft(3);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -485,13 +510,6 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                     <Icons.ChevronDown />
                   </div>
                 )}
-                <button
-                  onClick={() => setShowTemplates(true)}
-                  className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-                >
-                  <Icons.Templates />
-                  <span className="hidden sm:inline">Templates</span>
-                </button>
               </div>
             </div>
             <div className="flex-1 overflow-auto p-4 sm:p-6 scrollbar-hide min-h-[300px] md:min-h-0">
@@ -622,7 +640,6 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         </div >
       </main >
 
-      <TemplatesModal isOpen={showTemplates} onClose={() => setShowTemplates(false)} mode={mode} onSelect={() => { }} />
       <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} mode={mode} content={output} isPro={isPro} />
       <PricingModal
         isOpen={showPricingModal}

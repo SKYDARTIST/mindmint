@@ -26,9 +26,13 @@ export async function GET(request: Request) {
             }
         )
 
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code)
 
-        if (!error) {
+        if (!error && user) {
+            // Ensure the user has a plan entry
+            const { ensureUserPlan } = await import('@/app/actions')
+            await ensureUserPlan(user.id)
+
             return NextResponse.redirect(`${origin}`)
         }
     }
