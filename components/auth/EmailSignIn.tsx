@@ -85,13 +85,13 @@ export default function EmailSignIn({ onSuccess }: EmailSignInProps) {
                         </p>
                         <input
                             type="text"
-                            placeholder="Enter code"
+                            placeholder="Enter 6-digit code"
                             value={otpCode}
                             onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                            maxLength={8}
+                            maxLength={6}
                             required
                             disabled={loading}
-                            className="w-full bg-transparent border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-xl text-center text-2xl tracking-[0.2em] font-mono placeholder:text-gray-400 placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all disabled:opacity-50"
+                            className="w-full bg-transparent border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-xl text-center text-2xl tracking-[0.5em] font-mono placeholder:text-gray-400 placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all disabled:opacity-50"
                         />
                     </div>
                     <button
