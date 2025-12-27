@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function EmailSignIn() {
     const [email, setEmail] = useState('');
+    const [otpCode, setOtpCode] = useState('');
+    const [step, setStep] = useState<'email' | 'code'>('email');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -26,21 +28,79 @@ export default function EmailSignIn() {
         if (error) {
             setMessage({ type: 'error', text: error.message });
         } else {
-            setMessage({ type: 'success', text: 'Check your email for the magic link!' });
+            setStep('code');
+            setMessage({ type: 'success', text: 'Check your email for the 6-digit code!' });
         }
         setLoading(false);
     };
 
-    if (message?.type === 'success') {
+    const handleVerifyOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!otpCode || otpCode.length < 6) return;
+
+        setLoading(true);
+        setMessage(null);
+
+        const supabase = createClient();
+        const { error } = await supabase.auth.verifyOtp({
+            email,
+            token: otpCode,
+            type: 'magiclink', // 'magiclink' works for both new and existing users with signInWithOtp
+        });
+
+        if (error) {
+            setMessage({ type: 'error', text: error.message });
+        } else {
+            // Success! The onAuthStateChange in app/page.tsx will handle the UI switch
+            setMessage({ type: 'success', text: 'Logged in successfully!' });
+        }
+        setLoading(false);
+    };
+
+    if (step === 'code') {
         return (
-            <div className="w-full p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-center">
-                <p className="text-indigo-400 text-sm font-medium">{message.text}</p>
-                <button
-                    onClick={() => setMessage(null)}
-                    className="mt-3 text-xs text-indigo-400/60 hover:text-indigo-400 underline transition-colors"
-                >
-                    Try a different email
-                </button>
+            <div className="w-full space-y-4">
+                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    <div className="space-y-2">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                            Enter the code sent to <span className="font-bold text-gray-700 dark:text-gray-200">{email}</span>
+                        </p>
+                        <input
+                            type="text"
+                            placeholder="Enter 6-digit code"
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                            maxLength={6}
+                            required
+                            disabled={loading}
+                            className="w-full bg-transparent border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white py-3 px-4 rounded-xl text-center text-2xl tracking-[0.5em] font-mono placeholder:text-gray-400 placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all disabled:opacity-50"
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading || otpCode.length < 6}
+                        className="w-full flex items-center justify-center gap-3 bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-indigo-700 transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 shadow-lg shadow-indigo-600/20"
+                    >
+                        {loading ? (
+                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <span>Verify & Login</span>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setStep('email');
+                            setMessage(null);
+                        }}
+                        className="w-full text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                    >
+                        Change Email
+                    </button>
+                </form>
+                {message?.type === 'error' && (
+                    <p className="text-red-500 text-xs text-center font-medium animate-in-fade">{message.text}</p>
+                )}
             </div>
         );
     }
@@ -71,7 +131,7 @@ export default function EmailSignIn() {
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
-                            <span>Send Magic Link</span>
+                            <span>Send Code</span>
                         </>
                     )}
                 </button>
