@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { AppMode, Flashcard, QuizItem } from '@/types';
-import MermaidRenderer from './MermaidRenderer';
+import PresentationRenderer from './PresentationRenderer';
 import QuizViewer from './QuizViewer';
 import InfographicViewer from './InfographicViewer';
+import { generatePDF } from '@/lib/export/pdfExport';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface ExportModalProps {
   mode: AppMode;
   content: any;
   isPro: boolean;
+  title?: string;
 }
 
 const Icons = {
@@ -36,13 +38,14 @@ const PreviewContainer: React.FC<PreviewContainerProps> = ({ children, theme }) 
 };
 
 
-const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, content, isPro }) => {
+const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, content, isPro, title }) => {
   const [format, setFormat] = useState<'pdf' | 'png'>('pdf');
   const [pageSize, setPageSize] = useState<'a4' | 'letter'>('a4');
   const [margin, setMargin] = useState<'normal' | 'narrow'>('normal');
   const [exportTheme, setExportTheme] = useState<'light' | 'dark'>('light');
   const [isExporting, setIsExporting] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(60);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -55,36 +58,56 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
     setIsExporting(true);
 
     try {
-      const response = await fetch('/api/export', {
+      if (format === 'pdf') {
+        await generatePDF({
+          content,
+          title: title || `MindMint ${mode}`,
+          theme: exportTheme,
+          appMode: mode,
+          pageSize: pageSize,
+          onProgress: (msg) => setStatusMessage(msg)
+        });
+        setStatusMessage(null);
+        onClose();
+        return;
+      }
+
+      const endpoint = '/api/export'; // Only for image export now
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content,
-          mode: format === 'pdf' ? 'PDF' : 'IMAGE',
-          appMode: mode
+          mode: 'IMAGE', // Always IMAGE for this fetch
+          appMode: mode,
+          title: title || `MindMint ${mode}`,
+          theme: exportTheme
         }),
       });
 
-      const result = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Export failed with status ${response.status}`);
+      }
 
+      const result = await response.json();
       if (result.ok) {
-        // Create a blob from the structured content
         const blob = new Blob([result.data], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `mindmint-export-${mode}-${new Date().getTime()}.${format === 'pdf' ? 'txt' : 'txt'}`; // Using .txt for structured text
+        link.download = `${(title || `mindmint-export-${mode}`).replace(/\s+/g, '-').toLowerCase()}-${new Date().getTime()}.txt`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        onClose();
       } else {
-        alert(result.error || "Export failed. Please try again.");
+        throw new Error(result.error || "Export failed.");
       }
-    } catch (err) {
+      onClose();
+    } catch (err: any) {
       console.error("Export Error:", err);
-      alert("An unexpected error occurred during export.");
+      alert(err.message || "An unexpected error occurred during export.");
     } finally {
       setIsExporting(false);
     }
@@ -98,7 +121,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
           <div className="p-8">
             <h1 className="text-2xl font-bold mb-4">Mindmap Export</h1>
             <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 h-[600px]">
-              <MermaidRenderer chart={content} theme={exportTheme} />
+              <PresentationRenderer chart={content} theme={exportTheme} />
             </div>
           </div>
         </PreviewContainer>
@@ -284,7 +307,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
                 {isExporting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Exporting...</span>
+                    <span>{statusMessage || 'Exporting...'}</span>
                   </>
                 ) : (
                   <>

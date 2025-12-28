@@ -6,7 +6,7 @@ import type { AppMode, MindmapLayout, FlashcardLayout, QuizLayout, SummaryLayout
 import { getWordCount, LIMITS } from "@/lib/validation";
 import BrandLogo from "./BrandLogo";
 import SummaryViewer from "./SummaryViewer";
-import MermaidRenderer from "./MermaidRenderer";
+import PresentationRenderer from "./PresentationRenderer";
 import FlashcardViewer from "./FlashcardViewer";
 import QuizViewer from "./QuizViewer";
 import InfographicViewer from "./InfographicViewer";
@@ -75,6 +75,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [lastGenerationTimestamp, setLastGenerationTimestamp] = useState<number | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [currentTitle, setCurrentTitle] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const searchParams = useSearchParams();
 
@@ -213,7 +214,12 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
         // Auto-save to Supabase if user is logged in
         if (user) {
-          await saveToSupabase(result.data, mode, inputText);
+          const savedTitle = await saveToSupabase(result.data, mode, inputText);
+          setCurrentTitle(savedTitle || "");
+        } else {
+          // Derive a temporary title for non-logged in users (though export might be restricted)
+          let derivedTitle = result.data?.title || inputText.split('\n')[0].substring(0, 50).trim() || "Untitled Generation";
+          setCurrentTitle(derivedTitle);
         }
       } else {
         setError(result.error || "Failed to generate content");
@@ -228,8 +234,8 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
     }
   };
 
-  const saveToSupabase = async (generatedContent: any, contentType: string, originalInput: string, isManual = false) => {
-    if (!generatedContent || !user) return;
+  const saveToSupabase = async (generatedContent: any, contentType: string, originalInput: string, isManual = false): Promise<string | null> => {
+    if (!generatedContent || !user) return null;
 
     try {
       const supabase = createClient();
@@ -246,14 +252,14 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         } else if (count !== null && count >= MAX_SAVED_ITEMS_FREE) {
           setToast({ message: `Free limit reached (${MAX_SAVED_ITEMS_FREE} items). Upgrade to save more!`, type: "info" });
           setShowPricingModal(true);
-          return;
+          return null;
         }
       }
 
       // Derive a title: Use title from content if available, otherwise first few words of input
       let title = "Untitled Generation";
 
-      if (generatedContent?.title) {
+      if (generatedContent && typeof generatedContent === 'object' && 'title' in generatedContent && typeof generatedContent.title === 'string') {
         title = generatedContent.title;
       } else if (Array.isArray(generatedContent)) {
         // For Flashcards or Quiz (which are arrays)
@@ -279,9 +285,11 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         console.log("Successfully auto-saved content to Supabase");
         if (isManual) setToast({ message: "Project saved successfully!", type: 'success' });
       }
+      return title;
     } catch (err) {
       console.error("Unexpected error during auto-save:", err);
       if (isManual) setToast({ message: "An unexpected error occurred while saving.", type: 'error' });
+      return null;
     }
   };
 
@@ -617,7 +625,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                 ) : output ? (
                   <div className="w-full h-full scale-100 animate-in overflow-auto custom-scrollbar">
                     {mode === "summary" && <SummaryViewer data={output} />}
-                    {mode === "mindmap" && <MermaidRenderer chart={output} theme={theme} />}
+                    {mode === "mindmap" && <PresentationRenderer chart={output} theme={theme} />}
                     {mode === "flashcards" && <FlashcardViewer cards={output} />}
                     {mode === "quiz" && <QuizViewer quizItems={output} layout={quizLayout} />}
                     {mode === "infographic" && <InfographicViewer data={output} />}
@@ -653,7 +661,14 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         </div >
       </main >
 
-      <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} mode={mode} content={output} isPro={isPro} />
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        mode={mode}
+        content={output}
+        isPro={isPro}
+        title={currentTitle}
+      />
       <PricingModal
         isOpen={showPricingModal}
         onClose={() => setShowPricingModal(false)}

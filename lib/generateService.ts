@@ -167,7 +167,7 @@ ${inputText}`;
             const mindmapPrompts: Record<string, string> = {
                 classic: "mindmap (Radial layout). Use the 'mindmap' keyword.",
                 categorized: "graph TD. Use subgraphs to group related nodes.",
-                flow: "graph LR. Left-to-right progression."
+                flow: "graph TD. Use logic-progression structure with arrows (-->)."
             };
 
             userPrompt = `Generate a valid Mermaid.js diagram for the following: ${mindmapPrompts[layout] || mindmapPrompts.classic}
