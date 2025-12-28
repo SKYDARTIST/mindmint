@@ -39,6 +39,7 @@ export default function NotesClient({ initialNotes }: NotesClientProps) {
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
     const filteredNotes = useMemo(() => {
@@ -114,6 +115,42 @@ export default function NotesClient({ initialNotes }: NotesClientProps) {
         }
     };
 
+    const toggleSelect = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (selectedIds.size === filteredNotes.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredNotes.map(n => n.id)));
+        }
+    };
+
+    const handleBatchDelete = async () => {
+        const count = selectedIds.size;
+        if (!confirm(`Are you sure you want to delete ${count} selected items?`)) return;
+
+        const idsToDelete = Array.from(selectedIds);
+        setIsDeleting('batch');
+        try {
+            await userContentService.deleteMultipleNotes(idsToDelete);
+            setNotes(prev => prev.filter(n => !selectedIds.has(n.id)));
+            setSelectedIds(new Set());
+            setToast({ message: `${count} items deleted permanently`, type: 'success' });
+        } catch (error) {
+            console.error('Batch delete failed:', error);
+            setToast({ message: 'Failed to delete selected items', type: 'error' });
+        } finally {
+            setIsDeleting(null);
+        }
+    };
+
     const getTypeIcon = (type: string) => {
         switch (type) {
             case 'summary': return <Icons.Summary />;
@@ -145,7 +182,10 @@ export default function NotesClient({ initialNotes }: NotesClientProps) {
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat.id}
-                            onClick={() => setFilter(cat.id)}
+                            onClick={() => {
+                                setFilter(cat.id);
+                                setSelectedIds(new Set()); // Clear selection when filter changes
+                            }}
                             className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filter === cat.id
                                 ? 'bg-white text-black shadow-lg'
                                 : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -156,15 +196,28 @@ export default function NotesClient({ initialNotes }: NotesClientProps) {
                     ))}
                 </div>
 
-                <div className="relative w-full md:w-64">
-                    <input
-                        type="text"
-                        placeholder="Search titles..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-black/20 border border-white/10 rounded-xl py-2 px-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-gray-600"
-                    />
-                    <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <div className="flex items-center gap-4 w-full md:w-auto mt-4 md:mt-0">
+                    {filteredNotes.length > 0 && (
+                        <button
+                            onClick={handleSelectAll}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${selectedIds.size === filteredNotes.length
+                                ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400'
+                                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+                                }`}
+                        >
+                            {selectedIds.size === filteredNotes.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                    )}
+                    <div className="relative flex-1 md:w-64">
+                        <input
+                            type="text"
+                            placeholder="Search titles..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full bg-black/20 border border-white/10 rounded-xl py-2 px-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-gray-600"
+                        />
+                        <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
                 </div>
             </div>
 
@@ -176,13 +229,20 @@ export default function NotesClient({ initialNotes }: NotesClientProps) {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredNotes.map(note => (
-                        <Link
+                        <div
                             key={note.id}
-                            href={`/?noteId=${note.id}`}
-                            className={`group relative bg-gradient-to-br ${getAccentColor(note.type).split(' ').slice(0, 2).join(' ')} p-8 rounded-[2.5rem] border border-white/5 shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1 transition-all duration-500 flex flex-col justify-between h-[340px] overflow-hidden ${isDeleting === note.id ? 'opacity-50 grayscale' : ''}`}
+                            className={`group relative bg-gradient-to-br ${getAccentColor(note.type).split(' ').slice(0, 2).join(' ')} p-8 rounded-[2.5rem] border border-white/5 shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1 transition-all duration-500 flex flex-col justify-between h-[340px] overflow-hidden ${isDeleting === note.id ? 'opacity-50 grayscale' : ''} ${selectedIds.has(note.id) ? 'ring-4 ring-indigo-500/50' : ''}`}
+                            onClick={() => toggleSelect(note.id)}
                         >
-                            {/* Background Glow */}
-                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/5 blur-[60px] rounded-full group-hover:bg-white/10 transition-colors" />
+                            {/* Selection Checkbox */}
+                            <div className={`absolute top-6 left-6 w-6 h-6 rounded-full border-2 transition-all z-20 flex items-center justify-center ${selectedIds.has(note.id)
+                                ? 'bg-indigo-500 border-indigo-500'
+                                : 'bg-black/20 border-white/20 group-hover:border-white/40'
+                                }`}>
+                                {selectedIds.has(note.id) && (
+                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                )}
+                            </div>
 
                             <div className="relative z-10 space-y-4">
                                 <div className="flex items-center justify-between">
@@ -230,12 +290,47 @@ export default function NotesClient({ initialNotes }: NotesClientProps) {
                                 <div className="flex gap-1">
                                     {[1, 2, 3].map(i => <div key={i} className="w-6 h-1 bg-white/10 rounded-full" />)}
                                 </div>
-                                <div className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all group-hover:translate-x-1 ${getAccentColor(note.type).split(' ').pop()}`}>
+                                <Link
+                                    href={`/?noteId=${note.id}`}
+                                    className={`text-[10px] font-black uppercase tracking-[0.3em] transition-all group-hover:translate-x-1 ${getAccentColor(note.type).split(' ').pop()}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     Explore →
-                                </div>
+                                </Link>
                             </div>
-                        </Link>
+                        </div>
                     ))}
+                </div>
+            )}
+
+            {/* Batch Action Toolbar */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 animate-in-slide-up">
+                    <div className="flex items-center gap-6 bg-slate-900 border border-indigo-500/30 backdrop-blur-3xl px-8 py-4 rounded-3xl shadow-[0_0_50px_rgba(99,102,241,0.2)]">
+                        <div className="flex items-center gap-4 border-r border-white/10 pr-6">
+                            <div className="w-8 h-8 rounded-xl bg-indigo-500 flex items-center justify-center text-sm font-black shadow-lg">
+                                {selectedIds.size}
+                            </div>
+                            <span className="text-sm font-black uppercase tracking-widest text-gray-400">Selected</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleBatchDelete}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-black uppercase tracking-widest hover:bg-red-500/20 transition-all active:scale-95 disabled:opacity-50"
+                                disabled={isDeleting === 'batch'}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                {isDeleting === 'batch' ? 'Deleting...' : 'Delete Selected'}
+                            </button>
+                            <button
+                                onClick={() => setSelectedIds(new Set())}
+                                className="px-6 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

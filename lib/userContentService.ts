@@ -21,5 +21,16 @@ export const userContentService = {
 
         if (error) throw error;
         return true;
+    },
+
+    async deleteMultipleNotes(ids: string[]) {
+        const supabase = createClient();
+        const { error } = await supabase
+            .from('user_content')
+            .delete()
+            .in('id', ids);
+
+        if (error) throw error;
+        return true;
     }
 };
