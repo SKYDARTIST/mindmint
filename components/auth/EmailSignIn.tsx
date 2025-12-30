@@ -40,7 +40,8 @@ export default function EmailSignIn({ onSuccess }: EmailSignInProps) {
         });
 
         if (error) {
-            setMessage({ type: 'error', text: error.message });
+            console.error('Sign-in error details:', error);
+            setMessage({ type: 'error', text: error.message || 'Check Supabase SMTP settings' });
         } else {
             setStep('code');
             setCountdown(30); // Start 30s countdown
