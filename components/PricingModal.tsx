@@ -65,12 +65,22 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
     }
   ];
 
-  // Dodo Payments Checkout Links
-  const MONTHLY_PAYMENT_LINK = "https://test.checkout.dodopayments.com/buy/pdt_0NVCGUqA58DkDL5nDjIuH?quantity=1&redirect_url=https://mindmint.study%2Fpayment%2Fsuccess";
-  const YEARLY_PAYMENT_LINK = "https://checkout.dodopayments.com/buy/pdt_0NV8aLYObcvP8DlfvROuY?quantity=1&redirect_url=https://mindmint.study%2Fpayment%2Fsuccess";
+  // Dodo Payments Checkout Links (Product IDs only)
+  const MONTHLY_PRODUCT_ID = "pdt_0NVCGUqA58DkDL5nDjIuH"; // Test product
+  const YEARLY_PRODUCT_ID = "pdt_0NV8aLYObcvP8DlfvROuY"; // Live product
+  const BASE_CHECKOUT_URL = "https://test.checkout.dodopayments.com/buy/"; // Using test subdomain for monthly test
 
   const handleUpgrade = () => {
-    let paymentLink = billingCycle === 'monthly' ? MONTHLY_PAYMENT_LINK : YEARLY_PAYMENT_LINK;
+    const productId = billingCycle === 'monthly' ? MONTHLY_PRODUCT_ID : YEARLY_PRODUCT_ID;
+    const isTestProduct = productId === MONTHLY_PRODUCT_ID;
+    const checkoutBase = isTestProduct
+      ? "https://test.checkout.dodopayments.com/buy/"
+      : "https://checkout.dodopayments.com/buy/";
+
+    // Build redirect URL dynamically based on current origin
+    const redirectUrl = encodeURIComponent(`${window.location.origin}/payment/success`);
+
+    let paymentLink = `${checkoutBase}${productId}?quantity=1&redirect_url=${redirectUrl}`;
 
     // Inject Supabase User ID as metadata if available
     if (user?.id) {

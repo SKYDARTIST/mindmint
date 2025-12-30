@@ -20,30 +20,39 @@ function SuccessContent() {
             </div>
 
             {/* Text Content */}
-            <div className="space-y-3">
-                <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-                    Payment Successful!
+            <div className="space-y-4">
+                <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">
+                    Welcome to Pro!
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400 font-medium">
-                    Thank you for upgrading to {plan ? `MindMint Pro (${plan})` : 'MindMint Pro'}.
+                <p className="text-gray-500 dark:text-gray-400 font-medium text-lg leading-relaxed">
+                    Your upgrade to {plan ? `MindMint Pro (${plan})` : 'MindMint Pro'} is complete. Get ready to supercharge your learning!
                 </p>
             </div>
 
-            {/* Activation Note */}
-            <div className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 p-4 rounded-2xl">
-                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                    Your subscription is being processed and will activate shortly. Please refresh the app in a few moments.
-                </p>
+            {/* Activation Guide */}
+            <div className="bg-indigo-50/50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/10 p-6 rounded-3xl space-y-4">
+                <div className="flex items-start gap-4 text-left">
+                    <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex-shrink-0 flex items-center justify-center text-xs font-black shadow-lg shadow-indigo-500/20">1</div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Click the button below to return to the dashboard.</p>
+                </div>
+                <div className="flex items-start gap-4 text-left border-t border-indigo-100/50 dark:border-indigo-500/5 pt-4">
+                    <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex-shrink-0 flex items-center justify-center text-xs font-black shadow-lg shadow-indigo-500/20">2</div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Use the <span className="text-indigo-600 dark:text-indigo-400 font-bold">"Refresh Subscription"</span> button in the upgrade window if your status hasn't updated automatically.</p>
+                </div>
             </div>
 
-            {/* Back Button */}
-            <div className="pt-4">
+            {/* Actions */}
+            <div className="space-y-4">
                 <Link
                     href="/"
-                    className="inline-flex items-center justify-center w-full py-4 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-indigo-600/20 active:scale-[0.98]"
+                    className="flex items-center justify-center w-full py-4 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-2xl shadow-indigo-600/30 active:scale-[0.98] group"
                 >
-                    Go to App
+                    Get Started
+                    <svg className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
                 </Link>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Instant Activation • Secure Billing</p>
             </div>
         </div>
     );
