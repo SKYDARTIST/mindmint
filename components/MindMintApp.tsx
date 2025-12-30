@@ -165,6 +165,11 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
 
   const handleTemplateSelect = (tpl: typeof STARTER_TEMPLATES[0]) => {
+    if (!user) {
+      setShowAuthModal(true);
+      setToast({ message: "Please sign in to use templates!", type: "info" });
+      return;
+    }
     setActivePlaceholder(tpl.placeholder);
     setIsInputMode(true);
     setTimeout(() => textareaRef.current?.focus(), 50);
@@ -179,6 +184,12 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
+
+    if (!user) {
+      setShowAuthModal(true);
+      setToast({ message: "Please sign in to generate content!", type: "info" });
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -213,15 +224,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         setLastGenerationTimestamp(Date.now());
         if (!isPro) setGenerationsLeft(prev => Math.max(0, prev - 1));
 
-        // Auto-save to Supabase if user is logged in
-        if (user) {
-          const savedTitle = await saveToSupabase(result.data, mode, inputText);
-          setCurrentTitle(savedTitle || "");
-        } else {
-          // Derive a temporary title for non-logged in users (though export might be restricted)
-          let derivedTitle = result.data?.title || inputText.split('\n')[0].substring(0, 50).trim() || "Untitled Generation";
-          setCurrentTitle(derivedTitle);
-        }
+        // Auto-save to Supabase
+        const savedTitle = await saveToSupabase(result.data, mode, inputText);
+        setCurrentTitle(savedTitle || "");
       } else {
         setError(result.error || "Failed to generate content");
         if (res.status === 429) {

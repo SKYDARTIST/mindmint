@@ -95,11 +95,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
         </div>
 
         {/* Footer text */}
-        <div className="space-y-2">
-          <p className="text-xs text-gray-400 dark:text-gray-600 font-bold uppercase tracking-widest opacity-60">
-            3 free generations per day. No signup required.
+        <div className="space-y-4 pt-10">
+          <p className="text-sm text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
+            3 free runs per day with a free account.
           </p>
-          <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-[0.2em] opacity-80">
+          <p className="text-[11px] text-indigo-500 font-black uppercase tracking-[0.3em] opacity-80">
             Upgrade for unlimited access & pro tools
           </p>
         </div>
