@@ -1,11 +1,9 @@
-"use client";
-
 import React, { useState } from 'react';
+import { useSubscription } from '@/lib/hooks/useSubscription';
 
 interface PricingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpgrade: () => void;
 }
 
 const Icons = {
@@ -14,7 +12,8 @@ const Icons = {
   Bolt: () => <svg className="w-6 h-6 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>,
 };
 
-const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade }) => {
+const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
+  const { plan: currentPlan, isPro: isUserPro } = useSubscription();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   if (!isOpen) return null;
@@ -140,14 +139,14 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade 
                 </ul>
 
                 <button
-                  onClick={() => { if (plan.isPro) handleUpgrade(); }}
-                  disabled={!plan.isPro}
+                  onClick={() => { if (plan.isPro && !isUserPro) handleUpgrade(); }}
+                  disabled={(!plan.isPro && !isUserPro) || (plan.isPro && isUserPro)}
                   className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${plan.isPro
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl shadow-indigo-600/20 active:scale-[0.98]'
+                    ? (isUserPro ? 'bg-gray-100 dark:bg-white/5 text-gray-400 cursor-default' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl shadow-indigo-600/20 active:scale-[0.98]')
                     : 'bg-gray-100 dark:bg-white/5 text-gray-400 cursor-default'}`}
                 >
-                  {plan.isPro && <Icons.Bolt />}
-                  {plan.buttonText}
+                  {plan.isPro && !isUserPro && <Icons.Bolt />}
+                  {plan.isPro ? (isUserPro ? "Current Plan" : plan.buttonText) : "Current Plan"}
                 </button>
               </div>
             ))}

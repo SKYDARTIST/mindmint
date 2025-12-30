@@ -25,21 +25,36 @@ export async function POST(req: Request) {
         // 3. Supabase logic using Admin Client
         const supabaseAdmin = createAdminClient();
 
-        // Update the profiles table as requested (matching by email)
-        const { error: updateError } = await supabaseAdmin
+        // Look up the user_id by email from the profiles table
+        const { data: profile, error: profileError } = await supabaseAdmin
             .from('profiles')
+            .select('id')
+            .eq('email', email)
+            .single();
+
+        if (profileError || !profile) {
+            console.error('Profile Lookup Error:', profileError || 'Profile not found');
+            return NextResponse.json({ success: false, error: 'User profile not found' }, { status: 404 });
+        }
+
+        const userId = profile.id;
+
+        // Update the user_plans table as requested (matching by user_id)
+        const { error: updateError } = await supabaseAdmin
+            .from('user_plans')
             .update({
                 plan: 'pro',
-                subscription_status: 'active'
+                subscription_status: 'active',
+                updated_at: new Date().toISOString()
             })
-            .eq('email', email);
+            .eq('user_id', userId);
 
         if (updateError) {
             console.error('Supabase Update Error:', updateError);
             return NextResponse.json({ success: false, error: 'Database update failed' }, { status: 500 });
         }
 
-        console.log(`Successfully activated Pro plan for: ${email}`);
+        console.log(`Successfully activated Pro plan for user ID: ${userId} (${email})`);
 
         // 5. Response on success
         return NextResponse.json({ success: true });

@@ -19,6 +19,7 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { MAX_SAVED_ITEMS_FREE } from "@/lib/validation";
+import { useSubscription } from "@/lib/hooks/useSubscription";
 
 // Icons
 const Icons = {
@@ -67,7 +68,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [quizLayout, setQuizLayout] = useState<QuizLayout>("classic");
   const [summaryLayout, setSummaryLayout] = useState<SummaryLayout>("concept_overview");
   const [infographicLayout, setInfographicLayout] = useState<InfographicLayout>("step_by_step");
-  const [isPro, setIsPro] = useState(false);
+  const { user, plan, isPro, isLoading: isSubLoading } = useSubscription();
   const [generationsLeft, setGenerationsLeft] = useState(3);
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -75,53 +76,14 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [lastGenerationTimestamp, setLastGenerationTimestamp] = useState<number | null>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const searchParams = useSearchParams();
 
+  // Auto-close auth modal when user is detected
   useEffect(() => {
-    const supabase = createClient();
-
-    const fetchUserPlan = async (userId: string) => {
-      const { data, error } = await supabase
-        .from('user_plans')
-        .select('plan')
-        .eq('user_id', userId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching user plan:", error.message);
-        // If row doesn't exist, we stay as 'free' (default state)
-        return;
-      }
-
-      if (data) {
-        setIsPro(data.plan === 'pro');
-      }
-    };
-
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      if (user) fetchUserPlan(user.id);
-    };
-    getUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        fetchUserPlan(currentUser.id);
-        setShowAuthModal(false); // Auto-close modal if we detect user
-      } else {
-        setIsPro(false);
-        setGenerationsLeft(3);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    if (user) setShowAuthModal(false);
+  }, [user]);
 
   // Handle loading note from URL
   useEffect(() => {
@@ -130,6 +92,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
     const fetchNote = async () => {
       const supabase = createClient();
+      // The original code for fetching the note was correct.
+      // The requested change introduced a syntax error related to supabase.auth.onAuthStateChange.
+      // Reverting to the correct note fetching logic.
       const { data, error } = await supabase
         .from('user_content')
         .select('*')
@@ -333,11 +298,10 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             </button>
             <button
               onClick={() => {
-                if (isPro) setIsPro(false);
-                else setShowPricingModal(true);
+                if (!isPro) setShowPricingModal(true);
               }}
               className={`hidden md:flex items-center gap-2 px-3 py-1.5 transition-all rounded-lg border ${isPro
-                ? "bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20"
+                ? "bg-amber-500/10 border-amber-500/20"
                 : "bg-indigo-500/10 border-indigo-500/20 hover:bg-indigo-500/20 cursor-pointer"
                 }`}
             >
@@ -688,10 +652,6 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
       <PricingModal
         isOpen={showPricingModal}
         onClose={() => setShowPricingModal(false)}
-        onUpgrade={() => {
-          setIsPro(true);
-          setShowPricingModal(false);
-        }}
       />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       {
