@@ -13,11 +13,16 @@ export async function POST(req: Request) {
         }
 
         // 2. Extract Supabase User ID from metadata
-        const userId = data.metadata?.supabase_user_id;
+        // We check both keys for maximum robustness during the transition
+        const userId = data.metadata?.user_id || data.metadata?.supabase_user_id;
 
         if (!userId) {
-            console.error('Webhook Error: supabase_user_id missing from metadata');
-            return NextResponse.json({ success: false, error: 'User ID missing in metadata' }, { status: 400 });
+            console.error('Webhook Error: No user ID found in metadata. Payload:', JSON.stringify(data.metadata));
+            return NextResponse.json({
+                success: false,
+                error: 'User ID missing in metadata',
+                received_metadata: data.metadata
+            }, { status: 400 });
         }
 
         console.log(`Processing subscription.active for User ID: ${userId}`);

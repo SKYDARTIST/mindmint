@@ -13,7 +13,7 @@ const Icons = {
 };
 
 const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
-  const { user, plan: currentPlan, isPro: isUserPro } = useSubscription();
+  const { user, plan: currentPlan, isPro: isUserPro, refresh } = useSubscription();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   if (!isOpen) return null;
@@ -160,9 +160,22 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
             ))}
           </div>
 
-          <p className="text-center text-xs text-gray-400 mt-8 font-medium">
-            No long-term commitment. Cancel anytime. Secure payments.
-          </p>
+          <div className="mt-12 pt-8 border-t border-gray-100 dark:border-white/5 flex flex-col items-center gap-4">
+            <p className="text-center text-xs text-gray-400 font-medium">
+              Already paid but still seeing Free? Try refreshing your account.
+            </p>
+            <button
+              onClick={async () => {
+                if (refresh) await refresh();
+              }}
+              className="px-6 py-2 rounded-xl bg-indigo-500/10 text-indigo-500 text-xs font-bold hover:bg-indigo-500/20 transition-all active:scale-95"
+            >
+              Refresh Subscription Status
+            </button>
+            <p className="text-xs text-gray-400 font-medium">
+              No long-term commitment. Cancel anytime. Secure payments.
+            </p>
+          </div>
         </div>
       </div>
     </div>
