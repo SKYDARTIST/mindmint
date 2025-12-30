@@ -12,10 +12,20 @@ export default function EmailSignIn({ onSuccess }: EmailSignInProps) {
     const [otpCode, setOtpCode] = useState('');
     const [step, setStep] = useState<'email' | 'code'>('email');
     const [loading, setLoading] = useState(false);
+    const [countdown, setCountdown] = useState(0);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const handleEmailSignIn = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // Manage countdown timer
+    React.useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (countdown > 0) {
+            timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+        }
+        return () => clearTimeout(timer);
+    }, [countdown]);
+
+    const handleEmailSignIn = async (e?: React.FormEvent) => {
+        e?.preventDefault();
         if (!email) return;
 
         setLoading(true);
@@ -33,6 +43,7 @@ export default function EmailSignIn({ onSuccess }: EmailSignInProps) {
             setMessage({ type: 'error', text: error.message });
         } else {
             setStep('code');
+            setCountdown(30); // Start 30s countdown
             setMessage({ type: 'success', text: 'Check your email for the code!' });
         }
         setLoading(false);
@@ -105,16 +116,33 @@ export default function EmailSignIn({ onSuccess }: EmailSignInProps) {
                             <span>Verify & Login</span>
                         )}
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setStep('email');
-                            setMessage(null);
-                        }}
-                        className="w-full text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                    >
-                        Change Email
-                    </button>
+
+                    <div className="flex flex-col items-center gap-3">
+                        <button
+                            type="button"
+                            disabled={countdown > 0 || loading}
+                            onClick={() => handleEmailSignIn()}
+                            className="text-xs font-bold text-indigo-500 hover:text-indigo-400 disabled:text-gray-500 transition-colors"
+                        >
+                            {countdown > 0 ? `Resend code in ${countdown}s` : "Resend code"}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setStep('email');
+                                setMessage(null);
+                                setCountdown(0);
+                            }}
+                            className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        >
+                            Change Email
+                        </button>
+                    </div>
+
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center px-4 leading-relaxed">
+                        Don't see the code? Check your <span className="font-bold">Spam</span> or <span className="font-bold">Promotions</span> folder.
+                    </p>
                 </form>
                 {message?.type === 'error' && (
                     <p className="text-red-500 text-xs text-center font-medium animate-in-fade">{message.text}</p>
