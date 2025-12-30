@@ -61,7 +61,9 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
 
     // Inject Supabase User ID as metadata if available
     if (user?.id) {
-      paymentLink += `&metadata[supabase_user_id]=${user.id}`;
+      // Dodo Payments requires metadata_ prefix for static payment links
+      // We include both user_id and supabase_user_id for maximum compatibility
+      paymentLink += `&metadata_user_id=${user.id}&metadata_supabase_user_id=${user.id}`;
     }
 
     window.location.href = paymentLink;
