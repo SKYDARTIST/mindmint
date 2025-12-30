@@ -53,6 +53,15 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade 
     }
   ];
 
+  // Dodo Payments Checkout Links
+  const MONTHLY_PAYMENT_LINK = "https://checkout.dodopayments.com/buy/pdt_tP07rW09w6mR956LndPjH?redirect_url=https://mindmint.study/payment/success";
+  const YEARLY_PAYMENT_LINK = "https://checkout.dodopayments.com/buy/pdt_476H0Y859Y5rO94Ln0YjH?redirect_url=https://mindmint.study/payment/success";
+
+  const handleUpgrade = () => {
+    const paymentLink = billingCycle === 'monthly' ? MONTHLY_PAYMENT_LINK : YEARLY_PAYMENT_LINK;
+    window.location.href = paymentLink;
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-2 sm:p-4 animate-in-fade" onClick={onClose}>
       <div
@@ -131,7 +140,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade 
                 </ul>
 
                 <button
-                  onClick={() => { if (plan.isPro) onUpgrade(); }}
+                  onClick={() => { if (plan.isPro) handleUpgrade(); }}
                   disabled={!plan.isPro}
                   className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 ${plan.isPro
                     ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl shadow-indigo-600/20 active:scale-[0.98]'
