@@ -37,19 +37,22 @@ export async function POST(req: Request) {
                 continue;
             }
 
-            // 1. Resolve user_id by email
-            const { data: profile, error: profileError } = await supabaseAdmin
-                .from('profiles')
-                .select('id')
-                .eq('email', email)
-                .single();
+            // 1. Resolve user_id by email from Supabase Auth
+            const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
 
-            if (profileError || !profile) {
-                results.push({ email, status: 'error', message: `User not found: ${profileError?.message || 'N/A'}` });
+            if (authError) {
+                results.push({ email, status: 'error', message: `Auth lookup failed: ${authError.message}` });
                 continue;
             }
 
-            const userId = profile.id;
+            const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+
+            if (!user) {
+                results.push({ email, status: 'error', message: `User with email ${email} not found in Supabase Auth` });
+                continue;
+            }
+
+            const userId = user.id;
 
             // 2. Upsert into user_plans
             const { error: upsertError } = await supabaseAdmin
@@ -57,7 +60,6 @@ export async function POST(req: Request) {
                 .upsert({
                     user_id: userId,
                     plan: plan,
-                    subscription_status: status,
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id' });
 

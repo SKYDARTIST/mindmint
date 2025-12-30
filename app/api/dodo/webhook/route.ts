@@ -37,7 +37,6 @@ export async function POST(req: Request) {
             .upsert({
                 user_id: userId,
                 plan: 'pro',
-                subscription_status: 'active',
                 updated_at: new Date().toISOString()
             }, { onConflict: 'user_id' });
 
