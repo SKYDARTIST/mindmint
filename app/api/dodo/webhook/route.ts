@@ -12,49 +12,36 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: true, message: 'Event ignored' });
         }
 
-        // 2. Extract customer email
-        const email = data.customer?.email;
+        // 2. Extract Supabase User ID from metadata
+        const userId = data.metadata?.supabase_user_id;
 
-        if (!email) {
-            console.error('Webhook Error: Customer email missing from payload');
-            return NextResponse.json({ success: false, error: 'Customer email missing' }, { status: 400 });
+        if (!userId) {
+            console.error('Webhook Error: supabase_user_id missing from metadata');
+            return NextResponse.json({ success: false, error: 'User ID missing in metadata' }, { status: 400 });
         }
 
-        console.log(`Processing subscription.active for: ${email}`);
+        console.log(`Processing subscription.active for User ID: ${userId}`);
 
         // 3. Supabase logic using Admin Client
         const supabaseAdmin = createAdminClient();
 
-        // Look up the user_id by email from the profiles table
-        const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id')
-            .eq('email', email)
-            .single();
-
-        if (profileError || !profile) {
-            console.error('Profile Lookup Error:', profileError || 'Profile not found');
-            return NextResponse.json({ success: false, error: 'User profile not found' }, { status: 404 });
-        }
-
-        const userId = profile.id;
-
-        // Update the user_plans table as requested (matching by user_id)
+        // Update the user_plans table using upsert for the specific user_id
+        // This handles both new users and existing users securely.
         const { error: updateError } = await supabaseAdmin
             .from('user_plans')
-            .update({
+            .upsert({
+                user_id: userId,
                 plan: 'pro',
                 subscription_status: 'active',
                 updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
+            }, { onConflict: 'user_id' });
 
         if (updateError) {
-            console.error('Supabase Update Error:', updateError);
+            console.error('Supabase Upsert Error:', updateError);
             return NextResponse.json({ success: false, error: 'Database update failed' }, { status: 500 });
         }
 
-        console.log(`Successfully activated Pro plan for user ID: ${userId} (${email})`);
+        console.log(`Successfully activated Pro plan for user ID: ${userId}`);
 
         // 5. Response on success
         return NextResponse.json({ success: true });
