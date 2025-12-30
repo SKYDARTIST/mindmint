@@ -41,6 +41,7 @@ const Icons = {
   Folder: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>,
   Logout: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>,
   X: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932L18.901 1.153ZM17.61 20.644h2.039L6.486 3.24H4.298L17.61 20.644Z" /></svg>,
+  Close: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>,
 };
 
 const STARTER_TEMPLATES = [
@@ -279,8 +280,8 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         <nav className="max-w-[1600px] mx-auto glass-nav rounded-2xl border px-6 py-4 flex items-center justify-between shadow-2xl">
           <div className="flex items-center gap-6">
             <BrandLogo variant="full" size="sm" />
-            <div className="h-6 w-px bg-white/10" />
-            <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+            <div className="hidden md:flex h-6 w-px bg-white/10" />
+            <div className="hidden md:flex items-center gap-2 text-xs font-medium text-gray-400">
               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
               MindMint v1.0
             </div>
@@ -347,10 +348,39 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         {/* SIDEBAR - Desktop and Mobile */}
         <aside className={`${showMobileMenu ? 'flex' : 'hidden'} md:flex absolute md:relative inset-0 md:inset-auto z-[20] md:z-auto bg-white dark:bg-[#09090b] md:bg-transparent w-full md:w-56 shrink-0 flex-col justify-between py-8 md:py-4 px-6 md:px-0 scrollbar-hide overflow-y-auto`}>
           <div className="space-y-8">
-            <div className="md:hidden flex justify-end">
-              <button onClick={() => setShowMobileMenu(false)} className="p-2 text-gray-400 hover:text-white">
-                <Icons.Save /> {/* Reusing an icon for close or similar */}
-              </button>
+            <div className="md:hidden flex flex-col gap-4">
+              <div className="flex justify-between items-center">
+                <BrandLogo variant="full" size="sm" />
+                <button onClick={() => setShowMobileMenu(false)} className="p-2 text-gray-400 hover:text-white bg-white/5 rounded-xl">
+                  <Icons.Close />
+                </button>
+              </div>
+
+              {!user && (
+                <div className="flex flex-col gap-3 p-4 bg-indigo-600/10 rounded-2xl border border-indigo-500/20">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="p-2 bg-indigo-600 rounded-lg text-white">
+                      <Icons.Bolt />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-gray-900 dark:text-white">Join MindMint</h4>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Save your work instantly</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setShowAuthModal(true); setShowMobileMenu(false); }}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-sm shadow-xl shadow-indigo-600/20 active:scale-95 transition-all"
+                  >
+                    Create Free Account
+                  </button>
+                  <button
+                    onClick={() => { setShowAuthModal(true); setShowMobileMenu(false); }}
+                    className="w-full py-2 text-center text-xs font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  >
+                    Already have an account? Sign in
+                  </button>
+                </div>
+              )}
             </div>
             <div>
               <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Generate</div>
@@ -627,10 +657,22 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                           : `Paste your notes to build a structured ${mode} instantly with our AI brain.`}
                       </p>
                     </div>
-                    <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/5 rounded-full">
-                      <span className="text-[10px] font-black text-gray-500 tracking-[0.2em] uppercase">
-                        {isLoading ? "Thinking..." : "WAITING FOR INPUT"}
-                      </span>
+                    <div className="inline-flex flex-col gap-6 items-center">
+                      <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/5 rounded-full">
+                        <span className="text-[10px] font-black text-gray-500 tracking-[0.2em] uppercase">
+                          {isLoading ? "Thinking..." : "WAITING FOR INPUT"}
+                        </span>
+                      </div>
+
+                      {!user && !isLoading && (
+                        <button
+                          onClick={() => setShowAuthModal(true)}
+                          className="flex items-center gap-2 text-xs font-bold text-indigo-500 hover:text-indigo-400 transition-colors animate-bounce"
+                        >
+                          <Icons.Google />
+                          Sign up to save your progress
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
