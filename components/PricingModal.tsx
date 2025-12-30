@@ -94,6 +94,13 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
             <div>
               <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Simple, Factual Pricing.</h2>
               <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">Choose the plan that fits your study needs.</p>
+              {user?.email && (
+                <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-white/5 w-fit rounded-lg border border-gray-200 dark:border-white/5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Logged in as:</span>
+                  <span className="text-[10px] font-black text-gray-900 dark:text-white truncate max-w-[150px]">{user.email}</span>
+                </div>
+              )}
             </div>
             <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors">
               <Icons.Close />
