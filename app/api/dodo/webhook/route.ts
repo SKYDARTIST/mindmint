@@ -4,13 +4,16 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export async function POST(req: Request) {
     try {
         const payload = await req.json();
-        const { event, data } = payload;
+        const { type, data } = payload; // Dodo uses 'type' for event identification
 
-        // 2. Only handle the subscription.active event
-        if (event !== 'subscription.active') {
-            console.log(`Ignoring event: ${event}`);
+        // 1. Handle both activation and renewal events
+        const supportedEvents = ['subscription.active', 'subscription.renewed'];
+        if (!supportedEvents.includes(type)) {
+            console.log(`Ignoring event: ${type}`);
             return NextResponse.json({ success: true, message: 'Event ignored' });
         }
+
+        console.log(`Processing ${type} event for customer: ${data?.customer?.email}`);
 
         // 2. Extract Supabase User ID from metadata
         // We check both keys for maximum robustness during the transition
@@ -25,7 +28,7 @@ export async function POST(req: Request) {
             }, { status: 400 });
         }
 
-        console.log(`Processing subscription.active for User ID: ${userId}`);
+        console.log(`Processing ${type} for User ID: ${userId}`);
 
         // 3. Supabase logic using Admin Client
         const supabaseAdmin = createAdminClient();
@@ -45,7 +48,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, error: 'Database update failed' }, { status: 500 });
         }
 
-        console.log(`Successfully activated Pro plan for user ID: ${userId}`);
+        console.log(`Successfully processed ${type} for user ID: ${userId}`);
 
         // 5. Response on success
         return NextResponse.json({ success: true });
