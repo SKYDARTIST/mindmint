@@ -131,13 +131,13 @@ WORD LIMIT HANDLING:
 - Start with a short paragraph explaining WHAT the concept is and WHY it matters.
 - Focus on big-picture understanding, not details.
 - Length: 2–4 short paragraphs.
-- Output Format: Title, then clear paragraphs.`,
+- Output Format: Title (Plain text only, words only, no markdown symbols like ###), then clear paragraphs.`,
                 bullet: `Requested output type: SUMMARY (BULLET)
 - Help students revise or skim content quickly.
 - Extract 6-12 most important factual points.
-- Use concise bullet points only. No long explanations.
+- Use numbered points (1., 2., 3...) only. No long explanations.
 - Use bold keywords where helpful.
-- Output Format: Title, then bullet list only.`,
+- Output Format: Title (Plain text only, words only, no markdown symbols like ###), then numbered list only.`,
                 study_notes: `Requested output type: SUMMARY (STUDY NOTES)
 - Create structured, detailed notes for long-term understanding.
 - Organize content into clear sections with headings.
@@ -145,7 +145,7 @@ WORD LIMIT HANDLING:
 - Use bullet points within sections where appropriate.
 - Include definitions, processes, and key distinctions.
 - Maintain an academic but simple tone.
-- Output Format: Title, Section headings, then bullets and short explanations.`
+- Output Format: Title (Plain text only, words only, no markdown symbols like ###), Section headings, then bullets and short explanations.`
             };
 
             userPrompt = `${summaryPrompts[layout] || summaryPrompts.concept_overview}
@@ -260,6 +260,15 @@ ${inputText}`;
     }
 
     if (mode === "mindmap") return sanitizeMermaid(content);
+
+    if (mode === "summary") {
+        // AI fallback: remove markdown header symbols from the first line (the title)
+        const lines = content.split('\n');
+        if (lines.length > 0) {
+            lines[0] = lines[0].replace(/[#*`_~]/g, "").trim();
+        }
+        return lines.join('\n');
+    }
 
     return content;
 };

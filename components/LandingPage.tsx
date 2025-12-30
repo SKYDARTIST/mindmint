@@ -55,11 +55,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
             Paste notes, articles, or textbook content and instantly get mind maps,
             <br className="hidden md:block" /> flashcards, and quizzes.
           </p>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-4">
             <span className="h-px w-8 bg-gray-200 dark:bg-white/10" />
-            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">
-              Built by Cryptobulla
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">
+                Built by Cryptobulla
+              </p>
+              <a
+                href="https://x.com/Cryptobullaaa"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-gray-400 hover:text-indigo-500 flex items-center justify-center"
+                title="Contact on X"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932L18.901 1.153ZM17.61 20.644h2.039L6.486 3.24H4.298L17.61 20.644Z" /></svg>
+              </a>
+            </div>
             <span className="h-px w-8 bg-gray-200 dark:bg-white/10" />
           </div>
         </div>

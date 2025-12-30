@@ -49,8 +49,9 @@ export const generatePDF = async (options: ExportOptions) => {
     container.style.position = 'absolute';
     container.style.left = '-9999px';
     container.style.top = '0';
-    container.style.width = '2400px';
-    container.style.minHeight = '1600px';
+    container.style.width = '1480px';
+    container.style.height = 'auto'; // Let content define height
+    container.style.overflow = 'visible'; // Prevent clipping during capture
     document.body.appendChild(container);
 
     options.onProgress?.('Initializing professional multi-page engine...');
@@ -109,22 +110,29 @@ export const generatePDF = async (options: ExportOptions) => {
                     const element = container.querySelector('#export-template-root');
                     if (element) {
                         clearInterval(interval);
-                        setTimeout(resolve, 1000); // Higher wait for fonts & gradients
+                        setTimeout(resolve, 1500); // Increased wait for complex mindmaps, fonts & gradients
                     }
                 }, 100);
             });
 
             const templateRoot = container.querySelector('#export-template-root') as HTMLElement;
+
+            // Wait a bit more for layout to settle if needed
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             const actualHeight = templateRoot.offsetHeight;
+            const actualWidth = templateRoot.offsetWidth || 1480;
 
             options.onProgress?.(`Capturing page ${pageNum}...`);
 
+            // Capture at high resolution (3x) for crystal clear results
             const dataUrl = await toPng(templateRoot, {
                 quality: 1.0,
-                pixelRatio: 2,
-                width: 2400,
+                pixelRatio: 2.5, // Reduced slightly to manage memory at high res
+                width: actualWidth,
                 height: actualHeight,
                 cacheBust: true,
+                skipFonts: false,
             });
 
             // Add to PDF
@@ -132,13 +140,25 @@ export const generatePDF = async (options: ExportOptions) => {
 
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
-            const margin = 10;
-            const targetWidth = pageWidth - (margin * 2);
+            const margin = 12; // Professional margin
+            const availableWidth = pageWidth - (margin * 2);
+            const availableHeight = pageHeight - (margin * 2);
 
-            // If mindmap, we might want to scale differently, but for documents we fit width
-            const targetHeight = (actualHeight * targetWidth) / 2400;
+            // Calculate scaling factors for width and height
+            const scaleX = availableWidth / actualWidth;
+            const scaleY = availableHeight / actualHeight;
 
-            pdf.addImage(dataUrl, 'PNG', margin, margin, targetWidth, targetHeight, undefined, 'FAST');
+            // USE FIT-TO-PAGE SCALING: Smaller of the two scales to ensure no clipping
+            const scale = Math.min(scaleX, scaleY);
+
+            const targetWidth = actualWidth * scale;
+            const targetHeight = actualHeight * scale;
+
+            // PROFESSIONAL CENTERING: Center both horizontally and vertically
+            const xPos = (pageWidth - targetWidth) / 2;
+            const yPos = (pageHeight - targetHeight) / 2;
+
+            pdf.addImage(dataUrl, 'PNG', xPos, yPos, targetWidth, targetHeight, undefined, 'FAST');
         }
 
         // 5. Finalize

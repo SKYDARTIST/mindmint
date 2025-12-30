@@ -39,6 +39,7 @@ const Icons = {
   Bolt: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>,
   Folder: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>,
   Logout: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>,
+  X: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932L18.901 1.153ZM17.61 20.644h2.039L6.486 3.24H4.298L17.61 20.644Z" /></svg>,
 };
 
 const STARTER_TEMPLATES = [
@@ -463,7 +464,18 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               </button>
             )}
             <div className="space-y-6">
-              <div className="text-[10px] text-gray-500 dark:text-gray-600 font-medium tracking-tight">Built by <span className="text-gray-900 dark:text-gray-400 font-bold">Cryptobulla</span></div>
+              <div className="flex items-center gap-2">
+                <div className="text-[10px] text-gray-500 dark:text-gray-600 font-medium tracking-tight">Built by <span className="text-gray-900 dark:text-gray-400 font-bold">Cryptobulla</span></div>
+                <a
+                  href="https://x.com/Cryptobullaaa"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 text-gray-400 hover:text-indigo-500 transition-all hover:-translate-y-0.5"
+                  title="Contact on X"
+                >
+                  <Icons.X />
+                </a>
+              </div>
               <LegalFooter variant="compact" />
             </div>
           </div>

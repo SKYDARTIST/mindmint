@@ -184,26 +184,26 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
 
             {/* ZOOM CONTROLS */}
             {!isExport && !error && (
-                <div className="absolute bottom-8 right-8 flex flex-col items-end gap-3 z-50 group" onClick={e => e.stopPropagation()}>
-                    <div className="flex flex-col bg-white/90 dark:bg-[#1C1C1F]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl p-1.5 gap-1 shadow-indigo-500/10">
+                <div className="absolute top-2 left-2 bottom-auto md:top-auto md:bottom-8 md:right-8 flex flex-row md:flex-col items-center md:items-end gap-1.5 md:gap-3 z-50 scale-90 md:scale-100 origin-top-left md:origin-bottom-right" onClick={e => e.stopPropagation()}>
+                    <div className="flex flex-row md:flex-col bg-white/90 dark:bg-[#1C1C1F]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-xl md:rounded-2xl shadow-2xl p-1 gap-1 shadow-indigo-500/10">
                         <ZoomButton onClick={handleZoomIn} title="Zoom In (+)">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         </ZoomButton>
-                        <div className="h-px bg-gray-200 dark:bg-white/10 mx-2" />
+                        <div className="w-px h-4 md:w-auto md:h-px bg-gray-200 dark:bg-white/10 mx-1 md:mx-2" />
                         <ZoomButton onClick={handleZoomOut} title="Zoom Out (-)">
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         </ZoomButton>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="px-3 py-2 bg-white/90 dark:bg-[#1C1C1F]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-xl shadow-xl text-[11px] font-mono font-bold text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="px-2 py-1.5 md:px-3 md:py-2 bg-white/90 dark:bg-[#1C1C1F]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-lg md:rounded-xl shadow-xl text-[9px] md:text-[11px] font-mono font-bold text-gray-500 dark:text-gray-400">
                             {Math.round(zoom * 100)}%
                         </div>
                         <button
                             onClick={handleReset}
-                            className="bg-white/90 dark:bg-[#1C1C1F]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-xl shadow-xl px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 transition-all active:scale-95 flex items-center gap-2 shadow-indigo-500/10"
+                            className="bg-white/90 dark:bg-[#1C1C1F]/90 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-lg md:rounded-xl shadow-xl px-2.5 py-1.5 md:px-4 md:py-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-white hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 transition-all active:scale-95 flex items-center gap-1.5 md:gap-2 shadow-indigo-500/10"
                         >
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                            <svg className="w-3 h-3 md:w-3.5 md:h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
                             Reset
                         </button>
                     </div>

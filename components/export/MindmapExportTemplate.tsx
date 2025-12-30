@@ -1,5 +1,5 @@
 import React from 'react';
-import PresentationRenderer from '@/components/PresentationRenderer';
+import ExportMindmapRenderer from './ExportMindmapRenderer';
 
 interface MindmapExportTemplateProps {
     content: string;
@@ -8,10 +8,11 @@ interface MindmapExportTemplateProps {
 }
 
 /**
- * Phase 2 Export Template:
- * - Powered by PresentationRenderer
- * - Dynamic Fit-to-Page
- * - 2400x1600 High-Res Canvas
+ * Premium Presentation Export Template:
+ * - Powered by ExportMindmapRenderer (Static / High-Res)
+ * - Natural Title Wrapping (No Truncation)
+ * - Auto-Height Canvas
+ * - Designed for "Instant Readability" at 100% Zoom
  */
 const MindmapExportTemplate: React.FC<MindmapExportTemplateProps> = ({
     content,
@@ -31,7 +32,7 @@ const MindmapExportTemplate: React.FC<MindmapExportTemplateProps> = ({
 
     return (
         <div
-            className={`w-[2400px] min-h-[1600px] ${isDark ? 'bg-[#09090b] text-white' : 'bg-white text-gray-900'} p-32 flex flex-col relative overflow-hidden`}
+            className={`min-w-[1480px] w-[1480px] h-auto ${isDark ? 'bg-[#09090b] text-white' : 'bg-white text-gray-900'} p-16 pb-20 flex flex-col relative overflow-hidden`}
             id="export-template-root"
         >
             {/* Mesh Background Effects */}
@@ -42,27 +43,28 @@ const MindmapExportTemplate: React.FC<MindmapExportTemplateProps> = ({
                         backgroundSize: '80px 80px'
                     }}
                 />
-                <div className={`absolute top-[-500px] left-[-500px] w-[1500px] h-[1500px] rounded-full blur-[300px] ${isDark ? 'bg-indigo-600/10' : 'bg-indigo-100/50'}`} />
-                <div className={`absolute bottom-[-500px] right-[-500px] w-[1500px] h-[1500px] rounded-full blur-[300px] ${isDark ? 'bg-purple-600/10' : 'bg-purple-100/50'}`} />
+                <div className={`absolute top-0 left-0 w-[800px] h-[800px] rounded-full blur-[200px] ${isDark ? 'bg-indigo-600/10' : 'bg-indigo-100/40'}`} />
+                <div className={`absolute bottom-0 right-0 w-[800px] h-[800px] rounded-full blur-[200px] ${isDark ? 'bg-purple-600/10' : 'bg-purple-100/40'}`} />
             </div>
 
             {/* Premium Header */}
-            <div className={`relative z-10 flex flex-col items-center text-center mb-32 border-b-8 ${isDark ? 'border-white/5' : 'border-indigo-100/50'} pb-24`}>
-                <div className="inline-flex items-center gap-4 px-8 py-3 bg-indigo-500/10 border-4 border-indigo-500/20 rounded-full mb-12 shadow-2xl">
-                    <div className="w-4 h-4 rounded-full bg-indigo-500 animate-pulse" />
-                    <span className="text-2xl font-black text-indigo-400 uppercase tracking-[0.5em]">MindMint Professional</span>
+            <div className={`relative z-10 flex flex-col items-center text-center mb-10 border-b-4 ${isDark ? 'border-white/5' : 'border-indigo-100/50'} pb-10`}>
+                <div className="inline-flex items-center gap-4 px-8 py-3 bg-indigo-500/10 border-2 border-indigo-500/20 rounded-full mb-8 shadow-xl">
+                    <div className="w-3 h-3 rounded-full bg-indigo-500 animate-pulse" />
+                    <span className="text-xl font-black text-indigo-400 uppercase tracking-[0.5em]">MindMint Professional</span>
                 </div>
 
-                <h1 className="text-[160px] font-black tracking-[-0.05em] leading-[0.85] mb-8">
+                {/* NATURAL WRAPPING TITLE - NO TRUNCATION */}
+                <h1 className="text-[64px] font-black tracking-[-0.04em] leading-[1.1] mb-6 max-w-[1300px] mx-auto break-words whitespace-normal px-4">
                     {renderGradientTitle(title)}
                 </h1>
 
-                <div className="flex items-center gap-12 mt-12">
-                    <div className="text-3xl font-black uppercase tracking-[0.3em] text-gray-500 italic">
+                <div className="flex items-center gap-10 mt-6">
+                    <div className="text-2xl font-black uppercase tracking-[0.3em] text-gray-500 italic">
                         Mindmap Analysis
                     </div>
                     <div className="w-2 h-2 rounded-full bg-gray-700" />
-                    <div className="text-4xl font-bold tracking-tight text-gray-400">
+                    <div className="text-3xl font-bold tracking-tight text-gray-400">
                         {new Date().toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
@@ -72,33 +74,32 @@ const MindmapExportTemplate: React.FC<MindmapExportTemplateProps> = ({
                 </div>
             </div>
 
-            {/* Main Diagram Area */}
+            {/* Main Diagram Area - Static and Presentation Ready */}
             <div
-                className={`relative z-10 flex-1 flex items-center justify-center rounded-[80px] border-8 ${isDark ? 'border-white/5 bg-[#111116]' : 'border-gray-100 bg-gray-50'} p-24 overflow-hidden shadow-2xl`}
+                className={`relative z-10 w-full rounded-[60px] border-4 ${isDark ? 'border-white/5 bg-[#111116]' : 'border-gray-100 bg-gray-50'} p-12 overflow-visible shadow-[0_40px_80px_rgba(0,0,0,0.3)]`}
                 id="export-mermaid-container"
             >
-                <div className="w-full h-full">
-                    <PresentationRenderer chart={content} theme={theme} isExport={true} />
-                </div>
+                <ExportMindmapRenderer chart={content} theme={theme} />
             </div>
 
-            {/* Footer */}
-            <div className="relative z-10 mt-40 flex justify-between items-end border-t-8 border-white/5 pt-24 px-12 pb-8">
-                <div>
-                    <div className="text-3xl font-black text-indigo-500 uppercase tracking-[0.4em] mb-4">MindMint.app</div>
-                    <div className="text-4xl font-bold text-gray-500 tracking-tight max-w-[1200px] leading-relaxed">
-                        Visualized by Artificial Intelligence. Designed for human clarity.
+            {/* Premium Footer */}
+            <div className={`relative z-10 mt-16 flex justify-between items-end border-t-4 ${isDark ? 'border-white/5' : 'border-gray-100'} pt-16 px-12 pb-8`}>
+                <div className="flex flex-col gap-4">
+                    <div className="text-4xl font-black text-indigo-500 uppercase tracking-[0.4em]">MindMint.app</div>
+                    <div className="text-3xl font-bold text-gray-500 tracking-tight max-w-[900px] leading-relaxed">
+                        Visualized by Artificial Intelligence. <br />
+                        Optimized for Infinite Human Clarity.
                     </div>
                 </div>
-                <div className="text-right">
-                    <div className="text-2xl font-black text-gray-600 uppercase tracking-widest mb-2">Authenticated Export</div>
-                    <div className={`text-4xl font-black tracking-tighter ${isDark ? 'text-white opacity-40' : 'text-gray-900 opacity-20'}`}>MM-PRO-MP-2025</div>
+                <div className="text-right flex flex-col gap-3">
+                    <div className="text-xl font-black text-gray-400 uppercase tracking-widest bg-indigo-500/5 px-4 py-1 rounded-lg border border-indigo-500/10">Authenticated Digital Export</div>
+                    <div className={`text-5xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-gray-900'} opacity-30 px-2 leading-none whitespace-nowrap`}>MM-PRO-MP-2025</div>
                 </div>
             </div>
 
             <style jsx global>{`
                 #export-mermaid-container svg {
-                    filter: drop-shadow(0 40px 80px rgba(0,0,0,0.6));
+                    filter: drop-shadow(0 40px 80px rgba(0,0,0,0.4));
                 }
             `}</style>
         </div>

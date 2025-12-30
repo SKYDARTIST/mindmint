@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppMode, Flashcard, QuizItem } from '@/types';
 import PresentationRenderer from './PresentationRenderer';
 import QuizViewer from './QuizViewer';
 import InfographicViewer from './InfographicViewer';
 import { generatePDF } from '@/lib/export/pdfExport';
+import { generateImage } from '@/lib/export/imageExport';
+import MindmapExportTemplate from './export/MindmapExportTemplate';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -40,12 +42,17 @@ const PreviewContainer: React.FC<PreviewContainerProps> = ({ children, theme }) 
 
 const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, content, isPro, title }) => {
   const [format, setFormat] = useState<'pdf' | 'png'>('pdf');
-  const [pageSize, setPageSize] = useState<'a4' | 'letter'>('a4');
-  const [margin, setMargin] = useState<'normal' | 'narrow'>('normal');
   const [exportTheme, setExportTheme] = useState<'light' | 'dark'>('light');
   const [isExporting, setIsExporting] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(60);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'settings' | 'preview'>('settings');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setZoomLevel(40);
+    }
+  }, []);
 
   if (!isOpen) return null;
 
@@ -64,7 +71,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
           title: title || `MindMint ${mode}`,
           theme: exportTheme,
           appMode: mode,
-          pageSize: pageSize,
+          pageSize: 'a4',
           onProgress: (msg) => setStatusMessage(msg)
         });
         setStatusMessage(null);
@@ -72,39 +79,18 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
         return;
       }
 
-      const endpoint = '/api/export'; // Only for image export now
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (format === 'png') {
+        await generateImage({
           content,
-          mode: 'IMAGE', // Always IMAGE for this fetch
-          appMode: mode,
           title: title || `MindMint ${mode}`,
-          theme: exportTheme
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Export failed with status ${response.status}`);
+          theme: exportTheme,
+          appMode: mode,
+          onProgress: (msg) => setStatusMessage(msg)
+        });
+        setStatusMessage(null);
+        onClose();
+        return;
       }
-
-      const result = await response.json();
-      if (result.ok) {
-        const blob = new Blob([result.data], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${(title || `mindmint-export-${mode}`).replace(/\s+/g, '-').toLowerCase()}-${new Date().getTime()}.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } else {
-        throw new Error(result.error || "Export failed.");
-      }
-      onClose();
     } catch (err: any) {
       console.error("Export Error:", err);
       alert(err.message || "An unexpected error occurred during export.");
@@ -118,10 +104,9 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
     if (mode === "mindmap") {
       return (
         <PreviewContainer theme={exportTheme}>
-          <div className="p-8">
-            <h1 className="text-2xl font-bold mb-4">Mindmap Export</h1>
-            <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 h-[600px]">
-              <PresentationRenderer chart={content} theme={exportTheme} />
+          <div className="relative w-full h-auto bg-gray-50 dark:bg-black/20 flex flex-col items-center">
+            <div id="preview-render-root" className="w-full">
+              <MindmapExportTemplate content={content} title={title || "Untitled Mindmap"} theme={exportTheme} />
             </div>
           </div>
         </PreviewContainer>
@@ -192,12 +177,34 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
       >
 
         {/* LEFT PANEL: Controls */}
-        <div className="w-full md:w-[320px] flex flex-col border-r border-gray-100 dark:border-gray-800 bg-white dark:bg-[#18181B] z-10">
+        <div className={`w-full md:w-[320px] flex flex-col border-r border-gray-100 dark:border-gray-800 bg-white dark:bg-[#18181B] z-10 ${activeTab === 'settings' ? 'flex' : 'hidden md:flex'}`}>
 
           <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Export Preview</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
               <Icons.Close />
+            </button>
+          </div>
+
+          {/* Mobile Tab Switcher */}
+          <div className="flex md:hidden bg-gray-100 dark:bg-[#202023] p-1 rounded-xl mx-6 mt-6">
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'settings'
+                ? 'bg-white dark:bg-[#27272A] text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+            >
+              Settings
+            </button>
+            <button
+              onClick={() => setActiveTab('preview')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'preview'
+                ? 'bg-white dark:bg-[#27272A] text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+            >
+              Preview
             </button>
           </div>
 
@@ -230,48 +237,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
               </div>
             </div>
 
-            {/* Options */}
-            <div className={`space-y-6 transition-opacity ${format === 'png' ? 'opacity-50 pointer-events-none' : ''}`}>
 
-              {/* Page Size */}
-              <div>
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 block">Page Size</label>
-                <div className="flex bg-gray-100 dark:bg-[#202023] p-1 rounded-lg">
-                  {['a4', 'letter'].map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setPageSize(size as any)}
-                      className={`flex-1 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${pageSize === size
-                        ? 'bg-white dark:bg-[#27272A] text-gray-900 dark:text-white shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                        }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Margins */}
-              <div>
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 block">Margins</label>
-                <div className="flex bg-gray-100 dark:bg-[#202023] p-1 rounded-lg">
-                  {['normal', 'narrow'].map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => setMargin(m as any)}
-                      className={`flex-1 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${margin === m
-                        ? 'bg-white dark:bg-[#27272A] text-gray-900 dark:text-white shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                        }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
 
             {/* Theme Toggle */}
             <div>
@@ -332,7 +298,16 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
         </div>
 
         {/* RIGHT PANEL: Preview */}
-        <div className="flex-1 bg-gray-50 dark:bg-[#09090b] relative overflow-y-auto flex flex-col items-center p-8 custom-scrollbar">
+        <div className={`flex-1 bg-gray-50 dark:bg-[#09090b] relative overflow-y-auto flex flex-col items-center p-4 md:p-8 custom-scrollbar ${activeTab === 'preview' ? 'flex' : 'hidden md:flex'}`}>
+
+          {/* Mobile Back Button (to settings) */}
+          <button
+            onClick={() => setActiveTab('settings')}
+            className="md:hidden absolute top-4 left-4 z-40 bg-white/90 dark:bg-[#1C1C1F]/90 backdrop-blur-md border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-2 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-xl"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+            Settings
+          </button>
 
           {/* Background Grid Pattern */}
           <div
@@ -343,19 +318,17 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
             }}
           />
 
-          {/* Paper Mockup */}
           <div
-            className={`relative transition-all duration-500 ease-spring shadow-2xl shrink-0 ${pageSize === 'a4' ? 'w-[794px]' : 'w-[816px]'
-              } ${exportTheme === 'dark' ? 'bg-[#1C1C1F]' : 'bg-white'} min-h-full`}
+            className={`relative transition-all duration-500 ease-spring shadow-2xl shrink-0 w-[794px] ${exportTheme === 'dark' ? 'bg-[#1C1C1F]' : 'bg-white'} min-h-full`}
             style={{
               transformOrigin: 'top center',
-              transform: `scale(${zoomLevel / 100})`,
+              transform: `scale(${(zoomLevel / 100) * (794 / 1480)})`,
               marginBottom: `${(zoomLevel / 100) * 100}px`, // Add space at bottom based on zoom
               boxShadow: '0 20px 50px -12px rgba(0,0,0,0.25)'
             }}
           >
             {/* Content Rendering */}
-            <div className={`w-full ${margin === 'normal' ? 'p-12' : 'p-6'}`}>
+            <div className="w-full p-12">
               {/* Internal Content without PreviewContainer if we want full scroll */}
               {renderPreviewContent() /* Wait, renderPreviewContent uses PreviewContainer */}
             </div>
