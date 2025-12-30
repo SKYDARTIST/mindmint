@@ -13,7 +13,7 @@ const Icons = {
 };
 
 const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
-  const { plan: currentPlan, isPro: isUserPro } = useSubscription();
+  const { user, plan: currentPlan, isPro: isUserPro } = useSubscription();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   if (!isOpen) return null;
@@ -57,7 +57,13 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
   const YEARLY_PAYMENT_LINK = "https://checkout.dodopayments.com/buy/pdt_0NV8aLYObcvP8DlfvROuY?quantity=1&redirect_url=https://mindmint.study%2Fpayment%2Fsuccess";
 
   const handleUpgrade = () => {
-    const paymentLink = billingCycle === 'monthly' ? MONTHLY_PAYMENT_LINK : YEARLY_PAYMENT_LINK;
+    let paymentLink = billingCycle === 'monthly' ? MONTHLY_PAYMENT_LINK : YEARLY_PAYMENT_LINK;
+
+    // Inject Supabase User ID as metadata if available
+    if (user?.id) {
+      paymentLink += `&metadata[supabase_user_id]=${user.id}`;
+    }
+
     window.location.href = paymentLink;
   };
 
