@@ -97,10 +97,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
         {/* Footer text */}
         <div className="space-y-4 pt-10">
           <p className="text-sm text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
-            3 free runs per day with a free account.
+            3 free runs per day (600 words/input)
           </p>
           <p className="text-[11px] text-indigo-500 font-black uppercase tracking-[0.3em] opacity-80">
-            Upgrade for unlimited access & pro tools
+            Pro: 2500 words/input & Unlimited runs
           </p>
         </div>
 

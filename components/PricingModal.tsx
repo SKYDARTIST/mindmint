@@ -27,6 +27,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade 
       desc: "Perfect for casual learners and quick study sessions.",
       features: [
         "3 generations per day",
+        "Up to 600 words per input",
         "Standard templates",
         "Light & Dark mode"
       ],
@@ -41,6 +42,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade 
       desc: "Maximum productivity for power users and students.",
       features: [
         "Unlimited generations",
+        "Up to 2500 words per input",
         "Advanced infographics",
         "High-fidelity PDF/PNG exports",
         "Exclusive premium layouts",
