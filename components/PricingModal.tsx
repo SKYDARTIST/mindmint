@@ -55,7 +55,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, onUpgrade 
 
   // Dodo Payments Checkout Links
   const MONTHLY_PAYMENT_LINK = "https://checkout.dodopayments.com/buy/pdt_0NV8a4IqQFGo6Q4AISD9O?quantity=1&redirect_url=https://mindmint.study%2Fpayment%2Fsuccess";
-  const YEARLY_PAYMENT_LINK = "https://checkout.dodopayments.com/buy/pdt_476H0Y859Y5rO94Ln0YjH?redirect_url=https://mindmint.study/payment/success";
+  const YEARLY_PAYMENT_LINK = "https://checkout.dodopayments.com/buy/pdt_0NV8aLYObcvP8DlfvROuY?quantity=1&redirect_url=https://mindmint.study%2Fpayment%2Fsuccess";
 
   const handleUpgrade = () => {
     const paymentLink = billingCycle === 'monthly' ? MONTHLY_PAYMENT_LINK : YEARLY_PAYMENT_LINK;
