@@ -80,10 +80,6 @@ function PageContent({ theme, setTheme, showPricingModal, setShowPricingModal, t
           <PricingModal
             isOpen={showPricingModal}
             onClose={() => setShowPricingModal(false)}
-            onUpgrade={() => {
-              setShowApp(true);
-              setShowPricingModal(false);
-            }}
           />
           <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
         </>
