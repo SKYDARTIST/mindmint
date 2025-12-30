@@ -67,12 +67,14 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose }) => {
 
   // Dodo Payments Checkout Links (Product IDs only)
   const MONTHLY_PRODUCT_ID = "pdt_0NVCGUqA58DkDL5nDjIuH"; // Test product
-  const YEARLY_PRODUCT_ID = "pdt_0NV8aLYObcvP8DlfvROuY"; // Live product
-  const BASE_CHECKOUT_URL = "https://test.checkout.dodopayments.com/buy/"; // Using test subdomain for monthly test
+  const YEARLY_PRODUCT_ID = "pdt_0NVCWgmqEUi8eUighNfXF"; // Test product (Yearly)
+  const BASE_CHECKOUT_URL = "https://test.checkout.dodopayments.com/buy/";
 
   const handleUpgrade = () => {
     const productId = billingCycle === 'monthly' ? MONTHLY_PRODUCT_ID : YEARLY_PRODUCT_ID;
-    const isTestProduct = productId === MONTHLY_PRODUCT_ID;
+
+    // Check if it's a test product to use the correct domain
+    const isTestProduct = productId === MONTHLY_PRODUCT_ID || productId === "pdt_0NVCWgmqEUi8eUighNfXF";
     const checkoutBase = isTestProduct
       ? "https://test.checkout.dodopayments.com/buy/"
       : "https://checkout.dodopayments.com/buy/";
