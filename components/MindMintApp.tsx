@@ -430,8 +430,8 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Pro Tools</div>
               <nav className="space-y-1">
                 {[
-                  { id: 'notes', label: 'My Notes', icon: <Icons.Folder />, onClick: () => { window.location.href = '/notes'; }, visible: !!user, pro: false },
-                  { id: 'export', label: 'Export PDF', icon: <Icons.Export />, onClick: () => { setShowExportModal(true); setShowMobileMenu(false); }, visible: true, pro: true },
+                  { id: 'notes', label: 'My Notes', icon: <Icons.Folder />, onClick: () => { window.location.href = '/notes'; }, visible: true, pro: true },
+                  { id: 'export', label: 'Export PDF/PNG', icon: <Icons.Export />, onClick: () => { setShowExportModal(true); setShowMobileMenu(false); }, visible: true, pro: true },
                   { id: 'save', label: 'Save Project', icon: <Icons.Save />, onClick: () => { saveToSupabase(output, mode, inputText, true); setShowMobileMenu(false); }, visible: true, pro: true },
                 ].filter(i => i.visible).map((item) => {
                   const isLocked = item.pro && !isPro;
