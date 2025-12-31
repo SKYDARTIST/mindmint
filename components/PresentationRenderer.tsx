@@ -267,6 +267,18 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
           font-size: ${isExport ? '28px' : '20px'} !important;
           text-transform: uppercase !important;
           letter-spacing: 0.05em !important;
+          fill: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
+          color: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
+        }
+
+        /* Force ALL text to be visible in light mode */
+        .mermaid text,
+        .mermaid tspan,
+        .mermaid .label,
+        .mermaid .nodeLabel,
+        .mermaid .edgeLabel {
+          fill: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
+          color: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
         }
       `}</style>
         </div>
