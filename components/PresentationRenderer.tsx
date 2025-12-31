@@ -117,7 +117,7 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
                 },
                 mindmap: {
                     useMaxWidth: true,
-                    padding: isExport ? 100 : 60,
+                    padding: isExport ? 120 : 80,
                 }
             });
 

@@ -170,8 +170,11 @@ ${inputText}`;
             systemInstruction += `\n\nIf output type = MINDMAP:
 - Return a rich, detailed hierarchical structure: Central topic -> Main branches (Macro Themes) -> Sub-branches -> Fine details.
 - ROOT NODE: The central topic must be extremely concise (max 2-3 words).
-- ROOT BRANCHING: Limit direct branches from the root to exactly 4-7 "Macro Themes". Group all specific points under these themes.
-- LABEL QUALITY: Use concise labels for Level 1 (Macro Themes). Use descriptive labels (4-10 words) for Level 2 and beyond to capture nuance.
+- ROOT BRANCHING: Create EXACTLY 4-6 "Macro Themes" as direct children of the root. NO MORE THAN 6.
+- GROUPING IS MANDATORY: If you have more than 6 concepts, you MUST group them into broader categories first.
+- LABEL LENGTH BY LEVEL:
+  - Level 1 (Macro Themes): 2-4 words maximum (e.g., "Content Strategy", "Platform Changes", "Action Steps")
+  - Level 2 and beyond: 4-10 words for descriptive detail
 - For this ${tier} input, ensure a hierarchy of ${tier === 'Detailed' ? '4 rich levels that covers every minor nuance' : tier === 'Standard' ? '3 levels covering all major sections' : '2 clean levels focusing on core pillars'}.
 - SPREAD CONTENT: Explicitly push detailed information to the leaf nodes to keep the center clean and uncrowded.
 - SPATIAL AWARENESS: If a branch has more than 5 sub-items, group them into sub-categories to force a deeper hierarchy. This creates more visual space.
