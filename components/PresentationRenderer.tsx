@@ -291,6 +291,21 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
         .mermaid .edgePath {
           stroke-width: 2.5px !important;
         }
+
+        /* Subgraph (Category) Styling */
+        .mermaid .cluster rect {
+          fill: ${theme === 'dark' ? 'rgba(129, 140, 248, 0.1)' : 'rgba(79, 70, 229, 0.05)'} !important;
+          stroke: ${theme === 'dark' ? '#818CF8' : '#4F46E5'} !important;
+          stroke-width: 2px !important;
+          rx: 8px !important;
+          ry: 8px !important;
+        }
+
+        .mermaid .cluster text {
+          fill: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
+          font-size: 16px !important;
+          font-weight: 700 !important;
+        }
       `}</style>
         </div>
     );

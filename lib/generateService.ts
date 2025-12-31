@@ -197,7 +197,26 @@ CRITICAL RULES:
 - Create 4-6 main branches
 - Each branch should have 2-4 sub-items
 - Maximize depth and detail`,
-                categorized: "graph TD. Use subgraphs to group related nodes by theme. Ensure theme names are descriptive.",
+                categorized: `graph TD
+CATEGORIZED LAYOUT - Use subgraphs to organize content:
+
+STRUCTURE:
+1. Create 4-6 category subgraphs
+2. Each subgraph should contain 3-6 related nodes
+3. Use clear category names
+
+SYNTAX:
+subgraph Category1["📊 Category Name"]
+  A["Item 1"]
+  B["Item 2"]
+  C["Item 3"]
+end
+
+RULES:
+- Use emojis in category titles for visual distinction
+- Keep node labels to 1-3 words
+- Group logically related concepts together
+- Use --> to show relationships between categories if needed`,
                 flow: "graph TD. Use logic-progression structure with arrows (-->). Map out specific arguments or steps in detail."
             };
 
