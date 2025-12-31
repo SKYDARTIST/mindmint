@@ -182,32 +182,21 @@ ${inputText}`;
 - Use shapes like [ ] for rectangles, ( ) for rounded, (( )) for circles.
 - INDENTATION MATTERS: All child nodes MUST be indented at least 2 or 4 spaces relative to their parent.
 - There must be ONLY ONE root node.
-- Use ONLY Mermaid.js syntax. For 'classic' use 'graph TD' (flowchart top-down). For others use 'graph TD'.
-- COLOR CODING: For 'classic' layout, assign each of the 4-6 main categories a color class (class1, class2, class3, etc.).
-  - Define colors using: classDef class1 fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px,color:#000
-  - Apply to nodes using: A:::class1
-  - Use distinct colors for each main category: red (#ff6b6b), orange (#ff922b), yellow (#ffd43b), green (#51cf66), blue (#339af0), purple (#845ef7)
+- Use ONLY Mermaid.js syntax. For 'classic' use 'mindmap' keyword. For others use 'graph TD'.
 - Avoid generic nodes; ensure every node provides specific value from the source text.
 - If the content has "receipts" or "examples", include them as sub-nodes.
 - Ensure the mindmap feels "undeniably human" and comprehensive.`;
 
             const mindmapPrompts: Record<string, string> = {
-                classic: `graph TD
-STRUCTURE:
-- Root node at top
-- 4-6 main category nodes below root
-- Each category has 2-5 sub-nodes
-- Use --> for connections
-
-COLOR CODING (place at END of diagram):
-classDef red fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px,color:#000
-classDef orange fill:#ff922b,stroke:#e8590c,stroke-width:3px,color:#000  
-classDef yellow fill:#ffd43b,stroke:#fab005,stroke-width:3px,color:#000
-classDef green fill:#51cf66,stroke:#2f9e44,stroke-width:3px,color:#000
-classDef blue fill:#339af0,stroke:#1971c2,stroke-width:3px,color:#000
-classDef purple fill:#845ef7,stroke:#5f3dc4,stroke-width:3px,color:#000
-
-Apply classes: A:::red B:::orange C:::yellow D:::green E:::blue F:::purple`,
+                classic: `mindmap
+Use the mindmap keyword for a radial layout.
+CRITICAL RULES:
+- Root must be wrapped: root(("Main Topic"))
+- All other nodes use brackets: node["Label Text"]
+- Keep labels concise (2-6 words)
+- Create 4-6 main branches
+- Each branch should have 2-4 sub-items
+- Maximize depth and detail`,
                 categorized: "graph TD. Use subgraphs to group related nodes by theme. Ensure theme names are descriptive.",
                 flow: "graph TD. Use logic-progression structure with arrows (-->). Map out specific arguments or steps in detail."
             };
