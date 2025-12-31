@@ -55,7 +55,7 @@ const MindmapExportTemplate: React.FC<MindmapExportTemplateProps> = ({
                 </div>
 
                 {/* NATURAL WRAPPING TITLE - NO TRUNCATION */}
-                <h1 className="text-[64px] font-black tracking-[-0.04em] leading-[1.1] mb-6 max-w-[1300px] mx-auto break-words whitespace-normal px-4">
+                <h1 className="text-[48px] font-black tracking-[-0.04em] leading-[1.2] mb-6 max-w-[1300px] mx-auto break-words whitespace-normal px-4">
                     {renderGradientTitle(title)}
                 </h1>
 
