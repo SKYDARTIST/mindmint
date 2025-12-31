@@ -192,21 +192,22 @@ ${inputText}`;
 - Ensure the mindmap feels "undeniably human" and comprehensive.`;
 
             const mindmapPrompts: Record<string, string> = {
-                classic: `graph TD (Top-Down Flowchart). 
-IMPORTANT STRUCTURE:
-1. Create a root node at the top
-2. Create 4-6 main category nodes below it
-3. Each category should have 2-5 sub-nodes
-4. Use color classes for visual grouping:
-   - Define: classDef class1 fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px,color:#000
-   - Define: classDef class2 fill:#ff922b,stroke:#e8590c,stroke-width:3px,color:#000
-   - Define: classDef class3 fill:#ffd43b,stroke:#fab005,stroke-width:3px,color:#000
-   - Define: classDef class4 fill:#51cf66,stroke:#2f9e44,stroke-width:3px,color:#000
-   - Define: classDef class5 fill:#339af0,stroke:#1971c2,stroke-width:3px,color:#000
-   - Define: classDef class6 fill:#845ef7,stroke:#5f3dc4,stroke-width:3px,color:#000
-5. Apply classes to category nodes: A:::class1, B:::class2, etc.
-6. Ensure ALL text is black (color:#000) in class definitions
-Maximize depth and detail.`,
+                classic: `graph TD
+STRUCTURE:
+- Root node at top
+- 4-6 main category nodes below root
+- Each category has 2-5 sub-nodes
+- Use --> for connections
+
+COLOR CODING (place at END of diagram):
+classDef red fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px,color:#000
+classDef orange fill:#ff922b,stroke:#e8590c,stroke-width:3px,color:#000  
+classDef yellow fill:#ffd43b,stroke:#fab005,stroke-width:3px,color:#000
+classDef green fill:#51cf66,stroke:#2f9e44,stroke-width:3px,color:#000
+classDef blue fill:#339af0,stroke:#1971c2,stroke-width:3px,color:#000
+classDef purple fill:#845ef7,stroke:#5f3dc4,stroke-width:3px,color:#000
+
+Apply classes: A:::red B:::orange C:::yellow D:::green E:::blue F:::purple`,
                 categorized: "graph TD. Use subgraphs to group related nodes by theme. Ensure theme names are descriptive.",
                 flow: "graph TD. Use logic-progression structure with arrows (-->). Map out specific arguments or steps in detail."
             };
