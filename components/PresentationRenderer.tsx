@@ -96,8 +96,8 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
                     nodeTextColor: '#FFFFFF',
                     fontSize: '14px',
                 } : {
-                    primaryColor: '#EEF2FF',
-                    primaryTextColor: '#1E1B4B',
+                    primaryColor: '#FFFFFF',
+                    primaryTextColor: '#000000',
                     primaryBorderColor: '#4F46E5',
                     lineColor: '#4F46E5',
                     secondaryColor: '#F5F3FF',
@@ -105,8 +105,8 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
                     mainBkg: 'transparent',
                     nodeBorder: '#4F46E5',
                     mindmapLineColor: '#4F46E5',
-                    nodeBkg: '#EEF2FF',
-                    nodeTextColor: '#1E1B4B',
+                    nodeBkg: '#FFFFFF',
+                    nodeTextColor: '#000000',
                     fontSize: '14px',
                 },
                 flowchart: {
@@ -234,6 +234,8 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
           font-weight: 600 !important;
           font-size: ${isExport ? '18px' : '14px'} !important;
           letter-spacing: -0.01em !important;
+          fill: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
+          color: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
         }
 
         /* High-Contrast Connections */
