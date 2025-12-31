@@ -168,9 +168,12 @@ ${inputText}`;
 
         case "mindmap":
             systemInstruction += `\n\nIf output type = MINDMAP:
-- Return a rich, detailed hierarchical structure: Central topic -> Main branches -> Sub-branches -> Fine details.
-- Use descriptive labels (4-8 words) that capture nuance, while remaining scannable. Avoid overly short one-word labels.
+- Return a rich, detailed hierarchical structure: Central topic -> Main branches (Macro Themes) -> Sub-branches -> Fine details.
+- ROOT NODE: The central topic must be extremely concise (max 2-3 words).
+- ROOT BRANCHING: Limit direct branches from the root to exactly 4-7 "Macro Themes". Group all specific points under these themes.
+- LABEL QUALITY: Use concise labels for Level 1 (Macro Themes). Use descriptive labels (4-10 words) for Level 2 and beyond to capture nuance.
 - For this ${tier} input, ensure a hierarchy of ${tier === 'Detailed' ? '4 rich levels that covers every minor nuance' : tier === 'Standard' ? '3 levels covering all major sections' : '2 clean levels focusing on core pillars'}.
+- SPREAD CONTENT: Explicitly push detailed information to the leaf nodes to keep the center clean and uncrowded.
 - IMPORTANT: ALWAYS wrap labels in double quotes inside shapes, e.g., node["Label Text"] or node(("Root Text")).
 - Use shapes like [ ] for rectangles, ( ) for rounded, (( )) for circles.
 - INDENTATION MATTERS: All child nodes MUST be indented at least 2 or 4 spaces relative to their parent.
