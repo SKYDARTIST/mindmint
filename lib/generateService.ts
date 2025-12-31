@@ -193,7 +193,7 @@ Use the mindmap keyword for a radial layout.
 CRITICAL RULES:
 - Root must be wrapped: root(("Main Topic"))
 - All other nodes use brackets: node["Label Text"]
-- Keep labels concise (2-6 words)
+- LABEL LENGTH: Keep ALL labels to 2-4 words MAXIMUM. Abbreviate if needed.
 - Create 4-6 main branches
 - Each branch should have 2-4 sub-items
 - Maximize depth and detail`,

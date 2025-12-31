@@ -94,7 +94,7 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
                     mindmapLineColor: '#FFFFFF',
                     nodeBkg: '#1e1b4b',
                     nodeTextColor: '#FFFFFF',
-                    fontSize: '14px',
+                    fontSize: '12px',
                 } : {
                     primaryColor: '#FFFFFF',
                     primaryTextColor: '#000000',
@@ -107,7 +107,7 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
                     mindmapLineColor: '#4F46E5',
                     nodeBkg: '#FFFFFF',
                     nodeTextColor: '#000000',
-                    fontSize: '14px',
+                    fontSize: '12px',
                 },
                 flowchart: {
                     useMaxWidth: true,
@@ -232,7 +232,7 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
         .mermaid .mindmap-node text {
           font-family: 'Inter', sans-serif !important;
           font-weight: 600 !important;
-          font-size: ${isExport ? '18px' : '14px'} !important;
+          font-size: ${isExport ? '16px' : '12px'} !important;
           letter-spacing: -0.01em !important;
           fill: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
           color: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
