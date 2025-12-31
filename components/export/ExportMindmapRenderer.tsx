@@ -49,7 +49,7 @@ const ExportMindmapRenderer: React.FC<ExportMindmapRendererProps> = ({
                     mindmapLineColor: '#818CF8',
                     nodeBkg: '#1e1b4b',
                     nodeTextColor: '#FFFFFF',
-                    fontSize: '24px', // Larger for crisp exports
+                    fontSize: '18px', // Reduced to prevent clipping
                 } : {
                     primaryColor: '#EEF2FF',
                     primaryTextColor: '#1E1B4B',
@@ -62,7 +62,7 @@ const ExportMindmapRenderer: React.FC<ExportMindmapRendererProps> = ({
                     mindmapLineColor: '#4F46E5',
                     nodeBkg: '#EEF2FF',
                     nodeTextColor: '#1E1B4B',
-                    fontSize: '24px',
+                    fontSize: '18px',
                 },
                 flowchart: {
                     useMaxWidth: false,
@@ -138,8 +138,8 @@ const ExportMindmapRenderer: React.FC<ExportMindmapRendererProps> = ({
                 #export-static-canvas .mermaid .node text,
                 #export-static-canvas .mermaid .mindmap-node text {
                     font-family: 'Inter', sans-serif !important;
-                    font-weight: 800 !important;
-                    font-size: 26px !important; /* Extremely readable */
+                    font-weight: 700 !important;
+                    font-size: 18px !important; /* Reduced to prevent clipping */
                     letter-spacing: -0.01em !important;
                 }
 
@@ -168,7 +168,7 @@ const ExportMindmapRenderer: React.FC<ExportMindmapRendererProps> = ({
 
                 #export-static-canvas .mermaid .node:first-child text,
                 #export-static-canvas .mermaid .mindmap-node.mindmap-node--root text {
-                    font-size: 36px !important;
+                    font-size: 28px !important;
                     text-transform: uppercase !important;
                     letter-spacing: 0.08em !important;
                 }
