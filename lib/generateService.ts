@@ -217,7 +217,30 @@ RULES:
 - Keep node labels to 1-3 words
 - Group logically related concepts together
 - Use --> to show relationships between categories if needed`,
-                flow: "graph TD. Use logic-progression structure with arrows (-->). Map out specific arguments or steps in detail."
+                flow: `graph LR
+FLOW LAYOUT - Left-to-right process/argument flow:
+
+STRUCTURE:
+1. Start with a central concept/topic on the LEFT
+2. Create 4-6 main steps/stages flowing to the RIGHT
+3. Each step can have 1-2 sub-details branching from it
+
+STYLE:
+- Use circles for main steps: A((Step 1))
+- Use rectangles for details: B[Detail text]
+- Connect with arrows: A --> B
+- Keep labels to 2-4 words
+
+EXAMPLE:
+Start((Topic)) --> Step1((Define))
+Step1 --> Detail1[Scope & Goals]
+Start --> Step2((Research))
+Step2 --> Detail2[User Insights]
+
+RULES:
+- Create a clear left-to-right progression
+- Show logical flow or process steps
+- Use concise labels (2-4 words max)`
             };
 
             userPrompt = `Generate a valid Mermaid.js diagram for the following: ${mindmapPrompts[layout] || mindmapPrompts.classic}
