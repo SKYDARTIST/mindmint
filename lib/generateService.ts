@@ -192,8 +192,8 @@ ${inputText}`;
 Use the mindmap keyword for a radial layout.
 CRITICAL RULES:
 - Root must be wrapped: root(("Main Topic"))
-- All other nodes use brackets: node["Label Text"]
-- LABEL LENGTH: Keep ALL labels to 2-4 words MAXIMUM. Abbreviate if needed.
+- All other nodes use brackets: node["Label"]
+- LABEL LENGTH: MAXIMUM 1-3 WORDS. Use abbreviations. Examples: "Show Receipts" not "Show Your Receipts", "POV Preference" not "POV Preference Over", "AI Challenges" not "AI Content Challenges"
 - Create 4-6 main branches
 - Each branch should have 2-4 sub-items
 - Maximize depth and detail`,
