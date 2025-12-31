@@ -182,13 +182,31 @@ ${inputText}`;
 - Use shapes like [ ] for rectangles, ( ) for rounded, (( )) for circles.
 - INDENTATION MATTERS: All child nodes MUST be indented at least 2 or 4 spaces relative to their parent.
 - There must be ONLY ONE root node.
-- Use ONLY Mermaid.js syntax. For 'classic' use 'mindmap' keyword. For others use 'graph TD'.
+- Use ONLY Mermaid.js syntax. For 'classic' use 'graph TD' (flowchart top-down). For others use 'graph TD'.
+- COLOR CODING: For 'classic' layout, assign each of the 4-6 main categories a color class (class1, class2, class3, etc.).
+  - Define colors using: classDef class1 fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px,color:#000
+  - Apply to nodes using: A:::class1
+  - Use distinct colors for each main category: red (#ff6b6b), orange (#ff922b), yellow (#ffd43b), green (#51cf66), blue (#339af0), purple (#845ef7)
 - Avoid generic nodes; ensure every node provides specific value from the source text.
 - If the content has "receipts" or "examples", include them as sub-nodes.
 - Ensure the mindmap feels "undeniably human" and comprehensive.`;
 
             const mindmapPrompts: Record<string, string> = {
-                classic: "mindmap (Radial layout). Use the 'mindmap' keyword. Maximize depth and detail.",
+                classic: `graph TD (Top-Down Flowchart). 
+IMPORTANT STRUCTURE:
+1. Create a root node at the top
+2. Create 4-6 main category nodes below it
+3. Each category should have 2-5 sub-nodes
+4. Use color classes for visual grouping:
+   - Define: classDef class1 fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px,color:#000
+   - Define: classDef class2 fill:#ff922b,stroke:#e8590c,stroke-width:3px,color:#000
+   - Define: classDef class3 fill:#ffd43b,stroke:#fab005,stroke-width:3px,color:#000
+   - Define: classDef class4 fill:#51cf66,stroke:#2f9e44,stroke-width:3px,color:#000
+   - Define: classDef class5 fill:#339af0,stroke:#1971c2,stroke-width:3px,color:#000
+   - Define: classDef class6 fill:#845ef7,stroke:#5f3dc4,stroke-width:3px,color:#000
+5. Apply classes to category nodes: A:::class1, B:::class2, etc.
+6. Ensure ALL text is black (color:#000) in class definitions
+Maximize depth and detail.`,
                 categorized: "graph TD. Use subgraphs to group related nodes by theme. Ensure theme names are descriptive.",
                 flow: "graph TD. Use logic-progression structure with arrows (-->). Map out specific arguments or steps in detail."
             };

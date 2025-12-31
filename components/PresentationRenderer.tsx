@@ -280,6 +280,17 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
           fill: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
           color: ${theme === 'dark' ? '#FFFFFF' : '#000000'} !important;
         }
+
+        /* Flowchart Node Styling */
+        .mermaid .node rect {
+          rx: 12px !important;
+          ry: 12px !important;
+        }
+
+        /* Ensure flowchart has good spacing */
+        .mermaid .edgePath {
+          stroke-width: 2.5px !important;
+        }
       `}</style>
         </div>
     );
