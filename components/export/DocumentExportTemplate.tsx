@@ -270,7 +270,7 @@ const DocumentExportTemplate: React.FC<DocumentExportTemplateProps> = ({
             {/* Footer */}
             <div className="relative z-10 mt-24 flex justify-between items-end border-t-4 border-white/5 pt-16 px-8 pb-4">
                 <div>
-                    <div className="text-2xl font-black text-indigo-500 uppercase tracking-[0.4em] mb-3">MindMint.app</div>
+                    <div className="text-2xl font-black text-indigo-500 uppercase tracking-[0.4em] mb-3">MindMint.study</div>
                     <div className="text-3xl font-bold text-gray-500 tracking-tight max-w-[900px] leading-relaxed">
                         Curated by Artificial Intelligence. Designed for Human Mastery.
                     </div>

@@ -85,7 +85,7 @@ const MindmapExportTemplate: React.FC<MindmapExportTemplateProps> = ({
             {/* Premium Footer */}
             <div className={`relative z-10 mt-16 flex justify-between items-end border-t-4 ${isDark ? 'border-white/5' : 'border-gray-100'} pt-16 px-12 pb-8`}>
                 <div className="flex flex-col gap-4">
-                    <div className="text-4xl font-black text-indigo-500 uppercase tracking-[0.4em]">MindMint.app</div>
+                    <div className="text-4xl font-black text-indigo-500 uppercase tracking-[0.4em]">MindMint.study</div>
                     <div className="text-3xl font-bold text-gray-500 tracking-tight max-w-[900px] leading-relaxed">
                         Visualized by Artificial Intelligence. <br />
                         Optimized for Infinite Human Clarity.
