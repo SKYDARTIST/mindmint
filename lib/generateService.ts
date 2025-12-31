@@ -335,13 +335,26 @@ ${inputText}`;
     if (mode === "mindmap") return sanitizeMermaid(content);
 
     if (mode === "summary") {
-        // AI fallback: remove markdown header symbols from the first line (the title)
-        const lines = content.split('\n');
+        // Remove all markdown formatting
+        let cleaned = content;
+
+        // Remove bold syntax (**text** or __text__)
+        cleaned = cleaned.replace(/\*\*(.+?)\*\*/g, '$1');
+        cleaned = cleaned.replace(/__(.+?)__/g, '$1');
+
+        // Remove italic syntax (*text* or _text_)
+        cleaned = cleaned.replace(/\*(.+?)\*/g, '$1');
+        cleaned = cleaned.replace(/_(.+?)_/g, '$1');
+
+        // Remove markdown headers from first line only
+        const lines = cleaned.split('\n');
         if (lines.length > 0) {
-            lines[0] = lines[0].replace(/[#*`_~]/g, "").trim();
+            lines[0] = lines[0].replace(/^[#]+\s*/g, "").trim();
         }
+
         return lines.join('\n');
     }
+
 
     return content;
 };
