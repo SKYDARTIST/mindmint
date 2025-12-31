@@ -117,7 +117,7 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
                 },
                 mindmap: {
                     useMaxWidth: true,
-                    padding: isExport ? 60 : 30,
+                    padding: isExport ? 100 : 60,
                 }
             });
 
@@ -221,8 +221,8 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
         .mermaid .mindmap-node rect,
         .mermaid .mindmap-node path {
           stroke-width: ${isExport ? '4px' : '3px'} !important;
-          rx: 20px !important;
-          ry: 20px !important;
+          rx: 8px !important;
+          ry: 8px !important;
           filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
         }
 
@@ -230,9 +230,9 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
         .mermaid .node text,
         .mermaid .mindmap-node text {
           font-family: 'Inter', sans-serif !important;
-          font-weight: 800 !important;
+          font-weight: 600 !important;
           font-size: ${isExport ? '20px' : '16px'} !important;
-          letter-spacing: -0.02em !important;
+          letter-spacing: -0.01em !important;
         }
 
         /* High-Contrast Connections */
