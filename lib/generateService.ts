@@ -98,6 +98,12 @@ export const generateContent = async (
     if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
     const isPro = userPlan === 'pro';
+    const wordCount = inputText.trim().split(/\s+/).length;
+
+    // Determine scaling tier
+    let tier = "Briefer";
+    if (wordCount >= 1500) tier = "Detailed";
+    else if (wordCount >= 500) tier = "Standard";
 
     let systemInstruction = `You are MindMint AI, an educational assistant designed to convert content into structured learning materials.
 
@@ -107,6 +113,12 @@ RULES:
 3. Remove filler speech, repetition, greetings, and tangents.
 4. Use clear, student-friendly language.
 5. Structure content for learning, not entertainment.
+
+SCALING INSTRUCTIONS (Current Tier: ${tier}, Word Count: ${wordCount}):
+- Use the following parameters to ensure the output matches the input depth:
+  - If output type = MINDMAP: Depth = ${tier === 'Detailed' ? '4 levels (very rich)' : tier === 'Standard' ? '3 levels' : '2 levels'}.
+  - If output type = FLASHCARDS: Quantity = ${tier === 'Detailed' ? '15-25' : tier === 'Standard' ? '10-15' : '5-8'} cards.
+  - If output type = QUIZ: Quantity = ${tier === 'Detailed' ? '15-20' : tier === 'Standard' ? '10' : '5'} questions.
 
 WORD LIMIT HANDLING:
 - If user plan is FREE:
@@ -156,18 +168,22 @@ ${inputText}`;
 
         case "mindmap":
             systemInstruction += `\n\nIf output type = MINDMAP:
-- Return a hierarchical structure: Central topic -> Main branches -> Sub-branches.
-- Keep labels short and scannable.
+- Return a rich, detailed hierarchical structure: Central topic -> Main branches -> Sub-branches -> Fine details.
+- Use descriptive labels (4-8 words) that capture nuance, while remaining scannable. Avoid overly short one-word labels.
+- For this ${tier} input, ensure a hierarchy of ${tier === 'Detailed' ? '4 rich levels that covers every minor nuance' : tier === 'Standard' ? '3 levels covering all major sections' : '2 clean levels focusing on core pillars'}.
 - IMPORTANT: ALWAYS wrap labels in double quotes inside shapes, e.g., node["Label Text"] or node(("Root Text")).
 - Use shapes like [ ] for rectangles, ( ) for rounded, (( )) for circles.
 - INDENTATION MATTERS: All child nodes MUST be indented at least 2 or 4 spaces relative to their parent.
 - There must be ONLY ONE root node.
-- Use ONLY Mermaid.js syntax. For 'classic' use 'mindmap' keyword. For others use 'graph TD'.`;
+- Use ONLY Mermaid.js syntax. For 'classic' use 'mindmap' keyword. For others use 'graph TD'.
+- Avoid generic nodes; ensure every node provides specific value from the source text.
+- If the content has "receipts" or "examples", include them as sub-nodes.
+- Ensure the mindmap feels "undeniably human" and comprehensive.`;
 
             const mindmapPrompts: Record<string, string> = {
-                classic: "mindmap (Radial layout). Use the 'mindmap' keyword.",
-                categorized: "graph TD. Use subgraphs to group related nodes.",
-                flow: "graph TD. Use logic-progression structure with arrows (-->)."
+                classic: "mindmap (Radial layout). Use the 'mindmap' keyword. Maximize depth and detail.",
+                categorized: "graph TD. Use subgraphs to group related nodes by theme. Ensure theme names are descriptive.",
+                flow: "graph TD. Use logic-progression structure with arrows (-->). Map out specific arguments or steps in detail."
             };
 
             userPrompt = `Generate a valid Mermaid.js diagram for the following: ${mindmapPrompts[layout] || mindmapPrompts.classic}
@@ -177,9 +193,9 @@ Content:\n${inputText}`;
         case "flashcards":
             isJson = true;
             userPrompt = `Requested output type: FLASHCARDS
-- Generate question–answer pairs.
+- Generate exactly ${tier === 'Detailed' ? '15-25' : tier === 'Standard' ? '10-15' : '5-8'} high-quality question–answer pairs.
 - Questions should test understanding, not memorization.
-- Aim for 6-10 high-quality cards.
+- Cover the ENTIRE content provided.
 
 Output Format (JSON array):
 [
@@ -197,7 +213,7 @@ ${inputText}`;
         case "quiz":
             isJson = true;
             userPrompt = `Requested output type: QUIZ
-- Generate 5–10 items.
+- Generate exactly ${tier === 'Detailed' ? '15-20' : tier === 'Standard' ? '10' : '5'} items.
 - Mix of multiple-choice and true-false or short-answer based on layout.
 - Include correct answers and explanations.
 
