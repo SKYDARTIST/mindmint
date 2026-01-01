@@ -81,7 +81,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
             onClick={onStart}
             className="px-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-full transition-all flex items-center gap-3 w-full md:min-w-[300px] md:w-auto shadow-2xl shadow-indigo-600/30 active:scale-95 group"
           >
-            <span className="flex-1">Start Generating Free</span>
+            <span className="flex-1">Try Demo (No Sign-up)</span>
             <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
           </button>
 
@@ -97,10 +97,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
         {/* Footer text */}
         <div className="space-y-4 pt-10">
           <p className="text-sm text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
-            3 free runs per day (600 words/input)
+            2 demo tries • No sign-up needed
           </p>
-          <p className="text-[11px] text-indigo-500 font-black uppercase tracking-[0.3em] opacity-80">
-            Pro: 2500 words/input & Unlimited runs
+          <p className="text-[11px] text-gray-500 dark:text-gray-600 font-medium">
+            Sign up FREE for 3 generations/day • Pro: $5/month for unlimited
           </p>
         </div>
 

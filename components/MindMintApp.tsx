@@ -20,6 +20,7 @@ import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { MAX_SAVED_ITEMS_FREE } from "@/lib/validation";
 import { useSubscription } from "@/lib/hooks/useSubscription";
+import DemoLimitModal from "./DemoLimitModal";
 
 // Icons
 const Icons = {
@@ -81,6 +82,10 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const searchParams = useSearchParams();
 
+  // Demo mode state
+  const [demoTriesRemaining, setDemoTriesRemaining] = useState(2);
+  const [showDemoLimitModal, setShowDemoLimitModal] = useState(false);
+
   // Auto-close auth modal when user is detected
   useEffect(() => {
     if (user) setShowAuthModal(false);
@@ -131,11 +136,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
 
   const handleTemplateSelect = (tpl: typeof STARTER_TEMPLATES[0]) => {
-    if (!user) {
-      setShowAuthModal(true);
-      setToast({ message: "Please sign in to use templates!", type: "info" });
-      return;
-    }
+    // Allow demo users to use templates
     setActivePlaceholder(tpl.placeholder);
     setIsInputMode(true);
     setTimeout(() => textareaRef.current?.focus(), 50);
@@ -151,17 +152,50 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
 
-    if (!user) {
-      setShowAuthModal(true);
-      setToast({ message: "Please sign in to generate content!", type: "info" });
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     setOutput(null);
 
     try {
+      // Demo mode handling
+      if (!user) {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            input: inputText,
+            mode,
+            isDemo: true,
+            layout: mode === "mindmap" ? mindmapLayout : mode === "summary" ? summaryLayout : "classic",
+          }),
+        });
+
+        const result = await res.json();
+        if (result.ok) {
+          setOutput(result.data);
+          setDemoTriesRemaining(result.demoTriesRemaining);
+
+          if (result.demoTriesRemaining === 0) {
+            setToast({ message: "Demo complete! Sign up to continue.", type: "info" });
+            setTimeout(() => setShowDemoLimitModal(true), 1500);
+          } else {
+            setToast({ message: `Demo try complete! ${result.demoTriesRemaining} remaining.`, type: "success" });
+          }
+        } else {
+          if (result.requiresAuth) {
+            setToast({ message: result.error, type: "info" });
+            setTimeout(() => setShowAuthModal(true), 500);
+          } else if (result.demoLimitReached) {
+            setShowDemoLimitModal(true);
+          } else {
+            setError(result.error || "Failed to generate content");
+          }
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // Authenticated user flow
       if (!isPro && (generationsLeft <= 0 || mode === "infographic")) {
         setShowPricingModal(true);
         setIsLoading(false);
@@ -299,16 +333,22 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             </button>
             <button
               onClick={() => {
-                if (!isPro) setShowPricingModal(true);
+                if (!user) {
+                  setShowAuthModal(true);
+                } else if (!isPro) {
+                  setShowPricingModal(true);
+                }
               }}
               className={`hidden md:flex items-center gap-2 px-3 py-1.5 transition-all rounded-lg border ${isPro
                 ? "bg-amber-500/10 border-amber-500/20"
-                : "bg-indigo-500/10 border-indigo-500/20 hover:bg-indigo-500/20 cursor-pointer"
+                : user
+                  ? "bg-indigo-500/10 border-indigo-500/20 hover:bg-indigo-500/20 cursor-pointer"
+                  : "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20 cursor-pointer"
                 }`}
             >
               <Icons.Bolt />
-              <span className={`text-xs font-bold ${isPro ? "text-amber-500" : "text-indigo-400"}`}>
-                {isPro ? "PRO" : `${generationsLeft} Free runs left`}
+              <span className={`text-xs font-bold ${isPro ? "text-amber-500" : user ? "text-indigo-400" : "text-purple-400"}`}>
+                {isPro ? "PRO" : user ? `${generationsLeft} Free runs left` : `${demoTriesRemaining} Demo tries left`}
               </span>
             </button>
 
@@ -385,14 +425,23 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             <div>
               <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Generate</div>
               <nav className="space-y-1">
-                {(["mindmap", "flashcards", "quiz", "summary", "infographic"] as AppMode[]).map((m) => {
-                  const isLocked = m === "infographic" && !isPro;
+                {(["mindmap", "summary", "flashcards", "quiz", "infographic"] as AppMode[]).map((m) => {
+                  // Feature gating logic
+                  const isLockedForDemo = !user && (m === "flashcards" || m === "quiz" || m === "infographic");
+                  const isLockedForFree = user && !isPro && m === "infographic";
+                  const isLocked = isLockedForDemo || isLockedForFree;
+
                   return (
                     <button
                       key={m}
                       onClick={() => {
                         if (isLocked) {
-                          setShowPricingModal(true);
+                          if (!user) {
+                            setShowAuthModal(true);
+                            setToast({ message: "Sign up free to unlock all features!", type: "info" });
+                          } else {
+                            setShowPricingModal(true);
+                          }
                           return;
                         }
                         setMode(m);
@@ -427,11 +476,18 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                   { id: 'notes', label: 'My Notes', icon: <Icons.Folder />, onClick: () => { window.location.href = '/notes'; }, visible: true, pro: true },
                   { id: 'export', label: 'Export PDF/PNG', icon: <Icons.Export />, onClick: () => { setShowExportModal(true); setShowMobileMenu(false); }, visible: true, pro: true },
                 ].filter(i => i.visible).map((item) => {
-                  const isLocked = item.pro && !isPro;
+                  const isLocked = item.pro && (!user || !isPro);
                   return (
                     <button
                       key={item.id}
-                      onClick={isLocked ? () => setShowPricingModal(true) : item.onClick}
+                      onClick={isLocked ? () => {
+                        if (!user) {
+                          setShowAuthModal(true);
+                          setToast({ message: "Sign up to access this feature!", type: "info" });
+                        } else {
+                          setShowPricingModal(true);
+                        }
+                      } : item.onClick}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${!isLocked
                         ? "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
                         : "text-gray-400 dark:text-gray-500 cursor-not-allowed hover:bg-gray-100 dark:hover:bg-white/5"
@@ -696,6 +752,18 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         onClose={() => setShowPricingModal(false)}
       />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <DemoLimitModal
+        isOpen={showDemoLimitModal}
+        onClose={() => setShowDemoLimitModal(false)}
+        onSignUp={() => {
+          setShowDemoLimitModal(false);
+          setShowAuthModal(true);
+        }}
+        onUpgrade={() => {
+          setShowDemoLimitModal(false);
+          setShowPricingModal(true);
+        }}
+      />
       {
         toast && (
           <Toast
