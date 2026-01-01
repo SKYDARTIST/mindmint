@@ -110,7 +110,7 @@ const DemoLimitModal: React.FC<DemoLimitModalProps> = ({
                             </h3>
                             <div className="flex flex-col items-end">
                                 <span className="text-2xl font-black text-amber-600 dark:text-amber-500">
-                                    $5
+                                    $4.99
                                 </span>
                                 <span className="text-xs text-gray-500 font-bold">
                                     /month

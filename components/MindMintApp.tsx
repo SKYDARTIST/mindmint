@@ -331,26 +331,27 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             >
               <Icons.Templates />
             </button>
-            <button
-              onClick={() => {
-                if (!user) {
-                  setShowAuthModal(true);
-                } else if (!isPro) {
-                  setShowPricingModal(true);
-                }
-              }}
-              className={`hidden md:flex items-center gap-2 px-3 py-1.5 transition-all rounded-lg border ${isPro
-                ? "bg-amber-500/10 border-amber-500/20"
-                : user
-                  ? "bg-indigo-500/10 border-indigo-500/20 hover:bg-indigo-500/20 cursor-pointer"
-                  : "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20 cursor-pointer"
-                }`}
-            >
-              <Icons.Bolt />
-              <span className={`text-xs font-bold ${isPro ? "text-amber-500" : user ? "text-indigo-400" : "text-purple-400"}`}>
-                {isPro ? "PRO" : user ? `${generationsLeft} Free runs left` : `${demoTriesRemaining} Demo tries left`}
-              </span>
-            </button>
+            {/* Only show badge for authenticated users */}
+            {user && (
+              <button
+                onClick={() => {
+                  if (!user) {
+                    setShowAuthModal(true);
+                  } else if (!isPro) {
+                    setShowPricingModal(true);
+                  }
+                }}
+                className={`hidden md:flex items-center gap-2 px-3 py-1.5 transition-all rounded-lg border ${isPro
+                  ? "bg-amber-500/10 border-amber-500/20"
+                  : "bg-indigo-500/10 border-indigo-500/20 hover:bg-indigo-500/20 cursor-pointer"
+                  }`}
+              >
+                <Icons.Bolt />
+                <span className={`text-xs font-bold ${isPro ? "text-amber-500" : "text-indigo-400"}`}>
+                  {isPro ? "PRO" : `${generationsLeft} Free runs left`}
+                </span>
+              </button>
+            )}
 
             {user ? (
               <button
@@ -381,6 +382,39 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
           </div>
         </nav>
       </div>
+
+
+      {/* DEMO MODE BANNER */}
+      {!user && demoTriesRemaining > 0 && (
+        <div className="px-4 md:px-6 -mt-2 mb-4">
+          <div className="max-w-[1700px] mx-auto">
+            <div className="bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-purple-500/10 border border-purple-500/20 rounded-xl px-4 md:px-6 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 animate-in slide-in-from-top">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20 shrink-0">
+                  <svg className="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    You're in Demo Mode
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {demoTriesRemaining} {demoTriesRemaining === 1 ? 'try' : 'tries'} remaining • Sign up free to unlock all features
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="w-full md:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
+              >
+                Sign Up Free
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col md:flex-row max-w-[1700px] mx-auto w-full gap-4 md:gap-8 p-4 md:p-6 overflow-hidden">

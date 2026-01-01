@@ -100,7 +100,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
             2 demo tries • No sign-up needed
           </p>
           <p className="text-[11px] text-gray-500 dark:text-gray-600 font-medium">
-            Sign up FREE for 3 generations/day • Pro: $5/month for unlimited
+            Sign up FREE for 3 generations/day • Pro: $4.99/month for unlimited
           </p>
         </div>
 
