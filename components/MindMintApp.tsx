@@ -524,7 +524,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                       } : item.onClick}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${!isLocked
                         ? "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
-                        : "text-gray-400 dark:text-gray-500 cursor-not-allowed hover:bg-gray-100 dark:hover:bg-white/5"
+                        : "text-gray-400 dark:text-gray-500 cursor-not-allowed hover:bg-gray-100 dark:hover:bg-white/5 opacity-60 border border-gray-200 dark:border-gray-800"
                         }`}
                     >
                       <div className="flex items-center gap-3">

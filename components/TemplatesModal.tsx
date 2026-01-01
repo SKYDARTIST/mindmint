@@ -164,7 +164,7 @@ const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose, mode, 
                 onSelect(template.content);
                 onClose();
               }}
-              className="group flex items-start gap-3 p-4 rounded-xl border border-gray-800 bg-[#202023] hover:border-indigo-700 hover:bg-[#252528] transition-all text-left"
+              className="group flex items-start gap-3 p-4 rounded-xl border border-gray-800 bg-[#202023] hover:border-indigo-700 hover:bg-[#252528] transition-all text-left hover:shadow-xl hover:shadow-indigo-500/10 hover:scale-[1.02] active:scale-[0.98]"
             >
               <div className="p-2 bg-gray-800/50 rounded-lg group-hover:bg-indigo-900/20 transition-colors">
                 <TemplateIcon />
