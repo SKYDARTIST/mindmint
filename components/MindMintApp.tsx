@@ -514,13 +514,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                   return (
                     <button
                       key={item.id}
-                      onClick={isLocked ? () => {
-                        if (!user) {
-                          setShowAuthModal(true);
-                          setToast({ message: "Sign up to access this feature!", type: "info" });
-                        } else {
-                          setShowPricingModal(true);
-                        }
+                      onClick={!user ? () => {
+                        setShowAuthModal(true);
+                        setToast({ message: "Sign up to access this feature!", type: "info" });
                       } : item.onClick}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${!isLocked
                         ? "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
@@ -780,6 +776,10 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         content={output}
         isPro={isPro}
         title={currentTitle}
+        onUpgradeClick={() => {
+          setShowExportModal(false);
+          setShowPricingModal(true);
+        }}
       />
       <PricingModal
         isOpen={showPricingModal}

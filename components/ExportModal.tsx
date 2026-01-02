@@ -14,6 +14,7 @@ interface ExportModalProps {
   content: any;
   isPro: boolean;
   title?: string;
+  onUpgradeClick?: () => void;
 }
 
 const Icons = {
@@ -40,7 +41,7 @@ const PreviewContainer: React.FC<PreviewContainerProps> = ({ children, theme }) 
 };
 
 
-const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, content, isPro, title }) => {
+const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, content, isPro, title, onUpgradeClick }) => {
   const [format, setFormat] = useState<'pdf' | 'png'>('pdf');
   const [exportTheme, setExportTheme] = useState<'light' | 'dark'>('light');
   const [isExporting, setIsExporting] = useState(false);
@@ -260,6 +261,38 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
                 <span className="text-sm text-gray-500 ml-2">{exportTheme === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
               </div>
             </div>
+
+            {/* Pro Features List (for free users) */}
+            {!isPro && (
+              <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 border border-indigo-200 dark:border-indigo-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                  <label className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Pro Features</label>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                    <Icons.Check />
+                    <span className="font-medium">High-quality exports</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                    <Icons.Check />
+                    <span className="font-medium">No watermarks</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                    <Icons.Check />
+                    <span className="font-medium">PDF & PNG formats</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                    <Icons.Check />
+                    <span className="font-medium">Custom themes</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                    <Icons.Check />
+                    <span className="font-medium">Unlimited exports</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer Action */}
@@ -282,17 +315,17 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
                 )}
               </button>
             ) : (
-              <button
-                className="w-full py-3 rounded-xl bg-gray-100 dark:bg-[#202023] text-gray-400 dark:text-gray-500 font-semibold cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                <Icons.Lock />
-                <span>Upgrade to Export</span>
-              </button>
-            )}
-            {!isPro && (
-              <p className="text-center text-xs text-gray-400 mt-3">
-                Exporting is available on the <span className="text-indigo-500 font-medium cursor-pointer hover:underline">Pro plan</span>.
-              </p>
+              <div className="space-y-3">
+                <button
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold flex items-center justify-center gap-2 opacity-60 cursor-not-allowed"
+                >
+                  <Icons.Lock />
+                  <span>Unlock Pro Exports</span>
+                </button>
+                <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+                  Starting at <span className="text-indigo-600 dark:text-indigo-400 font-bold">$4.99/month</span> or <span className="text-indigo-600 dark:text-indigo-400 font-bold">$29.99/year</span>
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -327,17 +360,74 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
               boxShadow: '0 20px 50px -12px rgba(0,0,0,0.25)'
             }}
           >
+            {/* Preview Banner for Free Users */}
+            {!isPro && (
+              <div className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                  <span className="text-white font-bold text-sm uppercase tracking-wider">Preview - Upgrade to Download</span>
+                </div>
+                <div className="text-white/90 text-xs font-medium">
+                  From <span className="font-bold">$4.99/mo</span>
+                </div>
+              </div>
+            )}
+
             {/* Content Rendering */}
             <div className="w-full p-12">
               {/* Internal Content without PreviewContainer if we want full scroll */}
               {renderPreviewContent() /* Wait, renderPreviewContent uses PreviewContainer */}
             </div>
 
-            {/* Watermark for Free users */}
+            {/* Enhanced Watermark Overlay for Free users */}
             {!isPro && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                <div className="bg-white/90 dark:bg-black/80 backdrop-blur-sm px-6 py-3 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm">
-                  <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Preview Mode</span>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 bg-black/5 dark:bg-black/20 backdrop-blur-[2px]">
+                <div className="bg-white/95 dark:bg-[#1C1C1F]/95 backdrop-blur-xl px-8 py-6 rounded-3xl border-2 border-indigo-200 dark:border-indigo-800 shadow-2xl max-w-md mx-4 pointer-events-auto">
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <div className="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></div>
+                    <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Preview Mode</span>
+                  </div>
+
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-4">
+                    This is what you'll get with Pro
+                  </h3>
+
+                  <div className="space-y-2 mb-5">
+                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                        <Icons.Check />
+                      </div>
+                      <span className="font-medium">High-quality PDF & PNG exports</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                        <Icons.Check />
+                      </div>
+                      <span className="font-medium">No watermarks or branding</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                        <Icons.Check />
+                      </div>
+                      <span className="font-medium">Custom light & dark themes</span>
+                    </div>
+                  </div>
+
+                  <button
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onUpgradeClick) {
+                        onUpgradeClick();
+                      }
+                    }}
+                  >
+                    Upgrade to Pro
+                  </button>
+
+                  <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
+                    From <span className="font-bold text-indigo-600 dark:text-indigo-400">$4.99/month</span>
+                  </p>
                 </div>
               </div>
             )}
