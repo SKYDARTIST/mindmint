@@ -1,0 +1,55 @@
+{
+    "name": "MindMint - AI Study Assistant",
+    "short_name": "MindMint",
+    "description": "Transform your notes into mindmaps, flashcards, quizzes, and study materials with AI",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0a0a",
+    "theme_color": "#8b5cf6",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "education",
+        "productivity"
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Generate Mindmap",
+            "short_name": "Mindmap",
+            "description": "Create a new mindmap from text",
+            "url": "/?mode=mindmap",
+            "icons": [
+                {
+                    "src": "/icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Create Flashcards",
+            "short_name": "Flashcards",
+            "description": "Generate flashcards for studying",
+            "url": "/?mode=flashcards",
+            "icons": [
+                {
+                    "src": "/icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ]
+}
