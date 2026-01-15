@@ -80,7 +80,7 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
             mermaid.initialize({
                 startOnLoad: false,
                 theme: isDark ? 'dark' : 'default',
-                securityLevel: 'loose',
+                securityLevel: 'strict',
                 fontFamily: 'Inter, sans-serif',
                 themeVariables: isDark ? {
                     primaryColor: '#1e1b4b',

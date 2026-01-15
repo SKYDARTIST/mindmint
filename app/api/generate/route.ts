@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { generateContent } from "@/lib/generateService";
 import { validateInputLength } from "@/lib/validation";
 import { checkCooldown, UserPlan } from "@/lib/rateLimit";
+import { createClient } from "@/lib/supabase/server";
+import { sanitizeInput } from "@/lib/security";
 import {
     getClientIP,
     checkDemoLimit,
@@ -11,7 +13,7 @@ import {
 
 export async function POST(req: Request) {
     try {
-        const { input, mode, layout, plan, lastTimestamp, currentTimestamp, isDemo } = await req.json();
+        const { input, mode, layout, currentTimestamp, isDemo } = await req.json();
 
         if (!input || !mode) {
             return NextResponse.json(
@@ -20,8 +22,31 @@ export async function POST(req: Request) {
             );
         }
 
+        // 🛡️ Sanitize user input against prompt injection
+        const sanitizedInput = sanitizeInput(input);
+
+        // 1. Authenticate and verify plan server-side
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        let userPlan: UserPlan = 'free';
+        let dbLastTimestamp: number | null = null;
+
+        if (user) {
+            const { data: planData } = await supabase
+                .from('user_plans')
+                .select('plan, last_generation_at')
+                .eq('user_id', user.id)
+                .single();
+
+            userPlan = (planData?.plan as UserPlan) || 'free';
+            if (planData?.last_generation_at) {
+                dbLastTimestamp = new Date(planData.last_generation_at).getTime();
+            }
+        }
+
         // Demo Mode Handling
-        if (isDemo || !plan) {
+        if (!user && (isDemo || !req.headers.get("Authorization"))) {
             const clientIP = getClientIP(req);
 
             // Check if mode is allowed for demo users
@@ -51,7 +76,7 @@ export async function POST(req: Request) {
             }
 
             // Validate input length (demo users use free tier limits)
-            const validation = validateInputLength(input, 'free');
+            const validation = validateInputLength(sanitizedInput, 'free');
             if (!validation.valid) {
                 return NextResponse.json(
                     { ok: false, error: validation.message },
@@ -60,7 +85,7 @@ export async function POST(req: Request) {
             }
 
             // Generate content for demo user
-            const data = await generateContent(mode, input, layout, 'free');
+            const data = await generateContent(mode, sanitizedInput, layout, 'free');
 
             // Decrement demo tries
             const newRemaining = decrementDemoTries(clientIP);
@@ -73,9 +98,16 @@ export async function POST(req: Request) {
             });
         }
 
-        // Authenticated User Flow (existing logic)
-        const userPlan = (plan || 'free') as UserPlan;
-        const cooldownResult = checkCooldown(userPlan, lastTimestamp, currentTimestamp || Date.now());
+        // Reverify auth if not in demo mode
+        if (!user) {
+            return NextResponse.json(
+                { ok: false, error: "Session expired. Please sign in again." },
+                { status: 401 }
+            );
+        }
+
+        // 🛡️ Cooldown Check using Database Timestamp (prevents spoofing)
+        const cooldownResult = checkCooldown(userPlan, dbLastTimestamp, currentTimestamp || Date.now());
 
         if (cooldownResult !== "ALLOWED") {
             return NextResponse.json(
@@ -92,8 +124,8 @@ export async function POST(req: Request) {
             );
         }
 
-        // Validate input length based on plan
-        const validation = validateInputLength(input, plan || 'free');
+        // Validate input length based on verified plan
+        const validation = validateInputLength(sanitizedInput, userPlan);
         if (!validation.valid) {
             return NextResponse.json(
                 { ok: false, error: validation.message },
@@ -101,7 +133,13 @@ export async function POST(req: Request) {
             );
         }
 
-        const data = await generateContent(mode, input, layout, userPlan);
+        const data = await generateContent(mode, sanitizedInput, layout, userPlan);
+
+        // 🛡️ Update the database timestamp after successful generation
+        await supabase
+            .from('user_plans')
+            .update({ last_generation_at: new Date().toISOString() })
+            .eq('user_id', user.id);
 
         return NextResponse.json({
             ok: true,

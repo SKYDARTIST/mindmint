@@ -1,9 +1,44 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import crypto from 'crypto';
 
 export async function POST(req: Request) {
     try {
-        const payload = await req.json();
+        const signature = req.headers.get('webhook-signature');
+        const id = req.headers.get('webhook-id');
+        const timestamp = req.headers.get('webhook-timestamp');
+        const secret = process.env.DODO_PAYMENTS_WEBHOOK_SECRET;
+
+        if (!signature || !id || !timestamp || !secret) {
+            console.error('Webhook Error: Missing signature headers or DODO_PAYMENTS_WEBHOOK_SECRET');
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const rawBody = await req.text();
+        const signedPayload = `${id}.${timestamp}.${rawBody}`;
+
+        const hmac = crypto.createHmac('sha256', secret);
+        const computedSignature = hmac.update(signedPayload).digest('base64');
+
+        // Dodo Payments/Standard Webhooks format: "v1,BASE64_SIGNATURE"
+        // It can have multiple signatures separated by spaces
+        const passedSignatures = signature.split(' ');
+        let isValid = false;
+
+        for (const sig of passedSignatures) {
+            const [version, value] = sig.split(',');
+            if (version === 'v1' && value === computedSignature) {
+                isValid = true;
+                break;
+            }
+        }
+
+        if (!isValid) {
+            console.error('Webhook Error: Invalid signature detected');
+            return NextResponse.json({ success: false, error: 'Invalid signature' }, { status: 401 });
+        }
+
+        const payload = JSON.parse(rawBody);
         const { type, data } = payload; // Dodo uses 'type' for event identification
 
         // 1. Handle both activation and renewal events
@@ -16,7 +51,6 @@ export async function POST(req: Request) {
         console.log(`Processing ${type} event for customer: ${data?.customer?.email}`);
 
         // 2. Extract Supabase User ID from metadata
-        // We check both keys for maximum robustness during the transition
         const userId = data.metadata?.user_id || data.metadata?.supabase_user_id;
 
         if (!userId) {
@@ -34,7 +68,6 @@ export async function POST(req: Request) {
         const supabaseAdmin = createAdminClient();
 
         // Update the user_plans table using upsert for the specific user_id
-        // This handles both new users and existing users securely.
         const { error: updateError } = await supabaseAdmin
             .from('user_plans')
             .upsert({
@@ -50,7 +83,6 @@ export async function POST(req: Request) {
 
         console.log(`Successfully processed ${type} for user ID: ${userId}`);
 
-        // 5. Response on success
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error('Webhook Processing Error:', error.message);
