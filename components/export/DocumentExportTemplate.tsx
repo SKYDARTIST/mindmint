@@ -6,8 +6,13 @@ interface InfographicStep {
     description: string;
 }
 
+interface InfographicData {
+    layout?: string;
+    steps?: InfographicStep[];
+}
+
 interface DocumentExportTemplateProps {
-    content: unknown[] | Record<string, unknown>;
+    content: string | unknown[] | Record<string, unknown>;
     title: string;
     appMode: string;
     theme?: 'light' | 'dark';
@@ -64,7 +69,7 @@ const DocumentExportTemplate: React.FC<DocumentExportTemplateProps> = ({
                         {/* Mesh background for summary cards */}
                         <div className={`absolute inset-0 opacity-10 ${isDark ? 'bg-gradient-to-br from-indigo-500/20 via-transparent to-purple-500/20' : ''}`} />
                         <div className="relative z-10 whitespace-pre-wrap leading-[1.6] text-[32px] font-medium tracking-tight max-w-[1300px] mx-auto">
-                            {content}
+                            {content as string}
                         </div>
                     </div>
                 </div>
@@ -72,7 +77,7 @@ const DocumentExportTemplate: React.FC<DocumentExportTemplateProps> = ({
         }
 
         if (appMode === 'infographic') {
-            const data = content as any;
+            const data = content as InfographicData;
             const layout = data.layout || 'step_by_step';
 
             if (layout === 'step_by_step') {
