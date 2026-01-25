@@ -5,7 +5,7 @@ import MindmapExportTemplate from '@/components/export/MindmapExportTemplate';
 import DocumentExportTemplate from '@/components/export/DocumentExportTemplate';
 
 interface ExportOptions {
-    content: any;
+    content: string | Record<string, unknown> | unknown[];
     title: string;
     theme: 'light' | 'dark';
     appMode: string;
@@ -24,7 +24,7 @@ export const generateImage = async (options: ExportOptions) => {
     // Helper to get items
     const getItems = () => {
         if (appMode === 'mindmap') return [content];
-        if (appMode === 'infographic') return (content as any).steps || [];
+        if (appMode === 'infographic') return (content as Record<string, unknown>).steps as unknown[] || [];
         if (Array.isArray(content)) return content;
         return [content]; // fallback
     };
@@ -50,7 +50,7 @@ export const generateImage = async (options: ExportOptions) => {
         // or the entire diagram for mindmaps.
         let batchContent = allItems;
         if (appMode === 'infographic') {
-            batchContent = { ...(content as any), steps: allItems };
+            batchContent = { ...(content as Record<string, unknown>), steps: allItems };
         }
 
         // Render template

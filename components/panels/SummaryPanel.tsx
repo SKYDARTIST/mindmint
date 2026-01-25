@@ -26,7 +26,7 @@ interface SummaryPanelProps {
   layout: string;
   setLayout: (layout: string) => void;
   loading: boolean;
-  output: any;
+  output: string | null;
   onGenerate: () => void;
   showLayoutMenu?: boolean;
   setShowLayoutMenu?: (show: boolean) => void;
