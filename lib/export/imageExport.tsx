@@ -46,9 +46,9 @@ export const generateImage = async (options: ExportOptions) => {
     try {
         const root = createRoot(container);
 
-        // For multi-page modes, PNG export usually captures just the first "context" 
+        // For multi-page modes, PNG export usually captures just the first "context"
         // or the entire diagram for mindmaps.
-        let batchContent = allItems;
+        let batchContent: unknown[] | Record<string, unknown> = allItems;
         if (appMode === 'infographic') {
             batchContent = { ...(content as Record<string, unknown>), steps: allItems };
         }

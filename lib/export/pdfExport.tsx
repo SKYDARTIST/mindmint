@@ -71,7 +71,7 @@ export const generatePDF = async (options: ExportOptions) => {
             const itemOffset = startIdx;
 
             // Slice content for this batch
-            let currentBatchContent = allItems;
+            let currentBatchContent: unknown[] | Record<string, unknown> = allItems;
             if (appMode !== 'mindmap' && appMode !== 'summary') {
                 currentBatchContent = allItems.slice(startIdx, endIdx);
                 // For infographic, we need to wrap steps back in the data object
