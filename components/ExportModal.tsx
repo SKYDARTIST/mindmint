@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppMode, Flashcard, QuizItem } from '@/types';
-import PresentationRenderer from './PresentationRenderer';
+import { AppMode, Flashcard, QuizItem, InfographicContent } from '@/types';
 import QuizViewer from './QuizViewer';
 import InfographicViewer from './InfographicViewer';
 import { generatePDF } from '@/lib/export/pdfExport';
@@ -11,7 +10,7 @@ interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   mode: AppMode;
-  content: any;
+  content: string | Record<string, unknown> | unknown[];
   isPro: boolean;
   title?: string;
   onUpgradeClick?: () => void;
@@ -92,9 +91,10 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
         onClose();
         return;
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Export Error:", err);
-      alert(err.message || "An unexpected error occurred during export.");
+      const message = err instanceof Error ? err.message : "An unexpected error occurred during export.";
+      alert(message);
     } finally {
       setIsExporting(false);
     }
@@ -107,7 +107,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
         <PreviewContainer theme={exportTheme}>
           <div className="relative w-full h-auto bg-gray-50 dark:bg-black/20 flex flex-col items-center">
             <div id="preview-render-root" className="w-full">
-              <MindmapExportTemplate content={content} title={title || "Untitled Mindmap"} theme={exportTheme} />
+              <MindmapExportTemplate content={content as string} title={title || "Untitled Mindmap"} theme={exportTheme} />
             </div>
           </div>
         </PreviewContainer>
@@ -118,7 +118,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
       return (
         <PreviewContainer theme={exportTheme}>
           <div className="p-12 prose dark:prose-invert max-w-none">
-            <div className="whitespace-pre-wrap font-sans text-sm">{content}</div>
+            <div className="whitespace-pre-wrap font-sans text-sm">{content as string}</div>
           </div>
         </PreviewContainer>
       );
@@ -144,7 +144,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
       return (
         <PreviewContainer theme={exportTheme}>
           <div className="p-8">
-            <QuizViewer quizItems={content} />
+            <QuizViewer quizItems={content as QuizItem[]} />
           </div>
         </PreviewContainer>
       );
@@ -154,7 +154,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
       return (
         <PreviewContainer theme={exportTheme}>
           <div className="p-4 origin-top">
-            <InfographicViewer data={content} />
+            <InfographicViewer data={content as unknown as InfographicContent} />
           </div>
         </PreviewContainer>
       );
@@ -389,7 +389,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, mode, conten
                   </div>
 
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-4">
-                    This is what you'll get with Pro
+                    This is what you&apos;ll get with Pro
                   </h3>
 
                   <div className="space-y-2 mb-5">

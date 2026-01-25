@@ -10,13 +10,12 @@ import { useSubscription } from "@/lib/hooks/useSubscription";
 
 interface PageContentProps {
   theme: "light" | "dark";
-  setTheme: (theme: "light" | "dark") => void;
   showPricingModal: boolean;
   setShowPricingModal: (show: boolean) => void;
   toggleTheme: () => void;
 }
 
-function PageContent({ theme, setTheme, showPricingModal, setShowPricingModal, toggleTheme }: PageContentProps) {
+function PageContent({ theme, showPricingModal, setShowPricingModal, toggleTheme }: PageContentProps) {
   const [showApp, setShowApp] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -94,7 +93,6 @@ export default function Page() {
       }>
         <PageContent
           theme={theme}
-          setTheme={setTheme}
           showPricingModal={showPricingModal}
           setShowPricingModal={setShowPricingModal}
           toggleTheme={toggleTheme}

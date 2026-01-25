@@ -15,7 +15,7 @@ const Icons = {
 };
 
 const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, fromDemo = false }) => {
-  const { user, plan: currentPlan, isPro: isUserPro, refresh } = useSubscription();
+  const { user, isPro: isUserPro, refresh } = useSubscription();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly'); // Default to yearly for better value
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -73,7 +73,6 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, fromDemo =
 
   const MONTHLY_PRODUCT_ID = "pdt_0NV8a4IqQFGo6Q4AISD9O";
   const YEARLY_PRODUCT_ID = "pdt_0NV8aLYObcvP8DlfvROuY";
-  const BASE_CHECKOUT_URL = "https://checkout.dodopayments.com/buy/";
 
   const handleUpgrade = () => {
     const productId = billingCycle === 'monthly' ? MONTHLY_PRODUCT_ID : YEARLY_PRODUCT_ID;

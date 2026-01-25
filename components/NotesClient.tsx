@@ -8,10 +8,22 @@ import Link from 'next/link';
 import { userContentService } from '@/lib/userContentService';
 import Toast from '@/components/Toast';
 
+interface QuizContent {
+    question: string;
+    options?: string[];
+    correctAnswer: string;
+    explanation: string;
+}
+
+interface FlashcardContent {
+    question: string;
+    answer: string;
+}
+
 interface Note {
     id: string;
     title: string;
-    content: any;
+    content: string | QuizContent[] | FlashcardContent[] | Record<string, unknown>;
     type: string;
     created_at: string;
 }
@@ -126,13 +138,15 @@ export default function NotesClient() {
         if (typeof note.content === 'string') {
             textToCopy = note.content;
         } else if (note.type === 'summary') {
-            textToCopy = note.content;
-        } else if (note.type === 'quiz') {
-            textToCopy = note.content.map((q: any, i: number) =>
+            textToCopy = String(note.content);
+        } else if (note.type === 'quiz' && Array.isArray(note.content)) {
+            const quizContent = note.content as QuizContent[];
+            textToCopy = quizContent.map((q, i) =>
                 `Q${i + 1}: ${q.question}\nOptions: ${q.options?.join(', ')}\nCorrect: ${q.correctAnswer}\nAnalysis: ${q.explanation}`
             ).join('\n\n');
-        } else if (note.type === 'flashcards') {
-            textToCopy = note.content.map((f: any, i: number) =>
+        } else if (note.type === 'flashcards' && Array.isArray(note.content)) {
+            const flashcardContent = note.content as FlashcardContent[];
+            textToCopy = flashcardContent.map((f, i) =>
                 `Card ${i + 1}\nQ: ${f.question}\nA: ${f.answer}`
             ).join('\n\n');
         } else {
@@ -142,7 +156,7 @@ export default function NotesClient() {
         try {
             await navigator.clipboard.writeText(textToCopy);
             setToast({ message: 'Content copied to clipboard', type: 'success' });
-        } catch (err) {
+        } catch {
             setToast({ message: 'Failed to copy content', type: 'error' });
         }
     };

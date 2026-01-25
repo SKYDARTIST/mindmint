@@ -24,8 +24,9 @@ export async function ensureUserPlan(userId: string) {
         }
 
         return { success: true };
-    } catch (err: any) {
+    } catch (err) {
         console.error('Unexpected error in ensureUserPlan:', err);
-        return { success: false, error: err.message };
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        return { success: false, error: message };
     }
 }

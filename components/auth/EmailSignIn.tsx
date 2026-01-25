@@ -4,11 +4,7 @@ import React, { useState } from 'react';
 import { auth } from '@/lib/firebase/config';
 import { sendSignInLinkToEmail } from 'firebase/auth';
 
-interface EmailSignInProps {
-    onSuccess?: () => void;
-}
-
-export default function EmailSignIn({ onSuccess }: EmailSignInProps) {
+export default function EmailSignIn() {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -32,9 +28,10 @@ export default function EmailSignIn({ onSuccess }: EmailSignInProps) {
             window.localStorage.setItem('emailForSignIn', email);
 
             setMessage({ type: 'success', text: 'Check your email for the sign-in link!' });
-        } catch (error: any) {
+        } catch (error) {
             console.error('Sign-in error:', error);
-            setMessage({ type: 'error', text: error.message || 'Failed to send sign-in link.' });
+            const errorMessage = error instanceof Error ? error.message : 'Failed to send sign-in link.';
+            setMessage({ type: 'error', text: errorMessage });
         }
         setLoading(false);
     };
@@ -47,7 +44,7 @@ export default function EmailSignIn({ onSuccess }: EmailSignInProps) {
                 </div>
                 <div className="text-center px-4">
                     <p className="text-green-500 font-bold mb-1">Check your inbox!</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">We've sent a magic link to <span className="font-bold">{email}</span></p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">We&apos;ve sent a magic link to <span className="font-bold">{email}</span></p>
                     <p className="text-[10px] text-gray-400 mt-4">Click the link in your email to log in instantly. You can close this tab if you want.</p>
                 </div>
                 <button

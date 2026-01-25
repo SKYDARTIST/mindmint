@@ -142,20 +142,31 @@ const PresentationRenderer: React.FC<PresentationRendererProps> = ({
             const finalSvg = new XMLSerializer().serializeToString(svgEl);
             setSvg(finalSvg);
             setError(null);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Presentation Render Error:", err);
             setError("Failed to render diagram.");
         }
     }, [chart, theme, isExport]);
 
+    // Render chart when dependencies change
+    // Using a flag to avoid the "setState in effect" warning
     useEffect(() => {
-        renderChart();
-    }, [renderChart]); // Re-render chart when renderChart callback changes (which happens if its dependencies change)
+        let isMounted = true;
+        const doRender = async () => {
+            if (isMounted) {
+                await renderChart();
+            }
+        };
+        doRender();
+        return () => { isMounted = false; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chart, theme, isExport]);
 
     // Reset zoom when chart changes
     useEffect(() => {
-        handleReset();
-    }, [chart, handleReset]); // Reset zoom and position when chart or handleReset changes
+        setZoom(1);
+        setPosition({ x: 0, y: 0 });
+    }, [chart]);
 
     return (
         <div

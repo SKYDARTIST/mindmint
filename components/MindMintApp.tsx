@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import LegalFooter from "./LegalFooter";
-import type { AppMode, MindmapLayout, FlashcardLayout, QuizLayout, SummaryLayout, InfographicLayout } from "@/types";
+import type { AppMode, MindmapLayout, FlashcardLayout, QuizLayout, SummaryLayout, InfographicLayout, Flashcard, QuizItem, InfographicContent } from "@/types";
 import { getWordCount, LIMITS } from "@/lib/validation";
 import BrandLogo from "./BrandLogo";
 import SummaryViewer from "./SummaryViewer";
@@ -14,7 +14,6 @@ import ExportModal from "./ExportModal";
 import PricingModal from "./PricingModal";
 import AuthModal from "./AuthModal";
 import Toast from "./Toast";
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { auth } from "@/lib/firebase/config";
 import { MAX_SAVED_ITEMS_FREE } from "@/lib/validation";
@@ -61,7 +60,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [inputText, setInputText] = useState("");
   const [activePlaceholder, setActivePlaceholder] = useState("Paste your notes here…");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [output, setOutput] = useState<any>(null);
+  const [output, setOutput] = useState<string | Record<string, unknown> | unknown[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mindmapLayout, setMindmapLayout] = useState<MindmapLayout>("classic");
@@ -69,7 +68,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [quizLayout, setQuizLayout] = useState<QuizLayout>("classic");
   const [summaryLayout, setSummaryLayout] = useState<SummaryLayout>("concept_overview");
   const [infographicLayout, setInfographicLayout] = useState<InfographicLayout>("step_by_step");
-  const { user, plan, isPro, isLoading: isSubLoading } = useSubscription();
+  const { user, isPro } = useSubscription();
   const [generationsLeft, setGenerationsLeft] = useState(3);
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -116,8 +115,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         } else {
           setToast({ message: "Note not found.", type: "error" });
         }
-      } catch (err: any) {
-        console.error("Error fetching note:", err.message);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        console.error("Error fetching note:", message);
         setToast({ message: "Failed to load note.", type: "error" });
       }
     };
@@ -230,18 +230,19 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
       } else {
         setError(result.error || "Failed to generate content");
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred during generation");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An error occurred during generation";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const saveToFirestore = async (generatedContent: any, contentType: string, originalInput: string, isManual = false): Promise<string | null> => {
+  const saveToFirestore = async (generatedContent: string | Record<string, unknown> | unknown[], contentType: string, originalInput: string, isManual = false): Promise<string | null> => {
     if (!generatedContent || !user) return null;
 
     try {
-      const { doc, getDoc, addDoc, collection, query, where, getCountFromServer } = await import('firebase/firestore');
+      const { addDoc, collection, query, where, getCountFromServer } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase/config');
 
       if (!isPro) {
@@ -279,8 +280,9 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
       if (isManual) setToast({ message: "Project saved successfully!", type: 'success' });
       return title;
-    } catch (err: any) {
-      console.error("Error saving to Firestore:", err.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error("Error saving to Firestore:", message);
       if (isManual) setToast({ message: "An unexpected error occurred while saving.", type: 'error' });
       return null;
     }
@@ -384,7 +386,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-gray-900 dark:text-white">
-                    You're in Demo Mode
+                    You&apos;re in Demo Mode
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     {demoTriesRemaining} {demoTriesRemaining === 1 ? 'try' : 'tries'} remaining • Sign up free to unlock all features
@@ -707,11 +709,11 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                   </div>
                 ) : output ? (
                   <div className="w-full h-full scale-100 animate-in overflow-auto custom-scrollbar">
-                    {mode === "summary" && <SummaryViewer data={output} />}
-                    {mode === "mindmap" && <PresentationRenderer chart={output} theme={theme} />}
-                    {mode === "flashcards" && <FlashcardViewer cards={output} />}
-                    {mode === "quiz" && <QuizViewer quizItems={output} layout={quizLayout} />}
-                    {mode === "infographic" && <InfographicViewer data={output} />}
+                    {mode === "summary" && <SummaryViewer data={output as string} />}
+                    {mode === "mindmap" && <PresentationRenderer chart={output as string} theme={theme} />}
+                    {mode === "flashcards" && <FlashcardViewer cards={output as Flashcard[]} />}
+                    {mode === "quiz" && <QuizViewer quizItems={output as QuizItem[]} layout={quizLayout} />}
+                    {mode === "infographic" && <InfographicViewer data={output as unknown as InfographicContent} />}
                   </div>
                 ) : (
                   <div className="text-center space-y-8 max-w-sm animate-in">
@@ -760,7 +762,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
         mode={mode}
-        content={output}
+        content={output || ''}
         isPro={isPro}
         title={currentTitle}
         onUpgradeClick={() => {

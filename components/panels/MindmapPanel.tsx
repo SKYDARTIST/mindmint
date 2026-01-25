@@ -50,14 +50,14 @@ interface MindmapPanelProps {
 export default function MindmapPanel({
   input,
   setInput,
-  layout,
-  setLayout,
-  showLayoutMenu,
-  setShowLayoutMenu
+  layout: _layout,
+  setLayout: _setLayout,
+  showLayoutMenu: _showLayoutMenu,
+  setShowLayoutMenu: _setShowLayoutMenu
 }: MindmapPanelProps) {
   const showStarterTemplates = !input;
 
-  const handleTemplateSelect = (template: typeof STARTER_TEMPLATES[0]) => {
+  const handleTemplateSelect = (_template: typeof STARTER_TEMPLATES[0]) => {
     // Coming soon - no functionality
     console.log("Mindmap templates coming soon");
   };

@@ -71,7 +71,7 @@ export async function POST(req: Request) {
             }
 
             // Check demo limit
-            const { allowed, remaining } = checkDemoLimit(clientIP);
+            const { allowed } = checkDemoLimit(clientIP);
             if (!allowed) {
                 return NextResponse.json(
                     {

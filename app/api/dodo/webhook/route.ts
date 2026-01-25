@@ -73,7 +73,7 @@ export async function POST(req: Request) {
                 plan: 'pro',
                 updated_at: new Date().toISOString()
             }, { merge: true });
-        } catch (updateError: any) {
+        } catch (updateError) {
             console.error('Firestore Upsert Error:', updateError);
             return NextResponse.json({ success: false, error: 'Database update failed' }, { status: 500 });
         }
@@ -81,8 +81,9 @@ export async function POST(req: Request) {
         console.log(`Successfully processed ${type} for user ID: ${userId}`);
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        console.error('Webhook Processing Error:', error.message);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Webhook Processing Error:', message);
         return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
 }

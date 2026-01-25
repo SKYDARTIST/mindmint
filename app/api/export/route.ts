@@ -32,8 +32,9 @@ export async function POST(req: NextRequest) {
         const formattedContent = await formatForExport(appMode, content, mode);
 
         return NextResponse.json({ ok: true, data: formattedContent });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Export API Error:", error);
-        return NextResponse.json({ error: error.message || "Failed to format for export" }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Failed to format for export";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

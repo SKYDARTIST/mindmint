@@ -34,7 +34,7 @@ const DemoLimitModal: React.FC<DemoLimitModalProps> = ({
                             <span className="text-3xl">🎉</span>
                         </div>
                         <h2 className="text-2xl font-black text-gray-900 dark:text-white">
-                            You've Tried MindMint!
+                            You&apos;ve Tried MindMint!
                         </h2>
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
                             Ready to unlock the full experience?
@@ -65,7 +65,7 @@ const DemoLimitModal: React.FC<DemoLimitModalProps> = ({
                             <div className="flex items-center gap-3 text-sm">
                                 <span className="text-green-500">✓</span>
                                 <span className="text-gray-700 dark:text-gray-300 font-medium">
-                                    Save to "My Notes"
+                                    Save to &quot;My Notes&quot;
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 text-sm">

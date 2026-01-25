@@ -23,16 +23,13 @@ const XIcon = () => (
 const QuizViewer: React.FC<QuizViewerProps> = ({ quizItems, layout = 'classic' }) => {
    const [answers, setAnswers] = useState<Record<number, string>>({});
    const [submitted, setSubmitted] = useState(false);
-   const [showExplanation, setShowExplanation] = useState<Record<number, boolean>>({});
+   const [, setShowExplanation] = useState<Record<number, boolean>>({});
 
    const handleSelect = (index: number, option: string) => {
       if (submitted) return;
       setAnswers(prev => ({ ...prev, [index]: option }));
    };
 
-   const handleReveal = (index: number) => {
-      setShowExplanation(prev => ({ ...prev, [index]: true }));
-   };
 
    const handleSubmit = () => {
       setSubmitted(true);
@@ -53,7 +50,7 @@ const QuizViewer: React.FC<QuizViewerProps> = ({ quizItems, layout = 'classic' }
       return score;
    };
 
-   const isCorrectAnswer = (idx: number) => {
+   const _checkCorrectAnswer = (idx: number) => {
       const userAns = answers[idx]?.toLowerCase().trim();
       const correct = quizItems[idx].correctAnswer.toLowerCase().trim();
       return userAns === correct;
@@ -66,7 +63,6 @@ const QuizViewer: React.FC<QuizViewerProps> = ({ quizItems, layout = 'classic' }
       <div className="space-y-6">
          {quizItems.map((item, idx) => {
             const userAnswer = answers[idx];
-            const isCorrect = submitted && isCorrectAnswer(idx);
 
             return (
                <div key={idx} className="bg-white/40 dark:bg-white/[0.03] backdrop-blur-md p-6 md:p-8 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
@@ -166,7 +162,6 @@ const QuizViewer: React.FC<QuizViewerProps> = ({ quizItems, layout = 'classic' }
       <div className="space-y-12">
          {quizItems.map((item, idx) => {
             const userAnswer = answers[idx];
-            const isCorrect = submitted && isCorrectAnswer(idx);
             const isShortAnswer = item.type === 'short-answer' || !item.options?.length;
 
             return (
@@ -175,7 +170,7 @@ const QuizViewer: React.FC<QuizViewerProps> = ({ quizItems, layout = 'classic' }
                      <div className="flex-1">
                         <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] block mb-2">Scenario {idx + 1}</span>
                         <p className="text-xl font-medium text-gray-900 dark:text-gray-100 leading-relaxed italic">
-                           "{item.question}"
+                           &quot;{item.question}&quot;
                         </p>
                         {item.meta?.skill && (
                            <div className="mt-4 px-3 py-1 bg-indigo-500/10 rounded-full inline-block">

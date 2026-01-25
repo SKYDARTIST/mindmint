@@ -30,7 +30,7 @@ export async function POST(req: Request) {
         const results = [];
 
         for (const sub of subscriptions) {
-            const { email, plan = 'pro', status = 'active' } = sub;
+            const { email, plan = 'pro' } = sub;
 
             if (!email) {
                 results.push({ email: 'unknown', status: 'error', message: 'Email missing' });
@@ -51,18 +51,20 @@ export async function POST(req: Request) {
 
                 results.push({ email, status: 'success', userId });
                 console.log(`Reconciled legacy subscription for ${email} -> ${userId}`);
-            } catch (error: any) {
-                if (error.code === 'auth/user-not-found') {
+            } catch (error) {
+                const firebaseError = error as { code?: string; message?: string };
+                if (firebaseError.code === 'auth/user-not-found') {
                     results.push({ email, status: 'error', message: `User ${email} not found in Firebase Auth` });
                 } else {
-                    results.push({ email, status: 'error', message: `Operation failed: ${error.message}` });
+                    results.push({ email, status: 'error', message: `Operation failed: ${firebaseError.message || 'Unknown error'}` });
                 }
             }
         }
 
         return NextResponse.json({ success: true, results });
-    } catch (error: any) {
-        console.error('Reconciliation Error:', error.message);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Reconciliation Error:', message);
         return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
 }

@@ -6,8 +6,9 @@ export default function GoogleSignInButton() {
         try {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(auth, provider);
-        } catch (error: any) {
-            console.error('Error signing in with Google:', error.message)
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('Error signing in with Google:', message);
         }
     }
 
