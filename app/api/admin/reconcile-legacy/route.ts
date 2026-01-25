@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { adminAuth, getAdminDb } from '@/lib/firebase/admin';
 
 /**
  * STEP 3: Legacy Subscription Reconciliation Utility
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, error: 'Invalid subscriptions list' }, { status: 400 });
         }
 
-        const supabaseAdmin = createAdminClient();
+        const adminDb = getAdminDb();
         const results = [];
 
         for (const sub of subscriptions) {
@@ -37,37 +37,26 @@ export async function POST(req: Request) {
                 continue;
             }
 
-            // 1. Resolve user_id by email from Supabase Auth
-            const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+            // 1. Resolve user ID by email using Firebase Admin SDK
+            try {
+                const userRecord = await adminAuth.getUserByEmail(email);
+                const userId = userRecord.uid;
 
-            if (authError) {
-                results.push({ email, status: 'error', message: `Auth lookup failed: ${authError.message}` });
-                continue;
-            }
-
-            const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-
-            if (!user) {
-                results.push({ email, status: 'error', message: `User with email ${email} not found in Supabase Auth` });
-                continue;
-            }
-
-            const userId = user.id;
-
-            // 2. Upsert into user_plans
-            const { error: upsertError } = await supabaseAdmin
-                .from('user_plans')
-                .upsert({
+                // 2. Upsert into user_plans collection
+                await adminDb.collection('user_plans').doc(userId).set({
                     user_id: userId,
                     plan: plan,
                     updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id' });
+                }, { merge: true });
 
-            if (upsertError) {
-                results.push({ email, status: 'error', message: `Upsert failed: ${upsertError.message}` });
-            } else {
                 results.push({ email, status: 'success', userId });
                 console.log(`Reconciled legacy subscription for ${email} -> ${userId}`);
+            } catch (error: any) {
+                if (error.code === 'auth/user-not-found') {
+                    results.push({ email, status: 'error', message: `User ${email} not found in Firebase Auth` });
+                } else {
+                    results.push({ email, status: 'error', message: `Operation failed: ${error.message}` });
+                }
             }
         }
 

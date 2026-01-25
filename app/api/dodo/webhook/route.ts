@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAdminDb } from '@/lib/firebase/admin';
 import crypto from 'crypto';
 
 export async function POST(req: Request) {
@@ -64,20 +64,17 @@ export async function POST(req: Request) {
 
         console.log(`Processing ${type} for User ID: ${userId}`);
 
-        // 3. Supabase logic using Admin Client
-        const supabaseAdmin = createAdminClient();
+        // 3. Firestore logic using Admin SDK
+        const adminDb = getAdminDb();
 
-        // Update the user_plans table using upsert for the specific user_id
-        const { error: updateError } = await supabaseAdmin
-            .from('user_plans')
-            .upsert({
+        try {
+            await adminDb.collection('user_plans').doc(userId).set({
                 user_id: userId,
                 plan: 'pro',
                 updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' });
-
-        if (updateError) {
-            console.error('Supabase Upsert Error:', updateError);
+            }, { merge: true });
+        } catch (updateError: any) {
+            console.error('Firestore Upsert Error:', updateError);
             return NextResponse.json({ success: false, error: 'Database update failed' }, { status: 500 });
         }
 

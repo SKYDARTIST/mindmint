@@ -18,3 +18,16 @@ if (!admin.apps.length) {
 
 export const adminAuth = admin.auth();
 export const adminDb = admin.firestore();
+
+export function getAdminDb() {
+    return adminDb;
+}
+
+export async function verifyIdToken(token: string) {
+    try {
+        return await adminAuth.verifyIdToken(token);
+    } catch (error) {
+        console.error("Error verifying ID token:", error);
+        return null;
+    }
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { formatForExport } from "@/lib/generateService";
-import { createClient } from "@/lib/supabase/server";
+import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
 
 export async function POST(req: NextRequest) {
     try {
@@ -10,21 +10,20 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        // 1. Authenticate and verify Pro status
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
+        // 1. Authenticate and verify Pro status using ID token from headers
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader?.startsWith('Bearer ')) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        const idToken = authHeader.split('Bearer ')[1];
+        const decodedToken = await verifyIdToken(idToken);
+        if (!decodedToken) {
+            return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+        }
 
-        const { data: planData } = await supabase
-            .from('user_plans')
-            .select('plan')
-            .eq('user_id', user.id)
-            .single();
-
-        const plan = planData?.plan || 'free';
+        const adminDb = getAdminDb();
+        const userPlanDoc = await adminDb.collection('user_plans').doc(decodedToken.uid).get();
+        const plan = userPlanDoc.exists ? userPlanDoc.data()?.plan : 'free';
 
         if (plan !== 'pro') {
             return NextResponse.json({ error: "Pro plan required for exports" }, { status: 403 });
