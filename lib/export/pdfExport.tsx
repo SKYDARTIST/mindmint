@@ -88,7 +88,7 @@ export const generatePDF = async (options: ExportOptions) => {
                     <React.StrictMode>
                         {appMode === 'mindmap' ? (
                             <MindmapExportTemplate
-                                content={content}
+                                content={content as string}
                                 title={title}
                                 theme={theme}
                             />
