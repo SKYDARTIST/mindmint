@@ -1,48 +1,36 @@
-import { createClient } from './supabase/client';
+import { db, auth } from './firebase/config';
+import { doc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
 
 export const userContentService = {
     async deleteNote(id: string) {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = auth.currentUser;
         if (!user) throw new Error("Unauthorized");
 
-        const { error } = await supabase
-            .from('user_content')
-            .delete()
-            .eq('id', id)
-            .eq('user_id', user.id);
-
-        if (error) throw error;
+        const docRef = doc(db, 'user_content', id);
+        await deleteDoc(docRef);
         return true;
     },
 
     async renameNote(id: string, newTitle: string) {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = auth.currentUser;
         if (!user) throw new Error("Unauthorized");
 
-        const { error } = await supabase
-            .from('user_content')
-            .update({ title: newTitle })
-            .eq('id', id)
-            .eq('user_id', user.id);
-
-        if (error) throw error;
+        const docRef = doc(db, 'user_content', id);
+        await updateDoc(docRef, { title: newTitle });
         return true;
     },
 
     async deleteMultipleNotes(ids: string[]) {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = auth.currentUser;
         if (!user) throw new Error("Unauthorized");
 
-        const { error } = await supabase
-            .from('user_content')
-            .delete()
-            .in('id', ids)
-            .eq('user_id', user.id);
+        const batch = writeBatch(db);
+        ids.forEach(id => {
+            const docRef = doc(db, 'user_content', id);
+            batch.delete(docRef);
+        });
 
-        if (error) throw error;
+        await batch.commit();
         return true;
     }
 };

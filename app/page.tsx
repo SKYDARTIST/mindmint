@@ -6,7 +6,9 @@ import LandingPage from "@/components/LandingPage";
 import MindMintApp from "@/components/MindMintApp";
 import PricingModal from "@/components/PricingModal";
 import AuthModal from "@/components/AuthModal";
-import { createClient } from "@/lib/supabase/client";
+import { auth } from "@/lib/firebase/config";
+import { onAuthStateChange } from "firebase/auth";
+import { useSubscription } from "@/lib/hooks/useSubscription";
 
 function PageContent({ theme, setTheme, showPricingModal, setShowPricingModal, toggleTheme }: any) {
   const [showApp, setShowApp] = useState(false);
@@ -14,42 +16,23 @@ function PageContent({ theme, setTheme, showPricingModal, setShowPricingModal, t
   const [showAuthModal, setShowAuthModal] = useState(false);
   const searchParams = useSearchParams();
 
+  const { user, isLoading: subLoading } = useSubscription();
+
   useEffect(() => {
-    const supabase = createClient();
+    setLoading(subLoading);
+  }, [subLoading]);
 
-    // Check for error in URL
-    const error = searchParams.get('error');
-    const message = searchParams.get('message');
-    if (error === 'auth_failed') {
-      alert(`Authentication failed: ${message || 'Unknown error'}. Please try again.`);
-    }
-
-    // Check for existing session
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setShowApp(true);
-      } else if (searchParams.get('showAuth') === 'true') {
+  useEffect(() => {
+    if (user) {
+      setShowApp(true);
+      setShowAuthModal(false);
+    } else {
+      setShowApp(false);
+      if (searchParams.get('showAuth') === 'true') {
         setShowAuthModal(true);
       }
-      setLoading(false);
-    };
-    checkUser();
-
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
-      if (session) {
-        setShowApp(true);
-        setShowAuthModal(false); // Close modal on login
-      } else {
-        setShowApp(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [searchParams]);
+    }
+  }, [user, searchParams]);
 
   useEffect(() => {
     if (theme === "dark") {

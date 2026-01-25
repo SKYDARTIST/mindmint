@@ -1,20 +1,12 @@
-'use client'
-
-import { createClient } from '@/lib/supabase/client'
+import { auth } from '@/lib/firebase/config'
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 
 export default function GoogleSignInButton() {
-    const supabase = createClient()
-
     const handleGoogleSignIn = async () => {
-        console.log('Google Sign-In button clicked');
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
-            },
-        })
-
-        if (error) {
+        try {
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider);
+        } catch (error: any) {
             console.error('Error signing in with Google:', error.message)
         }
     }

@@ -83,8 +83,8 @@ const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, fromDemo =
       : "https://checkout.dodopayments.com/buy/";
     const redirectUrl = encodeURIComponent(`${window.location.origin}/payment/success`);
     let paymentLink = `${checkoutBase}${productId}?quantity=1&redirect_url=${redirectUrl}`;
-    if (user?.id) {
-      paymentLink += `&metadata_user_id=${user.id}&metadata_supabase_user_id=${user.id}`;
+    if (user?.uid) {
+      paymentLink += `&metadata_user_id=${user.uid}`;
     }
     window.location.href = paymentLink;
   };

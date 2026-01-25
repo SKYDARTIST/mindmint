@@ -16,11 +16,22 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
+/**
+ * NOTE: Cleaning AI Output
+ * LLMs (Large Language Models) often wrap JSON in Markdown code blocks (```json ... ```).
+ * This function strips those out so we can parse the raw JSON string safely.
+ */
 const cleanJsonOutput = (text: string): string => {
     if (!text) return "";
     return text.replace(/```json\s*/g, "").replace(/```/g, "").trim();
 };
 
+/**
+ * NOTE: MermaidJS Sanitization
+ * Mermaid.js is the library we use to render the charts.
+ * It is sensitive to special characters like braces {} or brackets [].
+ * This function cleans up the AI's output to prevent the chart renderer from crashing.
+ */
 export const sanitizeMermaid = (raw: string): string => {
     if (!raw) return "";
     const codeBlock = raw.match(/```(?:mermaid|graph)?\s*([\s\S]*?)```/i);
@@ -88,6 +99,11 @@ export const sanitizeMermaid = (raw: string): string => {
     return inner.trim();
 };
 
+/**
+ * NOTE: The Core Generator
+ * This is where we construct the prompt for OpenAI.
+ * Notice how we verify the User Plan ('free' vs 'pro') to determine the quality/length of the output.
+ */
 export const generateContent = async (
     mode: AppMode,
     inputText: string,
@@ -132,6 +148,12 @@ WORD LIMIT HANDLING:
   - Provide full depth and complete coverage.
   - Include examples, breakdowns, and structured expansion.`;
 
+    /**
+     * NOTE: Multi-Mode Prompting
+     * A common pattern in AI SaaS is handling multiple "modes" (e.g., summary, quiz, mindmap).
+     * Instead of separate API endpoints, we use a single generator that switches prompts
+     * based on the 'mode' argument.
+     */
     let userPrompt = "";
     let isJson = false;
 
@@ -323,6 +345,11 @@ ${inputText}`;
 
     const content = completion.choices[0]?.message?.content || "";
 
+    /**
+     * NOTE: Structured JSON Parsing
+     * If 'isJson' is true, we parse the raw string into a Javascript object.
+     * This is the bridge between AI "hallucination" and reliable code execution.
+     */
     if (isJson) {
         try {
             return JSON.parse(cleanJsonOutput(content));

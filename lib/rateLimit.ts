@@ -6,6 +6,16 @@ const COOLDOWNS: Record<UserPlan, number> = {
 };
 
 /**
+ * NOTE: Rate Limiting Strategy
+ * We use a "Time Window" approach here.
+ * - Free users: Must wait 30 seconds between requests.
+ * - Pro users: Must wait 5 seconds.
+ * 
+ * In a production app with thousands of users, you might use a "Token Bucket" algorithm
+ * stored in Redis (e.g., using @upstash/ratelimit) to allow bursts of traffic.
+ * For this starter kit, we use an in-memory check for simplicity.
+ */
+/**
  * Checks if a user is allowed to generate content based on their plan and the time of their last generation.
  * @param plan The user's membership plan.
  * @param lastTimestamp The timestamp of the last successful generation in milliseconds.

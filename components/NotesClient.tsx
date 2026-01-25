@@ -1,6 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSubscription } from '@/lib/hooks/useSubscription';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
 import Link from 'next/link';
 import { userContentService } from '@/lib/userContentService';
 import Toast from '@/components/Toast';
@@ -11,10 +14,6 @@ interface Note {
     content: any;
     type: string;
     created_at: string;
-}
-
-interface NotesClientProps {
-    initialNotes: Note[];
 }
 
 const CATEGORIES = [
@@ -34,13 +33,46 @@ const Icons = {
     Infographic: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
 };
 
-export default function NotesClient({ initialNotes }: NotesClientProps) {
-    const [notes, setNotes] = useState(initialNotes);
+export default function NotesClient() {
+    const { user, isLoading: isSubLoading } = useSubscription();
+    const [notes, setNotes] = useState<Note[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+    useEffect(() => {
+        const fetchNotes = async () => {
+            if (!user) {
+                if (!isSubLoading) setIsLoading(false);
+                return;
+            }
+
+            try {
+                const q = query(
+                    collection(db, 'user_content'),
+                    where('user_id', '==', user.uid),
+                    orderBy('created_at', 'desc')
+                );
+
+                const querySnapshot = await getDocs(q);
+                const fetchedNotes: Note[] = [];
+                querySnapshot.forEach((doc) => {
+                    fetchedNotes.push({ id: doc.id, ...doc.data() } as Note);
+                });
+                setNotes(fetchedNotes);
+            } catch (err) {
+                console.error("Error fetching notes:", err);
+                setToast({ message: "Failed to load notes.", type: "error" });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchNotes();
+    }, [user, isSubLoading]);
 
     const filteredNotes = useMemo(() => {
         return notes.filter(note => {
@@ -172,6 +204,29 @@ export default function NotesClient({ initialNotes }: NotesClientProps) {
             default: return 'from-gray-500/20 to-gray-500/5 border-gray-500/20 text-gray-400';
         }
     };
+
+    if (isSubLoading || isLoading) {
+        return (
+            <div className="py-32 flex flex-col items-center justify-center space-y-4">
+                <div className="w-12 h-12 border-4 border-white/10 border-t-indigo-500 rounded-full animate-spin" />
+                <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Accessing Vault...</p>
+            </div>
+        );
+    }
+
+    if (!user && !isSubLoading) {
+        return (
+            <div className="py-32 text-center space-y-8">
+                <div className="space-y-2">
+                    <h2 className="text-3xl font-black uppercase italic">Access Denied</h2>
+                    <p className="text-gray-500 font-medium tracking-tight">You must be logged in to view your notes.</p>
+                </div>
+                <Link href="/" className="inline-block px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-600/20 active:scale-[0.98]">
+                    Go Back Home
+                </Link>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-in-fade">

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { User } from '@supabase/supabase-js';
+import { auth, db } from '@/lib/firebase/config';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 type Plan = 'free' | 'pro';
 
@@ -24,23 +25,17 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     const fetchUserPlan = useCallback(async (userId: string) => {
         try {
-            const supabase = createClient();
-            const { data, error } = await supabase
-                .from('user_plans')
-                .select('plan')
-                .eq('user_id', userId)
-                .single();
+            const docRef = doc(db, 'user_plans', userId);
+            const docSnap = await getDoc(docRef);
 
-            if (error) {
-                if (error.code !== 'PGRST116') {
-                    console.error("Error fetching user plan:", error.message);
-                }
-                setPlan('free');
-                setIsPro(false);
-            } else if (data) {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
                 const currentPlan = data.plan as Plan;
                 setPlan(currentPlan);
                 setIsPro(currentPlan === 'pro');
+            } else {
+                setPlan('free');
+                setIsPro(false);
             }
         } catch (err) {
             console.error("Unexpected error in fetchUserPlan:", err);
@@ -54,31 +49,44 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const refresh = useCallback(async () => {
         if (user) {
             setIsLoading(true);
-            await fetchUserPlan(user.id);
+            await fetchUserPlan(user.uid);
         }
     }, [user, fetchUserPlan]);
 
     useEffect(() => {
-        const supabase = createClient();
+        const { isSignInWithEmailLink, signInWithEmailLink } = import('firebase/auth').then(m => m);
 
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            if (user) {
-                await fetchUserPlan(user.id);
-            } else {
-                setPlan('free');
-                setIsPro(false);
-                setIsLoading(false);
+        const handleMagicLink = async () => {
+            const { isSignInWithEmailLink, signInWithEmailLink } = await import('firebase/auth');
+            if (isSignInWithEmailLink(auth, window.location.href)) {
+                let email = window.localStorage.getItem('emailForSignIn');
+                if (!email) {
+                    email = window.prompt('Please provide your email for confirmation');
+                }
+                if (email) {
+                    try {
+                        await signInWithEmailLink(auth, email, window.location.href);
+                        window.localStorage.removeItem('emailForSignIn');
+                        // Redirect to clean up the URL
+                        const url = new URL(window.location.href);
+                        url.search = '';
+                        window.history.replaceState({}, '', url.toString());
+                    } catch (err) {
+                        console.error("Error signing in with email link:", err);
+                    }
+                }
             }
         };
-        getUser();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
-            const currentUser = session?.user ?? null;
+        handleMagicLink();
+
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser: User | null) => {
             setUser(currentUser);
             if (currentUser) {
-                fetchUserPlan(currentUser.id);
+                // Ensure the user has a plan record in Firestore
+                const { ensureUserPlan } = await import('@/app/actions');
+                await ensureUserPlan(currentUser.uid);
+                await fetchUserPlan(currentUser.uid);
             } else {
                 setPlan('free');
                 setIsPro(false);
@@ -86,7 +94,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => unsubscribe();
     }, [fetchUserPlan]);
 
     return (

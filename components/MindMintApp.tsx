@@ -16,8 +16,7 @@ import AuthModal from "./AuthModal";
 import Toast from "./Toast";
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { createClient } from "@/lib/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { auth } from "@/lib/firebase/config";
 import { MAX_SAVED_ITEMS_FREE } from "@/lib/validation";
 import { useSubscription } from "@/lib/hooks/useSubscription";
 import DemoLimitModal from "./DemoLimitModal";
@@ -97,31 +96,29 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
     if (!noteId || !user) return;
 
     const fetchNote = async () => {
-      const supabase = createClient();
-      // The original code for fetching the note was correct.
-      // The requested change introduced a syntax error related to supabase.auth.onAuthStateChange.
-      // Reverting to the correct note fetching logic.
-      const { data, error } = await supabase
-        .from('user_content')
-        .select('*')
-        .eq('id', noteId)
-        .single();
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase/config');
 
-      if (error) {
-        console.error("Error fetching note:", error.message);
+      try {
+        const docRef = doc(db, 'user_content', noteId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setMode(data.type as AppMode);
+          setOutput(data.content);
+          // Clear the URL
+          const url = new URL(window.location.href);
+          url.searchParams.delete('noteId');
+          window.history.replaceState({}, '', url);
+
+          setToast({ message: `Loaded: ${data.title}`, type: "info" });
+        } else {
+          setToast({ message: "Note not found.", type: "error" });
+        }
+      } catch (err: any) {
+        console.error("Error fetching note:", err.message);
         setToast({ message: "Failed to load note.", type: "error" });
-        return;
-      }
-
-      if (data) {
-        setMode(data.type as AppMode);
-        setOutput(data.content);
-        // Clear the URL to avoid reloading the note on every render
-        const url = new URL(window.location.href);
-        url.searchParams.delete('noteId');
-        window.history.replaceState({}, '', url);
-
-        setToast({ message: `Loaded: ${data.title}`, type: "info" });
       }
     };
 
@@ -129,9 +126,8 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   }, [searchParams, user]);
 
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.reload(); // Simplest way to reset everything
+    await auth.signOut();
+    window.location.reload();
   };
 
 
@@ -205,9 +201,13 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         return;
       }
 
+      const token = await user.getIdToken();
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           input: inputText,
           mode,
@@ -224,14 +224,11 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         setLastGenerationTimestamp(Date.now());
         if (!isPro) setGenerationsLeft(prev => Math.max(0, prev - 1));
 
-        // Auto-save to Supabase
-        const savedTitle = await saveToSupabase(result.data, mode, inputText);
+        // Auto-save to Firestore
+        const savedTitle = await saveToFirestore(result.data, mode, inputText);
         setCurrentTitle(savedTitle || "");
       } else {
         setError(result.error || "Failed to generate content");
-        if (res.status === 429) {
-          // Special handling for rate limiting if needed, e.g. local vibration/shake
-        }
       }
     } catch (err: any) {
       setError(err.message || "An error occurred during generation");
@@ -240,60 +237,50 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
     }
   };
 
-  const saveToSupabase = async (generatedContent: any, contentType: string, originalInput: string, isManual = false): Promise<string | null> => {
+  const saveToFirestore = async (generatedContent: any, contentType: string, originalInput: string, isManual = false): Promise<string | null> => {
     if (!generatedContent || !user) return null;
 
     try {
-      const supabase = createClient();
+      const { doc, getDoc, addDoc, collection, query, where, getCountFromServer } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase/config');
 
       if (!isPro) {
         // Count existing rows for free user
-        const { count, error: countError } = await supabase
-          .from('user_content')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id);
+        const coll = collection(db, 'user_content');
+        const q = query(coll, where('user_id', '==', user.uid));
+        const snapshot = await getCountFromServer(q);
+        const count = snapshot.data().count;
 
-        if (countError) {
-          console.error("Error checking limits:", countError.message);
-        } else if (count !== null && count >= MAX_SAVED_ITEMS_FREE) {
+        if (count >= MAX_SAVED_ITEMS_FREE) {
           setToast({ message: `Free limit reached (${MAX_SAVED_ITEMS_FREE} items). Upgrade to save more!`, type: "info" });
           setShowPricingModal(true);
           return null;
         }
       }
 
-      // Derive a title: Use title from content if available, otherwise first few words of input
+      // Derive a title
       let title = "Untitled Generation";
-
       if (generatedContent && typeof generatedContent === 'object' && 'title' in generatedContent && typeof generatedContent.title === 'string') {
         title = generatedContent.title;
       } else if (Array.isArray(generatedContent)) {
-        // For Flashcards or Quiz (which are arrays)
         const prefix = contentType === 'flashcards' ? 'Flashcards' : 'Quiz';
         title = `${prefix}: ${originalInput.split('\n')[0].substring(0, 30).trim() || "Untitled"}`;
       } else if (originalInput) {
         title = originalInput.split('\n')[0].substring(0, 50).trim() || "Untitled Generation";
       }
 
-      const { error } = await supabase
-        .from('user_content')
-        .insert({
-          user_id: user.id,
-          title: title,
-          content: generatedContent,
-          type: contentType
-        });
+      await addDoc(collection(db, 'user_content'), {
+        user_id: user.uid,
+        title: title,
+        content: generatedContent,
+        type: contentType,
+        created_at: new Date().toISOString()
+      });
 
-      if (error) {
-        console.error("Error auto-saving to Supabase:", error.message);
-        if (isManual) setToast({ message: "Failed to save: " + error.message, type: 'error' });
-      } else {
-        console.log("Successfully auto-saved content to Supabase");
-        if (isManual) setToast({ message: "Project saved successfully!", type: 'success' });
-      }
+      if (isManual) setToast({ message: "Project saved successfully!", type: 'success' });
       return title;
-    } catch (err) {
-      console.error("Unexpected error during auto-save:", err);
+    } catch (err: any) {
+      console.error("Error saving to Firestore:", err.message);
       if (isManual) setToast({ message: "An unexpected error occurred while saving.", type: 'error' });
       return null;
     }

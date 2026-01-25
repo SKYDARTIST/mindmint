@@ -1,46 +1,25 @@
 'use server'
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { db } from "@/lib/firebase/config";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 /**
- * Ensures that a user has a row in the public.user_plans table.
- * If the row doesn't exist, it creates one with the 'free' plan.
- * This is idempotent and safe to call multiple times.
+ * Ensures that a user has a row in the user_plans collection.
+ * If the doc doesn't exist, it creates one with the 'free' plan.
  */
 export async function ensureUserPlan(userId: string) {
     if (!userId) return { success: false, error: 'User ID is required' };
 
-    const supabaseAdmin = createAdminClient();
-
     try {
-        // We use upsert with onConflict on user_id to ensure idempotency.
-        // If the row exists, it does nothing (or we can just do nothing if we prefer).
-        // Since we don't want to overwrite existing plans, we check first or use a specific upsert.
+        const docRef = doc(db, 'user_plans', userId);
+        const docSnap = await getDoc(docRef);
 
-        const { data, error: fetchError } = await supabaseAdmin
-            .from('user_plans')
-            .select('user_id')
-            .eq('user_id', userId)
-            .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows found"
-            console.error('Error checking user plan:', fetchError);
-            return { success: false, error: fetchError.message };
-        }
-
-        if (!data) {
-            const { error: insertError } = await supabaseAdmin
-                .from('user_plans')
-                .insert({
-                    user_id: userId,
-                    plan: 'free',
-                    updated_at: new Date().toISOString()
-                });
-
-            if (insertError) {
-                console.error('Error creating user plan:', insertError);
-                return { success: false, error: insertError.message };
-            }
+        if (!docSnap.exists()) {
+            await setDoc(docRef, {
+                user_id: userId,
+                plan: 'free',
+                updated_at: new Date().toISOString()
+            });
             console.log(`Created default 'free' plan for user: ${userId}`);
         }
 

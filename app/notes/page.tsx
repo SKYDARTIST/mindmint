@@ -4,22 +4,6 @@ import Link from 'next/link';
 import NotesClient from '@/components/NotesClient';
 
 export default async function NotesPage() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-        redirect('/login');
-    }
-
-    const { data: notes, error } = await supabase
-        .from('user_content')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        console.error('Error fetching notes:', error.message);
-    }
-
     return (
         <div className="min-h-screen bg-[#09090b] bg-dot-pattern text-white px-6 py-12">
             <div className="max-w-[1400px] mx-auto space-y-12">
@@ -44,7 +28,7 @@ export default async function NotesPage() {
                 </header>
 
                 {/* Client Side Logic (Filter/Search/Grid) */}
-                <NotesClient initialNotes={notes || []} />
+                <NotesClient />
 
             </div>
         </div>

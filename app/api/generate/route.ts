@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { generateContent } from "@/lib/generateService";
 import { validateInputLength } from "@/lib/validation";
 import { checkCooldown, UserPlan } from "@/lib/rateLimit";
-import { createClient } from "@/lib/supabase/server";
+import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { sanitizeInput } from "@/lib/security";
 import {
     getClientIP,
@@ -26,27 +26,36 @@ export async function POST(req: Request) {
         const sanitizedInput = sanitizeInput(input);
 
         // 1. Authenticate and verify plan server-side
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const authHeader = req.headers.get("Authorization");
+        let user: any = null;
+
+        if (authHeader?.startsWith("Bearer ")) {
+            const token = authHeader.split(" ")[1];
+            try {
+                user = await adminAuth.verifyIdToken(token);
+            } catch (err) {
+                console.error("Auth Token Verification Failed:", err);
+            }
+        }
 
         let userPlan: UserPlan = 'free';
         let dbLastTimestamp: number | null = null;
 
         if (user) {
-            const { data: planData } = await supabase
-                .from('user_plans')
-                .select('plan, last_generation_at')
-                .eq('user_id', user.id)
-                .single();
+            const docRef = adminDb.collection('user_plans').doc(user.uid);
+            const docSnap = await docRef.get();
 
-            userPlan = (planData?.plan as UserPlan) || 'free';
-            if (planData?.last_generation_at) {
-                dbLastTimestamp = new Date(planData.last_generation_at).getTime();
+            if (docSnap.exists) {
+                const planData = docSnap.data();
+                userPlan = (planData?.plan as UserPlan) || 'free';
+                if (planData?.last_generation_at) {
+                    dbLastTimestamp = new Date(planData.last_generation_at).getTime();
+                }
             }
         }
 
         // Demo Mode Handling
-        if (!user && (isDemo || !req.headers.get("Authorization"))) {
+        if (!user && (isDemo || !authHeader)) {
             const clientIP = getClientIP(req);
 
             // Check if mode is allowed for demo users
@@ -136,10 +145,9 @@ export async function POST(req: Request) {
         const data = await generateContent(mode, sanitizedInput, layout, userPlan);
 
         // 🛡️ Update the database timestamp after successful generation
-        await supabase
-            .from('user_plans')
-            .update({ last_generation_at: new Date().toISOString() })
-            .eq('user_id', user.id);
+        await adminDb.collection('user_plans').doc(user.uid).update({
+            last_generation_at: new Date().toISOString()
+        });
 
         return NextResponse.json({
             ok: true,
