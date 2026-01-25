@@ -54,8 +54,6 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }, [user, fetchUserPlan]);
 
     useEffect(() => {
-        const { isSignInWithEmailLink, signInWithEmailLink } = import('firebase/auth').then(m => m);
-
         const handleMagicLink = async () => {
             const { isSignInWithEmailLink, signInWithEmailLink } = await import('firebase/auth');
             if (isSignInWithEmailLink(auth, window.location.href)) {
