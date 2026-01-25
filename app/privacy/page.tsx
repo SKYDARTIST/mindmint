@@ -42,7 +42,7 @@ export default function PrivacyPage() {
                     <section className="space-y-4">
                         <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 dark:text-white">Third-Party Services</h3>
                         <p>
-                            We use OpenAI to power the AI logic and Vercel to host the application. Your input text is sent to OpenAI's models to generate the results. These services have their own privacy practices which we encourage you to review.
+                            We use OpenAI to power the AI logic and Vercel to host the application. Your input text is sent to OpenAI&apos;s models to generate the results. These services have their own privacy practices which we encourage you to review.
                         </p>
                     </section>
 

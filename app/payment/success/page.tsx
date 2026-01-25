@@ -37,7 +37,7 @@ function SuccessContent() {
                 </div>
                 <div className="flex items-start gap-4 text-left border-t border-indigo-100/50 dark:border-indigo-500/5 pt-4">
                     <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex-shrink-0 flex items-center justify-center text-xs font-black shadow-lg shadow-indigo-500/20">2</div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Use the <span className="text-indigo-600 dark:text-indigo-400 font-bold">"Refresh Subscription"</span> button in the upgrade window if your status hasn't updated automatically.</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Use the <span className="text-indigo-600 dark:text-indigo-400 font-bold">&quot;Refresh Subscription&quot;</span> button in the upgrade window if your status hasn&apos;t updated automatically.</p>
                 </div>
             </div>
 

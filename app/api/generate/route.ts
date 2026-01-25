@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
         // 1. Authenticate and verify plan server-side
         const authHeader = req.headers.get("Authorization");
-        let user: any = null;
+        let user: { uid: string } | null = null;
 
         if (authHeader?.startsWith("Bearer ")) {
             const token = authHeader.split(" ")[1];
@@ -153,10 +153,11 @@ export async function POST(req: Request) {
             ok: true,
             data
         });
-    } catch (err: any) {
+    } catch (err) {
         console.error("GENERATE API ERROR:", err);
+        const message = err instanceof Error ? err.message : "Failed to generate content";
         return NextResponse.json(
-            { ok: false, error: err.message || "Failed to generate content" },
+            { ok: false, error: message },
             { status: 500 }
         );
     }

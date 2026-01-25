@@ -21,7 +21,7 @@ export default function TermsPage() {
                     <section className="space-y-4">
                         <h2 className="text-lg font-black uppercase tracking-[0.2em] text-indigo-500">The Ground Rules</h2>
                         <p>
-                            By using MindMint, you agree to these simple terms. We've kept them short so you actually have time to study!
+                            By using MindMint, you agree to these simple terms. We&apos;ve kept them short so you actually have time to study!
                         </p>
                     </section>
 

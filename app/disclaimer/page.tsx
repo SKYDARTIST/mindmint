@@ -30,12 +30,12 @@ export default function DisclaimerPage() {
 
                     <section className="space-y-4 pt-8 text-left">
                         <p>
-                            While AI is incredibly powerful, it's not perfect. It can occasionally:
+                            While AI is incredibly powerful, it&apos;s not perfect. It can occasionally:
                         </p>
                         <ul className="list-none space-y-4">
                             <li className="flex items-start gap-3">
                                 <span className="text-indigo-500 font-bold block mt-1">•</span>
-                                <span>Get facts wrong or "hallucinate" information.</span>
+                                <span>Get facts wrong or &quot;hallucinate&quot; information.</span>
                             </li>
                             <li className="flex items-start gap-3">
                                 <span className="text-indigo-500 font-bold block mt-1">•</span>
