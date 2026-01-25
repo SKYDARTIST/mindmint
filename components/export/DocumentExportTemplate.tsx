@@ -1,8 +1,13 @@
 import React from 'react';
 import { Flashcard, QuizItem } from '@/types';
 
+interface InfographicStep {
+    title: string;
+    description: string;
+}
+
 interface DocumentExportTemplateProps {
-    content: any;
+    content: unknown[] | Record<string, unknown>;
     title: string;
     appMode: string;
     theme?: 'light' | 'dark';
@@ -77,7 +82,7 @@ const DocumentExportTemplate: React.FC<DocumentExportTemplateProps> = ({
                         <div className="absolute left-[100px] top-0 bottom-0 w-2 bg-gradient-to-b from-indigo-500/0 via-indigo-500/50 to-purple-500/0 shadow-[0_0_20px_rgba(99,102,241,0.2)]" />
 
                         <div className="space-y-24">
-                            {data.steps?.map((step: any, i: number) => (
+                            {data.steps?.map((step: InfographicStep, i: number) => (
                                 <div key={i} className="flex gap-20 items-center relative z-10">
                                     {/* Glowing Step Indicator */}
                                     <div className={`shrink-0 w-[200px] h-[200px] ${isDark ? 'bg-[#09090b]' : 'bg-white'} rounded-full border-8 border-indigo-500 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(99,102,241,0.4)] ring-[16px] ring-indigo-500/10`}>
@@ -99,7 +104,7 @@ const DocumentExportTemplate: React.FC<DocumentExportTemplateProps> = ({
             if (layout === 'process_flow') {
                 return (
                     <div className="max-w-[2000px] mx-auto py-20 flex flex-wrap justify-center gap-16">
-                        {data.steps?.map((step: any, i: number) => (
+                        {data.steps?.map((step: InfographicStep, i: number) => (
                             <div key={i} className="w-[500px] relative">
                                 <div className="absolute -top-6 left-0 text-xl font-black uppercase tracking-[0.4em] text-indigo-500">Node // 0{i + 1 + itemOffset}</div>
                                 <div className={`h-full p-12 rounded-[64px] border-4 ${isDark ? 'bg-gradient-to-br from-[#1C1C1F] to-[#161619] border-white/10 shadow-3xl' : 'bg-white border-gray-200'} flex flex-col items-center text-center`}>
@@ -116,7 +121,7 @@ const DocumentExportTemplate: React.FC<DocumentExportTemplateProps> = ({
             if (layout === 'comparison') {
                 return (
                     <div className="max-w-[2000px] mx-auto py-12 grid grid-cols-2 gap-12">
-                        {data.steps?.map((step: any, i: number) => (
+                        {data.steps?.map((step: InfographicStep, i: number) => (
                             <div key={i} className={`relative overflow-hidden rounded-[80px] border-4 ${isDark ? 'bg-[#111113] border-white/5 shadow-2xl' : 'bg-white border-gray-200'} p-16 min-h-[500px] flex flex-col justify-end`}>
                                 <div className={`absolute top-0 right-0 w-96 h-96 blur-[150px] opacity-20 ${i % 2 === 0 ? 'bg-indigo-500' : 'bg-purple-500'}`} />
                                 <div className="relative z-10 space-y-6">

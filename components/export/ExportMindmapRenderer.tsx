@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
 import { sanitizeMermaidContent } from '@/lib/export/sanitizer';
 
@@ -24,84 +24,95 @@ const ExportMindmapRenderer: React.FC<ExportMindmapRendererProps> = ({
     const [svg, setSvg] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
 
-    const renderChart = useCallback(async () => {
-        if (!chart) return;
-
-        try {
-            const isDark = theme === 'dark';
-            const sanitized = sanitizeMermaidContent(chart);
-
-            // Initialize mermaid with specific export-only settings
-            mermaid.initialize({
-                startOnLoad: false,
-                theme: isDark ? 'dark' : 'neutral',
-                securityLevel: 'loose',
-                fontFamily: 'Inter, sans-serif',
-                themeVariables: isDark ? {
-                    primaryColor: '#1e1b4b',
-                    primaryTextColor: '#FFFFFF',
-                    primaryBorderColor: '#818CF8',
-                    lineColor: '#FFFFFF',
-                    secondaryColor: '#312e81',
-                    tertiaryColor: '#1e1b4b',
-                    mainBkg: 'transparent',
-                    nodeBorder: '#818CF8',
-                    mindmapLineColor: '#818CF8',
-                    nodeBkg: '#1e1b4b',
-                    nodeTextColor: '#FFFFFF',
-                    fontSize: '18px', // Reduced to prevent clipping
-                } : {
-                    primaryColor: '#EEF2FF',
-                    primaryTextColor: '#1E1B4B',
-                    primaryBorderColor: '#4F46E5',
-                    lineColor: '#4F46E5',
-                    secondaryColor: '#F5F3FF',
-                    tertiaryColor: '#FFFFFF',
-                    mainBkg: 'transparent',
-                    nodeBorder: '#4F46E5',
-                    mindmapLineColor: '#4F46E5',
-                    nodeBkg: '#EEF2FF',
-                    nodeTextColor: '#1E1B4B',
-                    fontSize: '18px',
-                },
-                flowchart: {
-                    useMaxWidth: false,
-                    htmlLabels: true,
-                    curve: 'basis',
-                    padding: 40,
-                },
-                mindmap: {
-                    useMaxWidth: false,
-                    padding: 40,
-                }
-            });
-
-            const id = `export-p-${Math.random().toString(36).substr(2, 5)}`;
-            const { svg: svgContent } = await mermaid.render(id, sanitized);
-
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(svgContent, "image/svg+xml");
-            const svgEl = doc.documentElement;
-
-            // Static Export Adjustments
-            svgEl.style.width = '100%';
-            svgEl.style.height = 'auto';
-            svgEl.style.display = 'block';
-            svgEl.style.margin = 'auto';
-            svgEl.style.maxWidth = '100%';
-
-            const finalSvg = new XMLSerializer().serializeToString(svgEl);
-            setSvg(finalSvg);
-            setError(null);
-        } catch (err: any) {
-            console.error("Export Render Error:", err);
-            setError("Failed to render export diagram.");
-        }
-    }, [chart, theme]);
-
     useEffect(() => {
+        let cancelled = false;
+
+        const renderChart = async () => {
+            if (!chart) return;
+
+            try {
+                const isDark = theme === 'dark';
+                const sanitized = sanitizeMermaidContent(chart);
+
+                // Initialize mermaid with specific export-only settings
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: isDark ? 'dark' : 'neutral',
+                    securityLevel: 'loose',
+                    fontFamily: 'Inter, sans-serif',
+                    themeVariables: isDark ? {
+                        primaryColor: '#1e1b4b',
+                        primaryTextColor: '#FFFFFF',
+                        primaryBorderColor: '#818CF8',
+                        lineColor: '#FFFFFF',
+                        secondaryColor: '#312e81',
+                        tertiaryColor: '#1e1b4b',
+                        mainBkg: 'transparent',
+                        nodeBorder: '#818CF8',
+                        mindmapLineColor: '#818CF8',
+                        nodeBkg: '#1e1b4b',
+                        nodeTextColor: '#FFFFFF',
+                        fontSize: '18px', // Reduced to prevent clipping
+                    } : {
+                        primaryColor: '#EEF2FF',
+                        primaryTextColor: '#1E1B4B',
+                        primaryBorderColor: '#4F46E5',
+                        lineColor: '#4F46E5',
+                        secondaryColor: '#F5F3FF',
+                        tertiaryColor: '#FFFFFF',
+                        mainBkg: 'transparent',
+                        nodeBorder: '#4F46E5',
+                        mindmapLineColor: '#4F46E5',
+                        nodeBkg: '#EEF2FF',
+                        nodeTextColor: '#1E1B4B',
+                        fontSize: '18px',
+                    },
+                    flowchart: {
+                        useMaxWidth: false,
+                        htmlLabels: true,
+                        curve: 'basis',
+                        padding: 40,
+                    },
+                    mindmap: {
+                        useMaxWidth: false,
+                        padding: 40,
+                    }
+                });
+
+                const id = `export-p-${Math.random().toString(36).substr(2, 5)}`;
+                const { svg: svgContent } = await mermaid.render(id, sanitized);
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(svgContent, "image/svg+xml");
+                const svgEl = doc.documentElement;
+
+                // Static Export Adjustments
+                svgEl.style.width = '100%';
+                svgEl.style.height = 'auto';
+                svgEl.style.display = 'block';
+                svgEl.style.margin = 'auto';
+                svgEl.style.maxWidth = '100%';
+
+                const finalSvg = new XMLSerializer().serializeToString(svgEl);
+
+                if (!cancelled) {
+                    setSvg(finalSvg);
+                    setError(null);
+                }
+            } catch (err) {
+                console.error("Export Render Error:", err);
+                if (!cancelled) {
+                    setError("Failed to render export diagram.");
+                }
+            }
+        };
+
         renderChart();
-    }, [renderChart]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [chart, theme]);
 
     return (
         <div
