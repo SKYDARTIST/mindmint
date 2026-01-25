@@ -6,7 +6,7 @@ export const sanitizeMermaidContent = (content: string): string => {
     if (!content) return "";
 
     // 1. Deep Decode HTML Entities
-    let decoded = content
+    const decoded = content
         .replace(/&quot;/gi, '"')
         .replace(/&amp;quot;/gi, '"')
         .replace(/&amp;amp;/gi, '&')
@@ -37,7 +37,7 @@ export const sanitizeMermaidContent = (content: string): string => {
     });
 
     const fixedLines = lines.map(line => {
-        let trimmed = line.trim();
+        const trimmed = line.trim();
         if (!trimmed) return line;
 
         // Preserve indentation
@@ -88,7 +88,7 @@ export const sanitizeMermaidContent = (content: string): string => {
 
         // Logic for raw labels (root nodes or unshaped nodes in mindmap)
         // If it's a mindmap leaf/node (not a connection), wrap it
-        let cleanRoot = trimmed.replace(/^"+|"+$/g, '').replace(/^'+|'+$/g, '');
+        const cleanRoot = trimmed.replace(/^"+|"+$/g, '').replace(/^'+|'+$/g, '');
 
         // Ensure we don't double wrap or leave structural artifacts
         if (cleanRoot.toLowerCase() === 'mindmap' && lines[0].trim().toLowerCase().startsWith('mindmap')) {

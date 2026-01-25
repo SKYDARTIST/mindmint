@@ -1,5 +1,5 @@
 import { db, auth } from './firebase/config';
-import { doc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 
 export const userContentService = {
     async deleteNote(id: string) {

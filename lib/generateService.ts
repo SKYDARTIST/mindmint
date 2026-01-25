@@ -1,16 +1,6 @@
 import OpenAI from "openai";
 import { UserPlan } from "./rateLimit";
-import {
-    AppMode,
-    MindmapLayout,
-    FlashcardLayout,
-    QuizLayout,
-    SummaryLayout,
-    InfographicLayout,
-    Flashcard,
-    QuizItem,
-    InfographicContent
-} from "../types";
+import { AppMode } from "../types";
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -48,7 +38,7 @@ export const sanitizeMermaid = (raw: string): string => {
         const sanitizedLines: string[] = [];
         let hasRoot = false;
 
-        for (let line of lines) {
+        for (const line of lines) {
             let processed = line;
 
             // Ensure child nodes are indented if they aren't already
@@ -107,9 +97,9 @@ export const sanitizeMermaid = (raw: string): string => {
 export const generateContent = async (
     mode: AppMode,
     inputText: string,
-    layout: any = 'classic',
+    layout: string = 'classic',
     userPlan: UserPlan = 'free'
-): Promise<any> => {
+): Promise<string | Record<string, unknown> | unknown[]> => {
     if (!inputText || typeof inputText !== 'string') throw new Error("Input text is required");
     if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
@@ -387,7 +377,7 @@ ${inputText}`;
 };
 export const formatForExport = async (
     mode: AppMode,
-    content: any,
+    content: string | Record<string, unknown> | unknown[],
     exportMode: 'PDF' | 'IMAGE'
 ): Promise<string> => {
     if (!content) throw new Error("Content to export is required");
