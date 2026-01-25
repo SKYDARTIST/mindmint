@@ -6,8 +6,6 @@ import LandingPage from "@/components/LandingPage";
 import MindMintApp from "@/components/MindMintApp";
 import PricingModal from "@/components/PricingModal";
 import AuthModal from "@/components/AuthModal";
-import { auth } from "@/lib/firebase/config";
-import { onAuthStateChange } from "firebase/auth";
 import { useSubscription } from "@/lib/hooks/useSubscription";
 
 function PageContent({ theme, setTheme, showPricingModal, setShowPricingModal, toggleTheme }: any) {
