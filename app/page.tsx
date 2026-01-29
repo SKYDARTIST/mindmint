@@ -2,9 +2,21 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
-import LandingPage from "@/components/LandingPage";
-import MindMintApp from "@/components/MindMintApp";
-import AuthModal from "@/components/AuthModal";
+import dynamic from "next/dynamic";
+
+const LandingPage = dynamic(() => import("@/components/LandingPage"), {
+  loading: () => <LoadingSpinner />
+});
+const MindMintApp = dynamic(() => import("@/components/MindMintApp"), {
+  loading: () => <LoadingSpinner />
+});
+const AuthModal = dynamic(() => import("@/components/AuthModal"));
+
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+  </div>
+);
 import { useSubscription } from "@/lib/hooks/useSubscription";
 
 interface PageContentProps {

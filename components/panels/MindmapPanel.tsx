@@ -55,7 +55,6 @@ export default function MindmapPanel({
 
   const handleTemplateSelect = () => {
     // Coming soon - no functionality
-    console.log("Mindmap templates coming soon");
   };
 
   return (

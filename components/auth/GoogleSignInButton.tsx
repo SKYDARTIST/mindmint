@@ -1,14 +1,25 @@
 import { auth } from '@/lib/firebase/config'
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } from 'firebase/auth'
 
 export default function GoogleSignInButton() {
     const handleGoogleSignIn = async () => {
         try {
+            // 🛡️ Force local persistence to prevent IndexedDB race conditions (Fixes 'Pending promise was never set')
+            await setPersistence(auth, browserLocalPersistence);
+
             const provider = new GoogleAuthProvider();
+            // Optional: provider.setCustomParameters({ prompt: 'select_account' });
+
             await signInWithPopup(auth, provider);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error';
-            console.error('Error signing in with Google:', message);
+
+            // 🛡️ UX: Handle blocked popups gracefully
+            if (message.includes('popup-blocked')) {
+                alert('Sign-in popup was blocked. Please enable popups for this site or try clicking again directly.');
+            } else {
+                console.error('Error signing in with Google:', message);
+            }
         }
     }
 

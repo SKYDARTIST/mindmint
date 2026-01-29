@@ -1,21 +1,23 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import LegalFooter from "./LegalFooter";
 import type { AppMode, MindmapLayout, FlashcardLayout, QuizLayout, SummaryLayout, InfographicLayout, Flashcard, QuizItem, InfographicContent } from "@/types";
 import { getWordCount, LIMITS } from "@/lib/validation";
 import BrandLogo from "./BrandLogo";
-import SummaryViewer from "./SummaryViewer";
-import PresentationRenderer from "./PresentationRenderer";
-import FlashcardViewer from "./FlashcardViewer";
-import QuizViewer from "./QuizViewer";
-import InfographicViewer from "./InfographicViewer";
-import ExportModal from "./ExportModal";
-import AuthModal from "./AuthModal";
-import Toast from "./Toast";
+const SummaryViewer = dynamic(() => import("./SummaryViewer"));
+const PresentationRenderer = dynamic(() => import("./PresentationRenderer"));
+const FlashcardViewer = dynamic(() => import("./FlashcardViewer"));
+const QuizViewer = dynamic(() => import("./QuizViewer"));
+const InfographicViewer = dynamic(() => import("./InfographicViewer"));
+const ExportModal = dynamic(() => import("./ExportModal"));
+const AuthModal = dynamic(() => import("./AuthModal"));
+const Toast = dynamic(() => import("./Toast"));
 import { useSearchParams } from 'next/navigation';
 import { auth } from "@/lib/firebase/config";
 import { useSubscription } from "@/lib/hooks/useSubscription";
+import { MindmapSkeleton, ListSkeleton, SummarySkeleton } from "./SkeletonLoaders";
 
 // Icons
 const Icons = {
@@ -141,7 +143,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   };
 
   const handleGenerate = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isLoading) return;
 
     setIsLoading(true);
     setError(null);
@@ -277,11 +279,12 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             </button>
             {user && (
               <div
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-indigo-500/10 border-indigo-500/20"
+                className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg border bg-indigo-500/10 border-indigo-500/20"
+                title="Total daily generations across all tools"
               >
                 <Icons.Bolt />
-                <span className="text-xs font-bold text-indigo-400">
-                  {generationsLeft} Daily runs left
+                <span className="text-[10px] sm:text-xs font-bold text-indigo-400 whitespace-nowrap">
+                  {generationsLeft} <span className="hidden sm:inline">Runs left</span>
                 </span>
               </div>
             )}
@@ -334,6 +337,22 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                 </button>
               </div>
 
+              {user && (
+                <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-500 rounded-lg text-white">
+                      <Icons.Bolt />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Daily Usage</h4>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">{generationsLeft} / 5 remaining</p>
+                    </div>
+                  </div>
+                  <div className="h-8 w-8 rounded-full border-2 border-indigo-500/20 flex items-center justify-center">
+                    <span className="text-xs font-black text-indigo-500">{generationsLeft}</span>
+                  </div>
+                </div>
+              )}
               {!user && (
                 <div className="flex flex-col gap-3 p-4 bg-indigo-600/10 rounded-2xl border border-indigo-500/20">
                   <div className="flex items-center gap-3 mb-1">
@@ -606,6 +625,12 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                     {mode === "flashcards" && <FlashcardViewer cards={output as Flashcard[]} />}
                     {mode === "quiz" && <QuizViewer quizItems={output as QuizItem[]} layout={quizLayout} />}
                     {mode === "infographic" && <InfographicViewer data={output as unknown as InfographicContent} />}
+                  </div>
+                ) : isLoading ? (
+                  <div className="w-full h-full animate-in fade-in duration-500 overflow-auto custom-scrollbar pt-8">
+                    {mode === "mindmap" && <MindmapSkeleton />}
+                    {(mode === "flashcards" || mode === "quiz" || mode === "infographic") && <ListSkeleton />}
+                    {mode === "summary" && <SummarySkeleton />}
                   </div>
                 ) : (
                   <div className="text-center space-y-8 max-w-sm animate-in">
