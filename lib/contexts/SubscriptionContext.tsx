@@ -25,18 +25,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     const fetchUserPlan = useCallback(async (userId: string) => {
         try {
-            const docRef = doc(db, 'user_plans', userId);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                const currentPlan = data.plan as Plan;
-                setPlan(currentPlan);
-                setIsPro(currentPlan === 'pro');
-            } else {
-                setPlan('free');
-                setIsPro(false);
-            }
+            // We are in "Experiment Mode" - Everyone gets access to all tools
+            // But we keep the user plan tracking for internal limits if needed
+            setPlan('pro');
+            setIsPro(true);
         } catch (err) {
             console.error("Unexpected error in fetchUserPlan:", err);
             setPlan('free');

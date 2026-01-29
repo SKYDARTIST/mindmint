@@ -79,28 +79,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, to
         <div className="flex flex-col md:flex-row items-center justify-center gap-6">
           <button
             onClick={onStart}
-            className="px-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-full transition-all flex items-center gap-3 w-full md:min-w-[300px] md:w-auto shadow-2xl shadow-indigo-600/30 active:scale-95 group"
+            className="px-12 py-6 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-full transition-all flex items-center gap-3 w-full md:min-w-[350px] md:w-auto shadow-2xl shadow-indigo-600/30 active:scale-95 group"
           >
-            <span className="flex-1">Try Demo (No Sign-up)</span>
-            <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
-          </button>
-
-          <button
-            onClick={() => onExample()} // We'll repurpose onExample to show pricing or we can pass a new prop
-            className="px-10 py-5 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-900 dark:text-white border border-gray-200 dark:border-white/10 rounded-full transition-all flex items-center gap-4 w-full md:min-w-[300px] md:w-auto shadow-sm active:scale-95"
-          >
-            <span className="flex-1 font-bold">Get Pro Version</span>
-            <span className="text-[10px] bg-amber-500 text-white px-3 py-1.5 rounded-full font-black tracking-widest leading-none shadow-lg shadow-amber-500/20">PRO</span>
+            <span className="flex-1 text-lg">Start Generating Free</span>
+            <span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
           </button>
         </div>
 
         {/* Footer text */}
         <div className="space-y-4 pt-10">
-          <p className="text-sm text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
-            2 demo tries • No sign-up needed
-          </p>
-          <p className="text-[11px] text-gray-500 dark:text-gray-600 font-medium">
-            Sign up FREE for 3 generations/day • Pro: $4.99/month for unlimited
+          <p className="text-[11px] text-gray-500 dark:text-gray-600 font-medium uppercase tracking-widest leading-relaxed">
+            Free forever for early experimenters • 5 generations/day
           </p>
         </div>
 
