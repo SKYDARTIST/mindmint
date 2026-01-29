@@ -393,7 +393,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             </div>
 
             <div>
-              <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Pro Tools</div>
+              <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Library & Export</div>
               <nav className="space-y-1">
                 {[
                   { id: 'notes', label: 'My Notes', icon: <Icons.Folder />, onClick: () => { window.location.href = '/notes'; }, visible: true },

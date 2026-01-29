@@ -4,18 +4,15 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import LandingPage from "@/components/LandingPage";
 import MindMintApp from "@/components/MindMintApp";
-import PricingModal from "@/components/PricingModal";
 import AuthModal from "@/components/AuthModal";
 import { useSubscription } from "@/lib/hooks/useSubscription";
 
 interface PageContentProps {
   theme: "light" | "dark";
-  showPricingModal: boolean;
-  setShowPricingModal: (show: boolean) => void;
   toggleTheme: () => void;
 }
 
-function PageContent({ theme, showPricingModal, setShowPricingModal, toggleTheme }: PageContentProps) {
+function PageContent({ theme, toggleTheme }: PageContentProps) {
   const [showApp, setShowApp] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -83,13 +80,8 @@ function PageContent({ theme, showPricingModal, setShowPricingModal, toggleTheme
         <>
           <LandingPage
             onStart={() => setShowApp(true)}
-            onExample={() => setShowPricingModal(true)}
             theme={theme}
             toggleTheme={toggleTheme}
-          />
-          <PricingModal
-            isOpen={showPricingModal}
-            onClose={() => setShowPricingModal(false)}
           />
           <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
         </>
@@ -102,8 +94,6 @@ function PageContent({ theme, showPricingModal, setShowPricingModal, toggleTheme
 
 export default function Page() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const [showPricingModal, setShowPricingModal] = useState(false);
-
   const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
 
   return (
@@ -115,8 +105,6 @@ export default function Page() {
       }>
         <PageContent
           theme={theme}
-          showPricingModal={showPricingModal}
-          setShowPricingModal={setShowPricingModal}
           toggleTheme={toggleTheme}
         />
       </Suspense>

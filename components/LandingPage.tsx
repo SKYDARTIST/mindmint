@@ -6,12 +6,11 @@ import LegalFooter from "@/components/LegalFooter";
 
 interface LandingPageProps {
   onStart: () => void;
-  onExample: () => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onStart, onExample, theme, toggleTheme }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onStart, theme, toggleTheme }) => {
   return (
     <div className="min-h-screen bg-white dark:bg-[#09090b] flex flex-col items-center justify-center px-6 transition-colors duration-500 bg-dot-pattern">
 

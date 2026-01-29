@@ -74,9 +74,6 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             setUser(currentUser);
             if (currentUser) {
                 try {
-                    // Ensure the user has a plan record in Firestore
-                    const { ensureUserPlan } = await import('@/app/actions');
-                    await ensureUserPlan(currentUser.uid);
                     await fetchUserPlan(currentUser.uid);
                 } catch (err) {
                     console.error("Error in auth state change:", err);
