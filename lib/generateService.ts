@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import { UserPlan } from "./rateLimit";
 import { AppMode } from "../types";
 
 const openai = new OpenAI({
@@ -98,7 +97,7 @@ export const generateContent = async (
     mode: AppMode,
     inputText: string,
     layout: string = 'classic',
-    userPlan: UserPlan = 'free'
+    userPlan: 'free' | 'pro' = 'free'
 ): Promise<string | Record<string, unknown> | unknown[]> => {
     if (!inputText || typeof inputText !== 'string') throw new Error("Input text is required");
     if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");

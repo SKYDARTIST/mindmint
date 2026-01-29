@@ -49,15 +49,11 @@ interface MindmapPanelProps {
 
 export default function MindmapPanel({
   input,
-  setInput,
-  layout: _layout,
-  setLayout: _setLayout,
-  showLayoutMenu: _showLayoutMenu,
-  setShowLayoutMenu: _setShowLayoutMenu
+  setInput
 }: MindmapPanelProps) {
   const showStarterTemplates = !input;
 
-  const handleTemplateSelect = (_template: typeof STARTER_TEMPLATES[0]) => {
+  const handleTemplateSelect = () => {
     // Coming soon - no functionality
     console.log("Mindmap templates coming soon");
   };
@@ -91,7 +87,7 @@ export default function MindmapPanel({
               {STARTER_TEMPLATES.map((tpl) => (
                 <button
                   key={tpl.id}
-                  onClick={() => handleTemplateSelect(tpl)}
+                  onClick={() => handleTemplateSelect()}
                   className="group flex flex-col items-start p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#202023] hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md transition-all text-left opacity-60 cursor-not-allowed"
                 >
                   <div className="mb-3 p-2 rounded-lg bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/20 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">

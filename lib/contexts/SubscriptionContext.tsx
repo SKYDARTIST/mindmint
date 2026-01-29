@@ -1,9 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { auth, db } from '@/lib/firebase/config';
+import { auth } from '@/lib/firebase/config';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
 
 type Plan = 'free' | 'pro';
 
@@ -23,7 +22,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const [isPro, setIsPro] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    const fetchUserPlan = useCallback(async (userId: string) => {
+    const fetchUserPlan = useCallback(async () => {
         try {
             // We are in "Experiment Mode" - Everyone gets access to all tools
             // But we keep the user plan tracking for internal limits if needed
@@ -41,7 +40,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const refresh = useCallback(async () => {
         if (user) {
             setIsLoading(true);
-            await fetchUserPlan(user.uid);
+            await fetchUserPlan();
         }
     }, [user, fetchUserPlan]);
 
@@ -74,7 +73,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             setUser(currentUser);
             if (currentUser) {
                 try {
-                    await fetchUserPlan(currentUser.uid);
+                    await fetchUserPlan();
                 } catch (err) {
                     console.error("Error in auth state change:", err);
                     setPlan('free');

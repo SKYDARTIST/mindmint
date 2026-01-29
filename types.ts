@@ -105,17 +105,7 @@ export interface InfographicContent {
   steps: InfographicStep[];
 }
 
-/* =========================
-   User Plan Tracking
-========================= */
 
-export interface UserPlan {
-  user_id: string;
-  plan: "free" | "pro";
-  stripe_customer_id?: string | null;
-  stripe_subscription_id?: string | null;
-  updated_at: string;
-}
 
 /* =========================
    AI Generation Results
