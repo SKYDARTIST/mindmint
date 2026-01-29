@@ -16,7 +16,12 @@ export async function POST(req: Request) {
         const secret = req.headers.get('x-reconcile-secret');
         const expectedSecret = process.env.RECONCILE_SECRET_KEY;
 
-        if (!expectedSecret || secret !== expectedSecret) {
+        if (!expectedSecret || expectedSecret.length < 16) {
+            console.error('CRITICAL SECURITY: RECONCILE_SECRET_KEY is missing or too weak (must be at least 16 chars).');
+            return NextResponse.json({ success: false, error: 'Server configuration error' }, { status: 500 });
+        }
+
+        if (secret !== expectedSecret) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
 
