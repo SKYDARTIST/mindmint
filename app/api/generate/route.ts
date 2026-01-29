@@ -156,7 +156,13 @@ export async function POST(req: Request) {
         });
     } catch (err) {
         console.error("GENERATE API ERROR:", err);
-        const message = err instanceof Error ? err.message : "Failed to generate content";
+        let message = err instanceof Error ? err.message : "Failed to generate content";
+
+        // 🛡️ Improve error messaging for Firestore/Database issues
+        if (message.includes('5 NOT_FOUND') || message.includes('project_id')) {
+            message = "Database Error: Please ensure Firestore is enabled in your Firebase Console for project 'mindmint-482420'.";
+        }
+
         return NextResponse.json(
             { ok: false, error: message },
             { status: 500 }
