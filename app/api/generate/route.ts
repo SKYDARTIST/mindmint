@@ -145,9 +145,10 @@ export async function POST(req: Request) {
         const data = await generateContent(mode, sanitizedInput, layout, userPlan);
 
         // 🛡️ Update the database timestamp after successful generation
-        await adminDb.collection('user_plans').doc(user.uid).update({
+        // Use set with merge: true to avoid NOT_FOUND error if the doc doesn't exist
+        await adminDb.collection('user_plans').doc(user.uid).set({
             last_generation_at: new Date().toISOString()
-        });
+        }, { merge: true });
 
         return NextResponse.json({
             ok: true,

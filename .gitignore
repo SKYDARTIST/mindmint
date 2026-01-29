@@ -12,7 +12,14 @@ yarn-debug.log*
 yarn-error.log*
 
 # Env
+.env
 .env*.local
+.env.production
+.env.development
+
+# Firebase Service Accounts
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
 
 # Tests
 coverage/

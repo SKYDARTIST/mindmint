@@ -1,8 +1,19 @@
 import admin from "firebase-admin";
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    : undefined;
+let serviceAccount;
+try {
+    serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+        : undefined;
+
+    // 🛡️ Fix for newline escaping in environment variables
+    if (serviceAccount && serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+} catch (error) {
+    console.error("CRITICAL: Failed to parse FIREBASE_SERVICE_ACCOUNT env var. Ensure it is a valid single-line JSON string.", error);
+    serviceAccount = undefined;
+}
 
 if (!admin.apps.length) {
     if (serviceAccount) {
