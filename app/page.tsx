@@ -79,7 +79,13 @@ function PageContent({ theme, toggleTheme }: PageContentProps) {
       {!showApp ? (
         <>
           <LandingPage
-            onStart={() => setShowApp(true)}
+            onStart={() => {
+              if (user) {
+                setShowApp(true);
+              } else {
+                setShowAuthModal(true);
+              }
+            }}
             theme={theme}
             toggleTheme={toggleTheme}
           />

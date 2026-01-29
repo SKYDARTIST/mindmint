@@ -634,10 +634,18 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                       {!user && !isLoading && (
                         <button
                           onClick={() => setShowAuthModal(true)}
-                          className="flex items-center gap-2 text-xs font-bold text-indigo-500 hover:text-indigo-400 transition-colors animate-bounce"
+                          className="flex flex-col items-center gap-4 group p-8 rounded-3xl border border-dashed border-indigo-500/20 hover:border-indigo-500/40 bg-indigo-500/5 transition-all animate-in fade-in zoom-in duration-500"
                         >
-                          <Icons.Google />
-                          Sign up to save your progress
+                          <div className="w-16 h-16 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+                            <Icons.Lock />
+                          </div>
+                          <div className="text-center">
+                            <h4 className="text-lg font-black text-gray-900 dark:text-white mb-1">Login Required</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Join MindMint for free to start generating and saving your projects.</p>
+                          </div>
+                          <div className="mt-2 px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl text-xs transition-colors shadow-lg shadow-indigo-500/20">
+                            Sign In Free
+                          </div>
                         </button>
                       )}
                     </div>
