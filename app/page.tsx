@@ -47,10 +47,32 @@ function PageContent({ theme, showPricingModal, setShowPricingModal, toggleTheme
     }
   }, [theme]);
 
+  const [showSlowMessage, setShowSlowMessage] = useState(false);
+
+  useEffect(() => {
+    if (loading) {
+      const timer = setTimeout(() => setShowSlowMessage(true), 3000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowSlowMessage(false);
+    }
+  }, [loading]);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center space-y-4">
         <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+        {showSlowMessage && (
+          <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <p className="text-white/60 text-sm">Loading taking longer than usual...</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-white text-xs underline mt-2 hover:text-white/80"
+            >
+              Reload Page
+            </button>
+          </div>
+        )}
       </div>
     );
   }

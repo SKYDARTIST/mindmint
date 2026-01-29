@@ -33,6 +33,11 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
+    // Only cache GET requests
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
     // Skip cross-origin requests
     if (!event.request.url.startsWith(self.location.origin)) {
         return;
