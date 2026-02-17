@@ -24,9 +24,13 @@ serviceAccountKey.json
 # Tests
 coverage/
 .nyc_output/
+test*.html
+test*.js
+test*.mjs
 
 # OS
 .DS_Store
+*.webp
 
 # IDEs
 .vscode/
@@ -34,4 +38,15 @@ coverage/
 *.swp
 *.swo
 
+# Logs
 *.txt
+server_*.txt
+
+# Allow public SEO files despite *.txt rule
+!public/robots.txt
+
+# Google OAuth secrets
+client_secret_*.json
+
+# Docs/reports (AI-generated session notes)
+docs/
