@@ -71,10 +71,8 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [generationsLeft, setGenerationsLeft] = useState(5);
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false); // Replacing Pricing with generic settings if needed
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [lastGenerationTimestamp, setLastGenerationTimestamp] = useState<number | null>(null);
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const searchParams = useSearchParams();
@@ -101,6 +99,11 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
+          // Verify ownership before displaying
+          if (data.user_id !== user.uid) {
+            setToast({ message: "Access denied.", type: "error" });
+            return;
+          }
           setMode(data.type as AppMode);
           setOutput(data.content);
           // Clear the URL
@@ -245,11 +248,14 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
     }
   };
 
-  // Auto-generate on layout switch if we already have content
+  // Layout change clears output so user must explicitly regenerate
+  // (prevents silently burning daily generations)
   useEffect(() => {
-    if ((mode === "mindmap" || mode === "flashcards" || mode === "quiz" || mode === "summary" || mode === "infographic") && inputText.trim() && output && !isLoading) {
-      handleGenerate();
+    if (output && !isLoading) {
+      setOutput(null);
+      setToast({ message: "Layout changed. Click Generate to regenerate.", type: "info" });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mindmapLayout, flashcardLayout, quizLayout, summaryLayout, infographicLayout]);
 
   return (
@@ -548,7 +554,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                     <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                       <span>{getWordCount(inputText)}</span>
                       <span className="mx-1">/</span>
-                      <span>{LIMITS.pro} words</span>
+                      <span>{LIMITS.free} words</span>
                     </div>
                   </div>
                   <button
@@ -688,7 +694,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         onClose={() => setShowExportModal(false)}
         mode={mode}
         content={output || ''}
-        isPro={true} // Effectively always pro for export logic
+        isPro={true} // Export is intentionally free for all users
         title={currentTitle}
         onUpgradeClick={() => { }}
       />

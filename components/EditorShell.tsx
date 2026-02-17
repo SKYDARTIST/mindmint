@@ -104,6 +104,7 @@ export default function EditorShell({ mode, layout }: EditorShellProps) {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInputMode, loading, input, showHelp]);
 
   /* ===== MAP LAYOUT ===== */

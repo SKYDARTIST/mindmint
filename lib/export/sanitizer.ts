@@ -11,11 +11,10 @@ export const sanitizeMermaidContent = (content: string): string => {
         .replace(/&amp;quot;/gi, '"')
         .replace(/&amp;amp;/gi, '&')
         .replace(/&amp;/gi, '&')
-        .replace(/&lt;/gi, '<')
-        .replace(/&gt;/gi, '>')
         .replace(/&#39;/gi, "'")
         .replace(/&#34;/gi, '"')
         .replace(/&apos;/gi, "'");
+    // NOTE: &lt; and &gt; are intentionally NOT decoded to prevent XSS
 
     // 2. Keyword Awareness
     // We must not wrap these in quotes as they are Mermaid syntax structure

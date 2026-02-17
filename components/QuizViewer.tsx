@@ -50,11 +50,6 @@ const QuizViewer: React.FC<QuizViewerProps> = ({ quizItems, layout = 'classic' }
       return score;
    };
 
-   const _checkCorrectAnswer = (idx: number) => {
-      const userAns = answers[idx]?.toLowerCase().trim();
-      const correct = quizItems[idx].correctAnswer.toLowerCase().trim();
-      return userAns === correct;
-   };
 
    // --- Layout Renderers ---
 

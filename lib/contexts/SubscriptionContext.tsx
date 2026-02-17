@@ -24,10 +24,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     const fetchUserPlan = useCallback(async () => {
         try {
-            // We are in "Experiment Mode" - Everyone gets access to all tools
-            // But we keep the user plan tracking for internal limits if needed
-            setPlan('pro');
-            setIsPro(true);
+            // Free tier: all tools available, server enforces 5/day limit and 600-word cap
+            setPlan('free');
+            setIsPro(false);
         } catch (err) {
             console.error("Unexpected error in fetchUserPlan:", err);
             setPlan('free');

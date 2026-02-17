@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import { generateContent } from "@/lib/generateService";
-import { checkDailyLimit, isToday } from "@/lib/rateLimit";
+import { checkDailyLimit, isToday, DAILY_GENERATION_LIMIT } from "@/lib/rateLimit";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { sanitizeInput } from "@/lib/security";
+import { validateInputLength } from "@/lib/validation";
+import { FieldValue } from "firebase-admin/firestore";
+
+const VALID_MODES = ['summary', 'mindmap', 'flashcards', 'quiz', 'infographic'];
+const VALID_LAYOUTS: Record<string, string[]> = {
+    summary: ['concept_overview', 'bullet', 'study_notes'],
+    mindmap: ['classic', 'categorized', 'flow'],
+    flashcards: ['standard', 'detailed', 'quick'],
+    quiz: ['classic', 'speed', 'scenario'],
+    infographic: ['step_by_step', 'process_flow', 'comparison'],
+};
 
 export async function POST(req: Request) {
     try {
@@ -15,10 +26,31 @@ export async function POST(req: Request) {
             );
         }
 
-        // 🛡️ Sanitize user input against prompt injection
+        // Validate mode against allowlist
+        if (!VALID_MODES.includes(mode)) {
+            return NextResponse.json(
+                { ok: false, error: "Invalid mode." },
+                { status: 400 }
+            );
+        }
+
+        // Validate layout against allowlist per mode
+        const validLayouts = VALID_LAYOUTS[mode] || [];
+        const safeLayout = validLayouts.includes(layout) ? layout : validLayouts[0];
+
+        // Sanitize user input against prompt injection
         const sanitizedInput = sanitizeInput(input);
 
-        // 1. Authenticate server-side
+        // Validate input length server-side (600-word limit for free tier)
+        const lengthCheck = validateInputLength(sanitizedInput, 'free');
+        if (!lengthCheck.valid) {
+            return NextResponse.json(
+                { ok: false, error: lengthCheck.message },
+                { status: 400 }
+            );
+        }
+
+        // Authenticate server-side
         const authHeader = req.headers.get("Authorization");
         let user: { uid: string } | null = null;
 
@@ -26,8 +58,8 @@ export async function POST(req: Request) {
             const token = authHeader.split(" ")[1];
             try {
                 user = await adminAuth.verifyIdToken(token);
-            } catch (err) {
-                console.error("Auth Token Verification Failed:", err);
+            } catch {
+                // Token invalid
             }
         }
 
@@ -38,57 +70,59 @@ export async function POST(req: Request) {
             );
         }
 
-        let dailyUsageCount = 0;
-        let lastGenerationAt: number | null = null;
-
+        // Atomic rate limit check using Firestore transaction (prevents race condition)
         const docRef = adminDb.collection('user_plan_usage').doc(user.uid);
-        const docSnap = await docRef.get();
 
-        if (docSnap.exists) {
-            const usageData = docSnap.data();
-            lastGenerationAt = usageData?.last_generation_at ? new Date(usageData.last_generation_at).getTime() : null;
+        const transactionResult = await adminDb.runTransaction(async (transaction) => {
+            const docSnap = await transaction.get(docRef);
 
-            // Reset counter if it's a new day
-            if (lastGenerationAt && isToday(lastGenerationAt)) {
-                dailyUsageCount = usageData?.daily_count || 0;
+            let dailyUsageCount = 0;
+
+            if (docSnap.exists) {
+                const usageData = docSnap.data();
+                const lastGenerationAt = usageData?.last_generation_at
+                    ? new Date(usageData.last_generation_at).getTime()
+                    : null;
+
+                if (lastGenerationAt && isToday(lastGenerationAt)) {
+                    dailyUsageCount = usageData?.daily_count || 0;
+                }
             }
-        }
 
-        // 🛡️ Daily Limit Check
-        const limitResult = checkDailyLimit(dailyUsageCount);
+            const limitResult = checkDailyLimit(dailyUsageCount);
+            if (limitResult !== "ALLOWED") {
+                return { allowed: false, error: limitResult, count: dailyUsageCount };
+            }
 
-        if (limitResult !== "ALLOWED") {
+            // Atomically increment BEFORE calling OpenAI (optimistic counting)
+            transaction.set(docRef, {
+                daily_count: FieldValue.increment(1),
+                last_generation_at: new Date().toISOString()
+            }, { merge: true });
+
+            return { allowed: true, count: dailyUsageCount + 1 };
+        });
+
+        if (!transactionResult.allowed) {
             return NextResponse.json(
-                { ok: false, error: limitResult },
+                { ok: false, error: transactionResult.error },
                 { status: 429 }
             );
         }
 
-        // Generate content (everyone uses 'free' tier limits for input length but has access to all modes)
-        const data = await generateContent(mode, sanitizedInput, layout, 'free');
-
-        // 🛡️ Update the database usage count and timestamp
-        const newUsageCount = dailyUsageCount + 1;
-        await adminDb.collection('user_plan_usage').doc(user.uid).set({
-            daily_count: newUsageCount,
-            last_generation_at: new Date().toISOString()
-        }, { merge: true });
+        // Generate content
+        const data = await generateContent(mode, sanitizedInput, safeLayout, 'free');
 
         return NextResponse.json({
             ok: true,
             data,
-            usageRemaining: 5 - newUsageCount
+            usageRemaining: DAILY_GENERATION_LIMIT - transactionResult.count
         });
     } catch (err) {
         console.error("GENERATE API ERROR:", err);
-        let message = err instanceof Error ? err.message : "Failed to generate content";
-
-        if (message.includes('5 NOT_FOUND') || message.includes('project_id')) {
-            message = "Database Error: Please ensure Firestore is enabled in your Firebase Console.";
-        }
 
         return NextResponse.json(
-            { ok: false, error: message },
+            { ok: false, error: "An unexpected error occurred. Please try again." },
             { status: 500 }
         );
     }
