@@ -84,6 +84,37 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
     if (user) setShowAuthModal(false);
   }, [user]);
 
+  // Load real daily usage from Firestore on login/refresh
+  useEffect(() => {
+    if (!user) {
+      setGenerationsLeft(5);
+      return;
+    }
+    const fetchUsage = async () => {
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase/config');
+      try {
+        const docRef = doc(db, 'user_plan_usage', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const lastAt = data?.last_generation_at ? new Date(data.last_generation_at).getTime() : null;
+          const isToday = lastAt ? (() => {
+            const d = new Date(lastAt), t = new Date();
+            return d.getUTCFullYear() === t.getUTCFullYear() && d.getUTCMonth() === t.getUTCMonth() && d.getUTCDate() === t.getUTCDate();
+          })() : false;
+          const usedToday = isToday ? (data?.daily_count || 0) : 0;
+          setGenerationsLeft(Math.max(0, 5 - usedToday));
+        } else {
+          setGenerationsLeft(5);
+        }
+      } catch {
+        // If fetch fails, keep display at 5 — server will enforce the real limit
+      }
+    };
+    fetchUsage();
+  }, [user]);
+
   // Handle loading note from URL
   useEffect(() => {
     const noteId = searchParams.get('noteId');
