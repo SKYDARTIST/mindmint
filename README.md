@@ -2,7 +2,7 @@
 
 Generate mindmaps, quizzes, and flashcards from any topic or document instantly.
 
-**[Live App →](https://mindmint-ruddy.vercel.app)**
+**[Live App →](https://mindmint.study)**
 
 ---
 
