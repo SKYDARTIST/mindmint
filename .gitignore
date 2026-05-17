@@ -38,12 +38,11 @@ coverage/
 # Logs
 *.txt
 server_*.txt
-
-# Allow public SEO files despite *.txt rule
 !public/robots.txt
 
 # TypeScript and Next.js generated files
 tsconfig.tsbuildinfo
+next-env.d.ts
 
 # Local test scratch files
 test*.html
@@ -51,6 +50,9 @@ test*.js
 test*.mjs
 test-*.html
 test-*.js
+
+# Media artifacts
+*.webp
 
 # AI tooling and generated session artifacts
 .agent/
@@ -66,3 +68,5 @@ graphify-out/
 *_IMPLEMENTATION.md
 *_SUMMARY.md
 *_UPDATE.md
+STUDENT_README.md
+MASTERCLASS_GUIDE.md

@@ -8,12 +8,15 @@ AI study workspace that turns raw notes or topics into mind maps, flashcards, qu
 
 ## What It Does
 
-- Converts pasted study material into multiple learning formats.
-- Renders visual mind maps with Mermaid.js.
-- Generates flashcards and quizzes for active recall.
-- Exports study material as PDF or PNG.
-- Saves user notes behind Firebase authentication.
-- Enforces a daily generation limit server-side.
+Paste lecture notes, a chapter, an article, or a topic. MindMint generates five study formats:
+
+- **Mind Map** — visual topic breakdown rendered with Mermaid.js
+- **Flashcards** — front/back cards for active recall
+- **Quiz** — multiple-choice questions with answers
+- **Summary** — structured key points
+- **Infographic** — hierarchical visual overview
+
+All AI generation runs server-side. The OpenAI key never reaches the browser.
 
 ## Tech Stack
 
@@ -30,50 +33,52 @@ AI study workspace that turns raw notes or topics into mind maps, flashcards, qu
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  User["Signed-in user"] --> UI["Next.js app"]
-  UI --> API["/api/generate"]
-  API --> Auth["Firebase token verification"]
-  Auth --> Limit["Firestore daily usage limit"]
-  Limit --> AI["OpenAI generation"]
-  AI --> Sanitize["Output cleanup and validation"]
-  Sanitize --> UI
-```
+See [docs/architecture.md](docs/architecture.md) for the full system diagram and core decisions.
 
-Core design choices:
+Short version:
 
-- The OpenAI key is server-only and never sent to the browser.
-- Firebase ID tokens are verified before content generation.
-- Usage limits are enforced in a Firestore transaction to reduce race conditions.
-- User input is sanitized before it is sent to the model.
+- User input is sanitized server-side before model generation.
+- Firebase ID tokens are verified on every generation request.
+- Daily limit is enforced server-side in Firestore.
 - Mermaid output is normalized before rendering to reduce parser failures.
+- Exports run through dedicated PDF/PNG helpers.
 
-See [docs/architecture.md](docs/architecture.md) for more detail.
+## Project Structure
+
+```text
+mindmint/
+├── app/
+│   ├── api/generate/route.ts    # Auth, rate limit, sanitize, OpenAI
+│   ├── api/export/route.ts      # PDF/PNG export
+│   ├── page.tsx                 # Landing page
+│   └── notes/page.tsx           # Saved notes
+├── components/
+│   ├── MindMintApp.tsx          # Main app shell
+│   ├── panels/                  # Per-mode renderers
+│   └── EditorShell.tsx          # Input and toolbar
+├── lib/
+│   ├── generateService.ts       # Prompt builder and OpenAI client
+│   ├── rateLimit.ts             # Daily usage policy
+│   ├── security.ts              # Input sanitization
+│   └── firebase/                # Auth and Firestore setup
+└── public/
+    ├── sw.js                    # Service worker
+    └── manifest.json            # PWA manifest
+```
 
 ## Run Locally
 
 **Prerequisites:** Node.js 20+ and Firebase project credentials.
 
-1. Install dependencies:
+```bash
+git clone https://github.com/SKYDARTIST/mindmint.git
+cd mindmint
+npm install
+cp .env.local.example .env.local
+npm run dev
+```
 
-   ```bash
-   npm install
-   ```
-
-2. Set up environment variables:
-
-   ```bash
-   cp .env.local.example .env.local
-   ```
-
-3. Add Firebase client config, Firebase Admin service account JSON, and an OpenAI API key.
-
-4. Start the dev server:
-
-   ```bash
-   npm run dev
-   ```
+Fill in Firebase config, Firebase Admin service account JSON, and an OpenAI API key in `.env.local`.
 
 Open [http://localhost:3000](http://localhost:3000).
 
@@ -90,7 +95,7 @@ npm run audit:high
 
 ## Cost and Performance Notes
 
-AI generation calls OpenAI from the server, so every successful request has API cost. The app limits free users to a daily quota and validates input size before generation. For production, monitor token usage and model latency before raising limits.
+AI generation calls OpenAI from the server, so every successful generation has API cost. The app limits free users to a daily quota and validates input size before generation. For production, monitor token usage and model latency before raising limits.
 
 Exports run in the browser and can be CPU-heavy for large visual outputs. Keep generated diagrams compact enough for mobile devices.
 
