@@ -2,9 +2,19 @@ import OpenAI from "openai";
 import { AppMode } from "../types";
 import { sanitizeInput } from "./security";
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+let openaiClient: OpenAI | null = null;
+
+const getOpenAIClient = () => {
+    if (!process.env.OPENAI_API_KEY) {
+        throw new Error("OPENAI_API_KEY is not configured");
+    }
+
+    openaiClient ??= new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    return openaiClient;
+};
 
 /**
  * NOTE: Cleaning AI Output
@@ -101,7 +111,7 @@ export const generateContent = async (
     userPlan: 'free' | 'pro' = 'free'
 ): Promise<string | Record<string, unknown> | unknown[]> => {
     if (!inputText || typeof inputText !== 'string') throw new Error("Input text is required");
-    if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    const openai = getOpenAIClient();
 
     const isPro = userPlan === 'pro';
     const wordCount = inputText.trim().split(/\s+/).length;
@@ -393,6 +403,7 @@ export const formatForExport = async (
     exportMode: 'PDF' | 'IMAGE'
 ): Promise<string> => {
     if (!content) throw new Error("Content to export is required");
+    const openai = getOpenAIClient();
 
     const systemInstruction = `You are an export formatting engine for an app called MindMint.
 
