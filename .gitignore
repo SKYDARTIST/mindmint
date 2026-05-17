@@ -20,17 +20,14 @@ yarn-error.log*
 # Firebase Service Accounts
 *-firebase-adminsdk-*.json
 serviceAccountKey.json
+client_secret_*.json
 
 # Tests
 coverage/
 .nyc_output/
-test*.html
-test*.js
-test*.mjs
 
 # OS
 .DS_Store
-*.webp
 
 # IDEs
 .vscode/
@@ -45,8 +42,27 @@ server_*.txt
 # Allow public SEO files despite *.txt rule
 !public/robots.txt
 
-# Google OAuth secrets
-client_secret_*.json
+# TypeScript and Next.js generated files
+tsconfig.tsbuildinfo
 
-# Docs/reports (AI-generated session notes)
-docs/
+# Local test scratch files
+test*.html
+test*.js
+test*.mjs
+test-*.html
+test-*.js
+
+# AI tooling and generated session artifacts
+.agent/
+.claude/
+AGENTS.md
+CLAUDE.md
+graphify-out/
+.codex-pet-runs/
+*_REPORT.md
+*_COMPLETE.md
+*_FIXED.md
+*_DOCUMENTATION.md
+*_IMPLEMENTATION.md
+*_SUMMARY.md
+*_UPDATE.md

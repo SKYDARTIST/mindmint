@@ -1,12 +1,15 @@
 {
-  "name": "my-mindmint-app",
+  "name": "mindmint",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run build",
+    "audit:high": "npm audit --audit-level=high"
   },
   "dependencies": {
     "firebase": "^11.5.0",

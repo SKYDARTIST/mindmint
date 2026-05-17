@@ -1,0 +1,34 @@
+# Security Policy
+
+MindMint handles user-generated study content, Firebase authentication, Firestore data, and paid API calls to OpenAI. Treat changes to auth, rate limits, export, and generation routes as security-sensitive.
+
+## Supported Version
+
+This repository tracks the production version deployed from `main`.
+
+## Reporting a Vulnerability
+
+If you find a vulnerability, do not open a public issue with exploit details. Contact the maintainer through the profile linked in the README and include:
+
+- Affected route, component, or configuration.
+- Clear reproduction steps.
+- Expected impact.
+- Whether any credentials or user data may be exposed.
+
+## Secrets
+
+Never commit:
+
+- `.env`, `.env.local`, or deployment environment files.
+- Firebase Admin service account JSON.
+- OpenAI API keys.
+- OAuth client secrets.
+
+If a real secret is committed, rotate it immediately in the provider dashboard and remove it from git history before treating the repository as clean.
+
+## Operational Notes
+
+- OpenAI calls create direct API cost. Keep server-side rate limits enabled.
+- Firebase ID tokens must be verified before generation or user data access.
+- Firestore rules should deny cross-user reads and writes by default.
+- Generated Mermaid and exported HTML should stay sanitized before rendering.

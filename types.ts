@@ -73,7 +73,7 @@ export interface QuizItem {
     style?: string;
     topic?: string;
     skill?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
