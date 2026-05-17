@@ -19,6 +19,8 @@ import { auth } from "@/lib/firebase/config";
 import { useSubscription } from "@/lib/hooks/useSubscription";
 import { MindmapSkeleton, ListSkeleton, SummarySkeleton } from "./SkeletonLoaders";
 
+const DEMO_MODE = process.env.NEXT_PUBLIC_MINDMINT_DEMO_MODE !== "false";
+
 // Icons
 const Icons = {
   Mindmap: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C7 2 2.5 5 2.5 5M21.5 5C21.5 5 17 2 12 2" /><path d="M12 22C17 22 21.5 19 21.5 19M2.5 19C2.5 19 7 22 12 22" /><circle cx="12" cy="12" r="3" /><path d="M12 9V5" /><path d="M12 15v4" /><path d="M15 12h4" /><path d="M5 12h4" /></svg>,
@@ -76,8 +78,6 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const searchParams = useSearchParams();
-
-  // No more demo mode - everything is user-bound or blocked
 
   // Auto-close auth modal when user is detected
   useEffect(() => {
@@ -185,7 +185,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
 
     try {
       // Guest handling
-      if (!user) {
+      if (!DEMO_MODE && !user) {
         setShowAuthModal(true);
         setToast({ message: "Sign up free to start generating!", type: "info" });
         setIsLoading(false);
@@ -193,18 +193,18 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
       }
 
       // Authenticated user flow
-      if (generationsLeft <= 0) {
+      if (!DEMO_MODE && generationsLeft <= 0) {
         setToast({ message: "Daily limit reached! Come back tomorrow.", type: "info" });
         setIsLoading(false);
         return;
       }
 
-      const token = await user.getIdToken();
+      const token = user ? await user.getIdToken() : null;
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           input: inputText,
@@ -219,8 +219,15 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
         setGenerationsLeft(result.usageRemaining ?? (generationsLeft - 1));
 
         // Auto-save to Firestore
-        const savedTitle = await saveToFirestore(result.data, mode, inputText);
-        setCurrentTitle(savedTitle || "");
+        if (!DEMO_MODE && user) {
+          const savedTitle = await saveToFirestore(result.data, mode, inputText);
+          setCurrentTitle(savedTitle || "");
+        } else {
+          setCurrentTitle("Demo generation");
+          if (result.demo) {
+            setToast({ message: "Demo mode: sample output generated locally. No paid AI API was called.", type: "info" });
+          }
+        }
       } else {
         setError(result.error || "Failed to generate content");
       }
@@ -300,7 +307,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             <div className="hidden md:flex h-6 w-px bg-white/10" />
             <div className="hidden md:flex items-center gap-2 text-xs font-medium text-gray-400">
               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              MindMint v1.0
+              {DEMO_MODE ? "Demo mode · no API cost" : "MindMint v1.0"}
             </div>
           </div>
 
@@ -314,7 +321,17 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
             >
               <Icons.Templates />
             </button>
-            {user && (
+            {DEMO_MODE ? (
+              <div
+                className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg border bg-emerald-500/10 border-emerald-500/20"
+                title="Portfolio demo mode: no external AI provider is called"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-400 whitespace-nowrap">
+                  Demo
+                </span>
+              </div>
+            ) : user && (
               <div
                 className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg border bg-indigo-500/10 border-indigo-500/20"
                 title="Total daily generations across all tools"
@@ -326,7 +343,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               </div>
             )}
 
-            {user ? (
+            {DEMO_MODE ? null : user ? (
               <button
                 onClick={handleSignOut}
                 className="hidden sm:flex items-center gap-2 px-4 py-2 hover:bg-white/5 rounded-xl text-sm transition text-gray-400 hover:text-white"
@@ -374,7 +391,12 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                 </button>
               </div>
 
-              {user && (
+              {DEMO_MODE ? (
+                <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                  <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Demo Mode</h4>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-1">Sample outputs are generated locally. No OpenAI or Gemini API is called.</p>
+                </div>
+              ) : user && (
                 <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-indigo-500 rounded-lg text-white">
@@ -390,7 +412,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                   </div>
                 </div>
               )}
-              {!user && (
+              {!DEMO_MODE && !user && (
                 <div className="flex flex-col gap-3 p-4 bg-indigo-600/10 rounded-2xl border border-indigo-500/20">
                   <div className="flex items-center gap-3 mb-1">
                     <div className="p-2 bg-indigo-600 rounded-lg text-white">
@@ -452,13 +474,13 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
               <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 px-4">Library & Export</div>
               <nav className="space-y-1">
                 {[
-                  { id: 'notes', label: 'My Notes', icon: <Icons.Folder />, onClick: () => { window.location.href = '/notes'; }, visible: true },
-                  { id: 'export', label: 'Export PDF/PNG', icon: <Icons.Export />, onClick: () => { setShowExportModal(true); setShowMobileMenu(false); }, visible: true },
+                  { id: 'notes', label: 'My Notes', icon: <Icons.Folder />, onClick: () => { window.location.href = '/notes'; }, visible: !DEMO_MODE, requiresAuth: true },
+                  { id: 'export', label: 'Export PDF/PNG', icon: <Icons.Export />, onClick: () => { setShowExportModal(true); setShowMobileMenu(false); }, visible: true, requiresAuth: false },
                 ].filter(i => i.visible).map((item) => {
                   return (
                     <button
                       key={item.id}
-                      onClick={!user ? () => {
+                      onClick={item.requiresAuth && !user ? () => {
                         setShowAuthModal(true);
                         setToast({ message: "Sign up to access this feature!", type: "info" });
                       } : item.onClick}
@@ -680,10 +702,12 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                       <h3 className="text-3xl font-black tracking-tighter text-gray-900 dark:text-white">
                         {mode === "mindmap" ? "Your thinking space" : "Visualize your thoughts"}
                       </h3>
-                      <p className="text-gray-500 text-sm leading-relaxed font-medium">
+                  <p className="text-gray-500 text-sm leading-relaxed font-medium">
                         {mode === "mindmap"
                           ? "Paste text to generate a structured mind map instantly."
-                          : `Paste your notes to build a structured ${mode} instantly with our AI brain.`}
+                          : DEMO_MODE
+                            ? `Paste your notes to preview a structured ${mode}. Demo mode uses local sample output only.`
+                            : `Paste your notes to build a structured ${mode} instantly with our AI brain.`}
                       </p>
                     </div>
                     <div className="inline-flex flex-col gap-6 items-center">
@@ -693,7 +717,7 @@ export default function MindMintApp({ theme, toggleTheme }: MindMintAppProps) {
                         </span>
                       </div>
 
-                      {!user && !isLoading && (
+                      {!DEMO_MODE && !user && !isLoading && (
                         <button
                           onClick={() => setShowAuthModal(true)}
                           className="flex flex-col items-center gap-4 group p-8 rounded-3xl border border-dashed border-indigo-500/20 hover:border-indigo-500/40 bg-indigo-500/5 transition-all animate-in fade-in zoom-in duration-500"

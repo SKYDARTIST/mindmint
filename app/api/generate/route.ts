@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { generateContent } from "@/lib/generateService";
 import { checkDailyLimit, isToday, DAILY_GENERATION_LIMIT } from "@/lib/rateLimit";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { sanitizeInput } from "@/lib/security";
 import { validateInputLength } from "@/lib/validation";
-import { FieldValue } from "firebase-admin/firestore";
+import { generateDemoContent } from "@/lib/demoContent";
+import { isDemoMode } from "@/lib/demoMode";
 
 const VALID_MODES = ['summary', 'mindmap', 'flashcards', 'quiz', 'infographic'];
 const VALID_LAYOUTS: Record<string, string[]> = {
@@ -50,7 +50,18 @@ export async function POST(req: Request) {
             );
         }
 
+        if (isDemoMode()) {
+            return NextResponse.json({
+                ok: true,
+                data: generateDemoContent(mode, sanitizedInput, safeLayout),
+                usageRemaining: DAILY_GENERATION_LIMIT,
+                demo: true,
+            });
+        }
+
         // Authenticate server-side
+        const { adminAuth, adminDb } = await import("@/lib/firebase/admin");
+        const { FieldValue } = await import("firebase-admin/firestore");
         const authHeader = req.headers.get("Authorization");
         let user: { uid: string } | null = null;
 

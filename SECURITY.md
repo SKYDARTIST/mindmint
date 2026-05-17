@@ -1,6 +1,6 @@
 # Security Policy
 
-MindMint handles user-generated study content, Firebase authentication, Firestore data, and paid API calls to OpenAI. Treat changes to auth, rate limits, export, and generation routes as security-sensitive.
+MindMint's public deployment runs in demo mode by default and does not call paid AI APIs. The codebase still contains optional paths for Firebase authentication, Firestore data, and OpenAI generation, so treat changes to auth, rate limits, export, and generation routes as security-sensitive.
 
 ## Supported Version
 
@@ -28,7 +28,8 @@ If a real secret is committed, rotate it immediately in the provider dashboard a
 
 ## Operational Notes
 
-- OpenAI calls create direct API cost. Keep server-side rate limits enabled.
-- Firebase ID tokens must be verified before generation or user data access.
+- Keep `MINDMINT_DEMO_MODE=true` for public portfolio deployments to avoid paid API abuse.
+- If real OpenAI calls are enabled, they create direct API cost. Keep server-side rate limits enabled.
+- Firebase ID tokens must be verified before non-demo generation or user data access.
 - Firestore rules should deny cross-user reads and writes by default.
 - Generated Mermaid and exported HTML should stay sanitized before rendering.

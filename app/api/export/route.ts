@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { formatForExport } from "@/lib/generateService";
-import { verifyIdToken, getAdminDb } from "@/lib/firebase/admin";
+import { isDemoMode } from "@/lib/demoMode";
 
 export async function POST(req: NextRequest) {
     try {
@@ -10,7 +10,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
+        if (isDemoMode()) {
+            const formattedContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+            return NextResponse.json({ ok: true, data: formattedContent, demo: true });
+        }
+
         // 1. Authenticate and verify Pro status using ID token from headers
+        const { verifyIdToken, getAdminDb } = await import("@/lib/firebase/admin");
         const authHeader = req.headers.get('Authorization');
         if (!authHeader?.startsWith('Bearer ')) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
