@@ -12,6 +12,8 @@ const MindMintApp = dynamic(() => import("@/components/MindMintApp"), {
 });
 const AuthModal = dynamic(() => import("@/components/AuthModal"));
 
+const DEMO_MODE = process.env.NEXT_PUBLIC_MINDMINT_DEMO_MODE !== "false";
+
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-black flex items-center justify-center">
     <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
@@ -26,17 +28,22 @@ interface PageContentProps {
 
 function PageContent({ theme, toggleTheme }: PageContentProps) {
   const [showApp, setShowApp] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!DEMO_MODE);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const searchParams = useSearchParams();
 
   const { user, isLoading: subLoading } = useSubscription();
 
   useEffect(() => {
+    if (DEMO_MODE) {
+      setLoading(false);
+      return;
+    }
     setLoading(subLoading);
   }, [subLoading]);
 
   useEffect(() => {
+    if (DEMO_MODE) return;
     if (user) {
       setShowApp(true);
       setShowAuthModal(false);
@@ -92,16 +99,19 @@ function PageContent({ theme, toggleTheme }: PageContentProps) {
         <>
           <LandingPage
             onStart={() => {
-              if (user) {
+              if (DEMO_MODE || user) {
                 setShowApp(true);
               } else {
                 setShowAuthModal(true);
               }
             }}
+            demoMode={DEMO_MODE}
             theme={theme}
             toggleTheme={toggleTheme}
           />
-          <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+          {!DEMO_MODE && (
+            <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+          )}
         </>
       ) : (
         <MindMintApp theme={theme} toggleTheme={toggleTheme} />

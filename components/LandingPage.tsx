@@ -8,9 +8,10 @@ interface LandingPageProps {
   onStart: () => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
+  demoMode?: boolean;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onStart, theme, toggleTheme }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onStart, theme, toggleTheme, demoMode = false }) => {
   return (
     <div className="min-h-screen bg-white dark:bg-[#09090b] flex flex-col items-center justify-center px-6 transition-colors duration-500 bg-dot-pattern">
 
@@ -75,12 +76,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, theme, toggleTheme }
         </div>
 
         {/* Buttons */}
-        <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+        <div className="flex flex-col items-center justify-center gap-4">
+          {demoMode && (
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em]">
+                Live demo · No login required
+              </span>
+            </div>
+          )}
           <button
             onClick={onStart}
             className="px-12 py-6 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-full transition-all flex items-center gap-3 w-full md:min-w-[350px] md:w-auto shadow-2xl shadow-indigo-600/30 active:scale-95 group"
           >
-            <span className="flex-1 text-lg">Start Generating Free</span>
+            <span className="flex-1 text-lg">
+              {demoMode ? "Try the Live Demo" : "Start Generating Free"}
+            </span>
             <span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
           </button>
         </div>
@@ -88,7 +99,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, theme, toggleTheme }
         {/* Footer text */}
         <div className="space-y-4 pt-10">
           <p className="text-[11px] text-gray-500 dark:text-gray-600 font-medium uppercase tracking-widest leading-relaxed">
-            Free forever for early experimenters • 5 generations/day
+            {demoMode
+              ? "Sample outputs generated locally • No AI API key required"
+              : "Free forever for early experimenters • 5 generations/day"}
           </p>
         </div>
 
