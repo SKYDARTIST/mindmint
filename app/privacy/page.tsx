@@ -21,28 +21,28 @@ export default function PrivacyPage() {
                     <section className="space-y-4">
                         <h2 className="text-lg font-black uppercase tracking-[0.2em] text-indigo-500">How we handle your data</h2>
                         <p>
-                            At MindMint, we believe in keeping thing simple and transparent. Here is exactly how we handle your information:
+                            At MindMint, we believe in keeping things simple and transparent. Here is exactly how we handle your information:
                         </p>
                     </section>
 
                     <section className="space-y-4">
                         <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 dark:text-white">What We Collect</h3>
                         <p>
-                            Currently, we only process the text you paste into the app to generate your study materials. If you choose to upgrade to our Pro plan, we may collect your email address for account management and payment purposes.
+                            In the public demo, we process the text you paste only to return sample study materials for that request. The demo does not require an account, does not save your notes to a database, and does not collect payment information.
                         </p>
                     </section>
 
                     <section className="space-y-4">
                         <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 dark:text-white">How Data is Used</h3>
                         <p>
-                            Your input text is used solely for the purpose of generating the outputs you request (mindmaps, flashcards, etc.). We do not use your data for advertising or any other unrelated purposes.
+                            Your input text is used solely to generate the output you request, such as a mind map, flashcards, quiz, summary, or infographic. We do not use your data for advertising or unrelated tracking.
                         </p>
                     </section>
 
                     <section className="space-y-4">
                         <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 dark:text-white">Third-Party Services</h3>
                         <p>
-                            We use OpenAI to power the AI logic and Vercel to host the application. Your input text is sent to OpenAI&apos;s models to generate the results. These services have their own privacy practices which we encourage you to review.
+                            The public demo is hosted on Vercel and uses local sample generation, so your pasted text is not sent to OpenAI, Gemini, or another paid AI provider. The codebase still contains a production-style OpenAI and Firebase path for future authenticated deployments; if that mode is enabled, pasted text would be sent server-side to the configured AI provider to generate the requested result.
                         </p>
                     </section>
 

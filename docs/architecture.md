@@ -2,7 +2,9 @@
 
 MindMint is a Next.js PWA that converts text or topics into study tools: mind maps, flashcards, quizzes, summaries, and infographics.
 
-The public portfolio deployment runs in demo mode by default. Demo mode returns deterministic local sample output, skips Firebase auth for generation, and does not call OpenAI, Gemini, or any paid model API. The real AI path remains available for future use behind `MINDMINT_DEMO_MODE=false`.
+The public portfolio deployment runs in demo mode by default. Demo mode returns deterministic local sample output, skips Firebase auth for generation, and does not call OpenAI, Gemini, or any paid model API. The original production-style path remains available behind `MINDMINT_DEMO_MODE=false`: Firebase auth, Firestore usage tracking, server-side rate limits, sanitized prompts, and server-only OpenAI calls.
+
+That split is intentional. The public version is optimized for portfolio review: no sign-in friction, no paid API exposure, and no dependency on a live Firebase project. The preserved non-demo path shows how the same product can be restored to a real authenticated deployment when cost controls and user data handling are required.
 
 ```mermaid
 flowchart TD
@@ -29,11 +31,11 @@ flowchart TD
 
 ### 1. Demo Mode by Default
 
-`MINDMINT_DEMO_MODE` defaults to enabled unless explicitly set to `false`. This keeps the public portfolio safe from API abuse and surprise billing while still showing the product workflow.
+`MINDMINT_DEMO_MODE` defaults to enabled unless explicitly set to `false`. This keeps the public portfolio safe from API abuse, surprise billing, and sign-in drop-off while still showing the product workflow.
 
 ### 2. Server-Side Generation When Enabled
 
-All OpenAI calls go through `app/api/generate/route.ts`. The client sends a Firebase ID token; the server verifies it, checks the daily limit, sanitizes input, then calls OpenAI. The API key lives only in server environment variables.
+When non-demo mode is enabled, all OpenAI calls go through `app/api/generate/route.ts`. The client sends a Firebase ID token; the server verifies it, checks the daily limit, sanitizes input, then calls OpenAI. The API key lives only in server environment variables.
 
 ### 3. Firebase Auth and Usage Tracking
 
@@ -63,8 +65,8 @@ OpenAI output can contain characters that break Mermaid parsing. `sanitizeMermai
 
 | Path | Responsibility |
 | --- | --- |
-| `app/api/generate/route.ts` | Authenticated generation endpoint and rate-limit gate |
-| `app/api/export/route.ts` | PDF/PNG export endpoint |
+| `app/api/generate/route.ts` | Demo generator, or authenticated generation and rate-limit gate when non-demo mode is enabled |
+| `app/api/export/route.ts` | Demo export formatter, or authenticated export endpoint when non-demo mode is enabled |
 | `lib/demoContent.ts` | Local sample outputs for no-cost portfolio demo mode |
 | `lib/demoMode.ts` | Demo mode feature flag |
 | `lib/generateService.ts` | OpenAI client, prompt builder, Mermaid sanitizer, JSON cleaner |
@@ -108,10 +110,10 @@ See `.env.local.example` for the full list.
 
 ## Cost and Performance
 
-Demo mode has no model API cost. OpenAI usage becomes the main variable cost only when real AI mode is enabled. Input validation and daily limits protect against accidental high spend. Exporting large diagrams can be CPU-heavy on older devices, so generated visual output should stay compact.
+Demo mode has no model API cost and no auth dependency. OpenAI usage becomes the main variable cost only when real AI mode is enabled. Firebase auth, input validation, and daily limits should stay enabled before exposing non-demo mode publicly. Exporting large diagrams can be CPU-heavy on older devices, so generated visual output should stay compact.
 
 ## Deployment
 
 - **Frontend and API routes:** Vercel
-- **Auth and usage DB:** Firebase
+- **Auth and usage DB:** Firebase in non-demo mode
 - **Live URL:** https://mindmint.study

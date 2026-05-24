@@ -4,6 +4,8 @@ AI study workspace that turns raw notes or topics into mind maps, flashcards, qu
 
 This public portfolio deployment runs in **demo mode** by default. It returns realistic local sample outputs and does not call OpenAI, Gemini, or any other paid model API.
 
+MindMint was originally built with a production-style path: Firebase authentication, Firestore usage tracking, server-side rate limits, sanitized prompts, and server-only OpenAI calls. I keep the public deployment in demo mode so reviewers can try the product without sign-in friction and without creating API-cost risk. The production path is still preserved in the codebase and can be re-enabled when real auth, storage, and billing controls are needed.
+
 **Live:** [mindmint.study](https://mindmint.study)
 
 ---
@@ -39,7 +41,7 @@ See [docs/architecture.md](docs/architecture.md) for the full system diagram and
 
 Short version:
 
-- Demo mode returns local sample outputs and skips paid API calls.
+- Demo mode returns local sample outputs, skips sign-in, and skips paid API calls.
 - In non-demo mode, user input is sanitized server-side before model generation.
 - In non-demo mode, Firebase ID tokens are verified on every generation request.
 - In non-demo mode, daily limits are enforced server-side in Firestore.
@@ -82,9 +84,9 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-No API key is required for the default demo mode.
+No API key or Firebase project is required for the default demo mode.
 
-To enable real AI generation later, set:
+To restore the production-style path later, set:
 
 ```bash
 MINDMINT_DEMO_MODE=false
@@ -92,7 +94,7 @@ NEXT_PUBLIC_MINDMINT_DEMO_MODE=false
 OPENAI_API_KEY=your_openai_api_key
 ```
 
-For saved notes and authenticated rate limits, also add Firebase client config and `FIREBASE_SERVICE_ACCOUNT`.
+For saved notes, authenticated usage limits, and Google/email sign-in, also add Firebase client config and `FIREBASE_SERVICE_ACCOUNT`.
 
 Open [http://localhost:3000](http://localhost:3000).
 
@@ -109,16 +111,16 @@ npm run audit:high
 
 ## Cost and Performance Notes
 
-The public deployment is intentionally no-cost: demo mode does not call any paid model API. This makes the project safe to keep public as a portfolio demo.
+The public deployment is intentionally no-cost: demo mode does not call any paid model API and does not require sign-in. This makes the project safe to keep public as a portfolio demo while still showing the product interaction.
 
-If real AI generation is enabled, every successful generation has OpenAI API cost. Keep server-side rate limits on, monitor token usage, and avoid enabling real model calls on a public demo without abuse protection.
+If real AI generation is enabled, every successful generation has OpenAI API cost. Keep Firebase auth, server-side rate limits, token monitoring, and abuse controls enabled before exposing that mode publicly.
 
 Exports run in the browser and can be CPU-heavy for large visual outputs. Keep generated diagrams compact enough for mobile devices.
 
 ## Security Notes
 
 - Do not commit `.env.local` or Firebase service account JSON files.
-- Keep demo mode enabled for public portfolio deployments unless you are prepared to pay for model usage.
+- Keep demo mode enabled for public portfolio deployments unless you are prepared to handle sign-in, storage, abuse prevention, and model usage cost.
 - Keep `OPENAI_API_KEY` server-only if real AI is enabled.
 - Rotate credentials immediately if a real key is committed.
 - Review `firestore.rules` before changing note storage or user data paths.
