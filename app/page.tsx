@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { isPublicDemoMode } from "@/lib/publicDemoMode";
 
 const LandingPage = dynamic(() => import("@/components/LandingPage"), {
   loading: () => <LoadingSpinner />
@@ -12,7 +13,7 @@ const MindMintApp = dynamic(() => import("@/components/MindMintApp"), {
 });
 const AuthModal = dynamic(() => import("@/components/AuthModal"));
 
-const DEMO_MODE = process.env.NEXT_PUBLIC_MINDMINT_DEMO_MODE !== "false";
+const DEMO_MODE = isPublicDemoMode();
 
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-black flex items-center justify-center">

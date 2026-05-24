@@ -20,8 +20,9 @@ export const sanitizeMermaidContent = (content: string): string => {
     // We must not wrap these in quotes as they are Mermaid syntax structure
     const mermaidKeywords = [
         'graph', 'flowchart', 'subgraph', 'end', 'direction',
-        'mindmap', 'TD', 'LR', 'TB', 'BT', 'RL', 'click'
+        'mindmap', 'TD', 'LR', 'TB', 'BT', 'RL'
     ];
+    const unsafeDirectivePattern = /^(click|href|callback)\b/i;
 
     // 3. Fix Formatting for stable parsing
     const lines = decoded.split('\n');
@@ -38,6 +39,7 @@ export const sanitizeMermaidContent = (content: string): string => {
     const fixedLines = lines.map(line => {
         const trimmed = line.trim();
         if (!trimmed) return line;
+        if (unsafeDirectivePattern.test(trimmed)) return '';
 
         // Preserve indentation
         const indent = line.match(/^\s*/)?.[0] || '';

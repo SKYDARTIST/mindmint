@@ -18,8 +18,9 @@ import { useSearchParams } from 'next/navigation';
 import { auth } from "@/lib/firebase/config";
 import { useSubscription } from "@/lib/hooks/useSubscription";
 import { MindmapSkeleton, ListSkeleton, SummarySkeleton } from "./SkeletonLoaders";
+import { isPublicDemoMode } from "@/lib/publicDemoMode";
 
-const DEMO_MODE = process.env.NEXT_PUBLIC_MINDMINT_DEMO_MODE !== "false";
+const DEMO_MODE = isPublicDemoMode();
 
 // Icons
 const Icons = {

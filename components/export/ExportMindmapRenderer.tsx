@@ -38,7 +38,7 @@ const ExportMindmapRenderer: React.FC<ExportMindmapRendererProps> = ({
                 mermaid.initialize({
                     startOnLoad: false,
                     theme: isDark ? 'dark' : 'neutral',
-                    securityLevel: 'loose',
+                    securityLevel: 'strict',
                     fontFamily: 'Inter, sans-serif',
                     themeVariables: isDark ? {
                         primaryColor: '#1e1b4b',
